@@ -404,11 +404,12 @@ export default function Pos() {
             const p = buscarPorCodigo(cat.productos, busca) ?? productos[0];
             if (p) { tocar(p); setBusca(''); } else if (busca.trim()) mostrarToast(`"${busca.trim()}" no encontrado`);
           }} />
+        {agotados && <div className="aviso-caja">Toca un producto para marcarlo agotado (o disponible de nuevo).</div>}
+        <div className="pos-cuerpo">
         <div className="pos-cats" aria-label="Categorías">
           <button className={catActiva === 'todas' ? 'on' : ''} onClick={() => setCatActiva('todas')}>Todo</button>
           {catsOrdenadas.map((c) => <button key={c.id} className={catActiva === c.id ? 'on' : ''} onClick={() => setCatActiva(c.id)} style={{ '--cc': c.color || 'var(--acento)' }}>{c.nombre}</button>)}
         </div>
-        {agotados && <div className="aviso-caja">Toca un producto para marcarlo agotado (o disponible de nuevo).</div>}
         <div className="pos-grid">
           {productos.map((p) => {
             const c = cat.categorias.find((x) => x.id === p.categoria_id)?.color;
@@ -422,6 +423,7 @@ export default function Pos() {
             );
           })}
           {productos.length === 0 && <div className="vacio" style={{ gridColumn: '1/-1' }}>{cat.productos.length === 0 ? 'Aún no hay productos. Agrégalos en Catálogo.' : 'Sin productos que coincidan.'}</div>}
+        </div>
         </div>
         <small className="tenue">{productos.length} producto{productos.length === 1 ? '' : 's'} · el lector de código de barras funciona en cualquier momento</small>
       </div>
@@ -447,55 +449,46 @@ export default function Pos() {
           </div>
         )}
 
-        <div className="pos-cab">
-          <b className="titulo" style={{ fontSize: '1.2rem' }}>{orden.id ? `Orden #${orden.ticket}` : 'Nueva orden'}</b>
-          <button className="btn chico" onClick={() => setOrden((o) => ({ ...o, tipo_orden: o.tipo_orden === 'aqui' ? 'llevar' : 'aqui' }))}>{orden.tipo_orden === 'aqui' ? 'Aquí' : 'Para llevar'}</button>
+        <div className="pos-wz-total-art">Total de artículos: <b>{orden.lineas.reduce((n, l) => n + (Number(l.cantidad) || 0), 0)}</b></div>
+        <div className="pos-wz-info">
+          <div className="pos-wz-fila"><label>Orden</label><div className="pos-wz-val">{orden.id ? `#${orden.ticket}` : 'Nueva'}<button className="btn chico" style={{ marginLeft: 'auto' }} onClick={() => setOrden((o) => ({ ...o, tipo_orden: o.tipo_orden === 'aqui' ? 'llevar' : 'aqui' }))}>{orden.tipo_orden === 'aqui' ? 'Aquí' : 'Para llevar'}</button></div></div>
+          <div className="pos-wz-fila"><label>Cliente</label>
+            <div className={`pos-wz-val clic${necesitaRtn ? ' falta' : ''}`} onClick={() => setModal({ tipo: 'cliente' })} role="button" tabIndex={0}>
+              <span className="pos-wz-nombre">{orden.cliente?.nombre ?? 'Consumidor Final'}{orden.cliente?.exento_impuestos && <span className="chip aviso" style={{ marginLeft: 8 }}>Exento</span>}</span>
+              {orden.cliente && <button className="btn chico fantasma" title="Volver a Consumidor Final" aria-label="Quitar cliente" onClick={(e) => { e.stopPropagation(); setOrden((o) => ({ ...o, cliente: null })); }}>✕</button>}
+              <Icono n="clientes" tam={18} />
+            </div>
+          </div>
+          <div className="pos-wz-fila dos">
+            <label>RTN</label><div className={`pos-wz-val clic${necesitaRtn ? ' falta' : ''}`} onClick={() => setModal({ tipo: 'cliente' })} role="button" tabIndex={0}>{orden.cliente?.rtn ?? <span className="tenue">—</span>}</div>
+            <label>Fecha</label><div className="pos-wz-val">{new Date().toLocaleDateString('es-HN', { timeZone: 'America/Tegucigalpa' })}</div>
+          </div>
         </div>
 
-        <div className={`pos-cliente ${necesitaRtn ? 'falta' : ''}`}>
-          <div className="quien">
-            <small>Cliente</small>
-            <b>{orden.cliente?.nombre ?? 'Consumidor Final'}{orden.cliente?.exento_impuestos && <span className="chip aviso" style={{ marginLeft: 8 }}>Exento de impuestos</span>}</b>
-            {orden.cliente?.rtn && <small className="num">RTN {orden.cliente.rtn}</small>}
-          </div>
-          <div className="fila" style={{ gap: 4, flexWrap: 'nowrap' }}>
-            {orden.cliente && <button className="btn chico fantasma" title="Volver a Consumidor Final" aria-label="Quitar cliente" onClick={() => setOrden((o) => ({ ...o, cliente: null }))}>✕</button>}
-            <button className="btn chico" onClick={() => setModal({ tipo: 'cliente' })}>{orden.cliente ? 'Cambiar' : 'Elegir'}</button>
-          </div>
-        </div>
-
-        <div className="pos-lineas">
+        <div className="pos-lineas pos-wz-tabla">
+          <div className="pos-wz-th"><span>Producto</span><span>Cantidad</span><span>Precio</span><span>Monto</span><span /></div>
           {!hayLineas && <div className="vacio">Toca un producto para empezar.</div>}
-          {orden.lineas.map((l, i) => {
+          {orden.lineas.map((l) => {
+            const i = orden.lineas.indexOf(l);
             const t = totales.lineas[i];
             const unidad = l.producto.unidad === 'unidad';
             const bruto = Math.round(t.precio_unitario * l.cantidad * 100) / 100;
             return (
-              <div className={`pos-linea${l.descuento_porcentaje ? ' con-descuento' : ''}`} key={l.key}>
-                <div className="pl-cant">
-                  <button onClick={() => cambiarCant(l.key, 1)} aria-label="Más" disabled={!unidad}>+</button>
-                  {unidad ? <input type="number" inputMode="numeric" min="1" value={l.cantidad} aria-label={`Cantidad de ${l.producto.nombre}`} onChange={(e) => fijarCantidad(l.key, e.target.value)} /> : <b className="num">{l.cantidad}</b>}
-                  <button onClick={() => cambiarCant(l.key, -1)} aria-label="Menos" disabled={!unidad}>−</button>
-                </div>
-                <div className="pl-info" onClick={() => l.producto.grupo_ids.length && setModal({ tipo: 'opciones', producto: l.producto, editar: l })}>
+              <div className={`pos-wz-tr${l.descuento_porcentaje ? ' con-descuento' : ''}`} key={l.key}>
+                <div className="pos-wz-prod" onClick={() => l.producto.grupo_ids.length && setModal({ tipo: 'opciones', producto: l.producto, editar: l })}>
                   <b>{l.producto.nombre}</b>{!unidad && <small> ({l.producto.unidad})</small>}
+                  {l.descuento_porcentaje > 0 && <small className="chip ok" style={{ marginLeft: 6 }}>−{l.descuento_porcentaje}%</small>}
                   {l.opciones.map((o) => <small key={o.id} className="tenue" style={{ display: 'block' }}>+ {o.nombre}</small>)}
-                  {!l.opciones.length && l.producto.grupo_ids.length > 0 && <small className="tenue" style={{ display: 'block', opacity: .7 }}>Toca para extras</small>}
                   {l.notas && <small style={{ display: 'block', color: 'var(--aviso)' }}>“{l.notas}”</small>}
-                  <small className="tenue num" style={{ display: 'block' }}>{lempiras(t.precio_unitario)} c/u</small>
                 </div>
-                <div className="pl-monto">
-                  {t.descuento > 0 ? <><small className="num" style={{ textDecoration: 'line-through' }}>{lempiras(bruto)}</small><b className="num" style={{ color: 'var(--ok)' }}>{lempiras(t.monto)}</b></> : <b className="num">{lempiras(t.monto)}</b>}
-                  <button className="btn chico fantasma" onClick={() => quitar(l.key)} aria-label={`Quitar ${l.producto.nombre}`} title="Quitar"><Icono n="borrar" tam={15} /></button>
+                <div className="pos-wz-cant">
+                  <button onClick={() => cambiarCant(l.key, -1)} aria-label="Menos" disabled={!unidad}>−</button>
+                  {unidad ? <input type="number" inputMode="numeric" min="1" value={l.cantidad} aria-label={`Cantidad de ${l.producto.nombre}`} onChange={(e) => fijarCantidad(l.key, e.target.value)} /> : <b className="num">{l.cantidad}</b>}
+                  <button onClick={() => cambiarCant(l.key, 1)} aria-label="Más" disabled={!unidad}>+</button>
                 </div>
-                {puede('pos:descuento') && (
-                  <div className="pos-linea-desc" role="radiogroup" aria-label={`Descuento de ${l.producto.nombre}`}>
-                    {OPCIONES_DESCUENTO.map((o) => (
-                      <button key={o.porcentaje} role="radio" aria-checked={l.descuento_porcentaje === o.porcentaje} className={`pos-chip-desc${l.descuento_porcentaje === o.porcentaje ? ' activo' : ''}`} onClick={() => fijarDescuento(l.key, o.porcentaje)}>{o.corta}</button>
-                    ))}
-                    {unidad && l.cantidad > 1 && <button className="pos-chip-desc separar" title="Separar una unidad para darle otro descuento" onClick={() => separarUnidad(l.key)}>÷ Separar 1</button>}
-                  </div>
-                )}
+                <div className="num der">{lempiras(t.precio_unitario).replace('L ', '')}</div>
+                <div className="num der">{t.descuento > 0 ? <><small style={{ textDecoration: 'line-through', display: 'block' }}>{lempiras(bruto).replace('L ', '')}</small><b style={{ color: 'var(--ok)' }}>{lempiras(t.monto).replace('L ', '')}</b></> : lempiras(t.monto).replace('L ', '')}</div>
+                <button className="pos-wz-opc" onClick={() => setModal({ tipo: 'linea', key: l.key })}><Icono n="editar" tam={14} /> Opciones</button>
               </div>
             );
           })}
@@ -510,16 +503,14 @@ export default function Pos() {
           </div>
         )}
 
-        <div className="pos-tot">
-          <div className="fila espacio"><small>Sub-total</small><small className="num">{lempiras(totales.subtotal_bruto)}</small></div>
-          {Object.entries(totales.descuentos_por_porcentaje).map(([pct, monto]) => (
-            <div className="fila espacio" key={pct}><small>Descuento {pct} %{Number(pct) === 25 ? ' (3ª edad)' : ''}</small><small className="num">−{lempiras(monto)}</small></div>
-          ))}
-          <div className="fila espacio"><small>ISV incluido</small><small className="num">{lempiras(totales.isv_total)}</small></div>
-          <div className="fila espacio"><span className="titulo" style={{ fontSize: '1.2rem' }}>Total</span><b className="num pos-total">{lempiras(totales.total)}</b></div>
-          {sinRtn && !rtnBloquea && <small style={{ color: 'var(--aviso)' }}>Recordatorio: venta mayor a L {umbral.toLocaleString('es-HN')} sin RTN del cliente (no bloquea el cobro; queda en la bitácora). <button className="btn chico" style={{ marginLeft: 6 }} onClick={() => setModal({ tipo: 'cliente' })}>Elegir cliente</button></small>}
-          {necesitaRtn && <small style={{ color: 'var(--aviso)' }}>Se necesita el RTN del cliente para cobrar (venta mayor a L {umbral.toLocaleString('es-HN')}). <button className="btn chico" style={{ marginLeft: 6 }} onClick={() => setModal({ tipo: 'cliente' })}>Elegir cliente</button></small>}
+        <div className="pos-wz-tot">
+          <div><span>Sub - Total</span><b className="num">{(totales.total - totales.isv_total).toFixed(2)}</b></div>
+          <div><span>Impuesto</span><b className="num">{totales.isv_total.toFixed(2)}</b></div>
+          <div><span>Descuento</span><b className="num">{Object.values(totales.descuentos_por_porcentaje).reduce((n, v) => n + v, 0).toFixed(2)}</b></div>
+          <div className="gran"><span>Total</span><b className="num">{totales.total.toFixed(2)}</b></div>
         </div>
+        {sinRtn && !rtnBloquea && <small style={{ color: 'var(--aviso)' }}>Recordatorio: venta mayor a L {umbral.toLocaleString('es-HN')} sin RTN del cliente (no bloquea el cobro; queda en la bitácora). <button className="btn chico" style={{ marginLeft: 6 }} onClick={() => setModal({ tipo: 'cliente' })}>Elegir cliente</button></small>}
+        {necesitaRtn && <small style={{ color: 'var(--aviso)' }}>Se necesita el RTN del cliente para cobrar (venta mayor a L {umbral.toLocaleString('es-HN')}). <button className="btn chico" style={{ marginLeft: 6 }} onClick={() => setModal({ tipo: 'cliente' })}>Elegir cliente</button></small>}
 
         <ErrorCaja error={error} />
 
@@ -527,8 +518,8 @@ export default function Pos() {
           <button className="btn" onClick={nueva}>Nueva</button>
           <button className="btn" onClick={() => setModal({ tipo: 'abiertas' })}>Abiertas{otrasAbiertas > 0 ? ` (${otrasAbiertas})` : ''}</button>
           <button className="btn" disabled={!hayLineas || ocupado} onClick={dejarEnEspera}>En espera</button>
+          {puedeFacturas && <button className="btn" onClick={() => navegar(`/${empresa}/facturas`)}>Facturas</button>}
         </div>
-        {puedeFacturas && <button className="btn chico fantasma" onClick={() => navegar(`/${empresa}/facturas`)}>Buscar facturas</button>}
 
         {/* Efectivo y Tarjeta en extremos opuestos con un hueco ancho en medio: un toque mal apuntado cae en el vacío, nunca en el botón de al lado. */}
         <div className="pos-botones-cobro">
@@ -548,6 +539,25 @@ export default function Pos() {
             setModal(null);
           }} />
       )}
+      {modal?.tipo === 'linea' && (() => {
+        const l = orden.lineas.find((x) => x.key === modal.key);
+        if (!l) return null;
+        const unidad = l.producto.unidad === 'unidad';
+        return (
+          <Modal titulo={l.producto.nombre} tam="angosto" onCerrar={() => setModal(null)}
+            pie={<><button className="btn peligro" onClick={() => { quitar(l.key); setModal(null); }}><Icono n="borrar" tam={16} /> Quitar de la orden</button><button className="btn primario" onClick={() => setModal(null)}>Listo</button></>}>
+            {puede('pos:descuento') && (
+              <div className="pos-linea-desc" role="radiogroup" aria-label="Descuento" style={{ marginBottom: 12 }}>
+                {OPCIONES_DESCUENTO.map((o) => (
+                  <button key={o.porcentaje} role="radio" aria-checked={l.descuento_porcentaje === o.porcentaje} className={`pos-chip-desc${l.descuento_porcentaje === o.porcentaje ? ' activo' : ''}`} onClick={() => fijarDescuento(l.key, o.porcentaje)}>{o.corta === '—' ? 'Sin descuento' : o.corta}</button>
+                ))}
+                {unidad && l.cantidad > 1 && <button className="pos-chip-desc separar" title="Separar una unidad para darle otro descuento" onClick={() => separarUnidad(l.key)}>÷ Separar 1</button>}
+              </div>
+            )}
+            {l.producto.grupo_ids.length > 0 && <button className="btn" onClick={() => setModal({ tipo: 'opciones', producto: l.producto, editar: l })}>Extras y notas</button>}
+          </Modal>
+        );
+      })()}
       {modal?.tipo === 'peso' && <PesoModal producto={modal.producto} onCerrar={() => setModal(null)} onListo={(n) => { agregar(modal.producto, { cantidad: n }); setModal(null); }} />}
       {modal?.tipo === 'cliente' && <ClienteModal actual={orden.cliente} puedeCrear={puede('clientes:editar')} onCerrar={() => setModal(null)} onElegir={(c) => { setOrden((o) => ({ ...o, cliente: c })); setModal(null); }} />}
       {modal?.tipo === 'abiertas' && <AbiertasModal sucursalId={sucursal.id} actualId={orden.id} onCerrar={() => setModal(null)} onElegir={abrirOrden} />}
