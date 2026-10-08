@@ -50,10 +50,10 @@ test('RTN obligatorio sobre L 10,000: sin RTN no se cobra; con un cliente con RT
   assert.equal((await caja.post('/api/pos/ventas', { items: [item('Naranja Pura', 134)], cobrar: { pagos: pagoEf(20000) } })).status, 400);   // 10,050
   // el umbral se puede ajustar por empresa
   const emp = (await t.db.query(`select id from core.empresas where codigo = 'origen'`)).rows[0].id;
-  await t.db.query(`insert into core.config (empresa_id, clave, valor) values ($1, 'pos', '{"umbral_rtn": 500}'::jsonb)`, [emp]);
+  await t.db.query(`insert into core.config (empresa_id, clave, valor) values ($1, 'pos', '{"umbral_rtn": 500}'::jsonb) on conflict (empresa_id, clave) do update set valor = core.config.valor || '{"umbral_rtn": 500}'::jsonb`, [emp]);
   assert.equal((await caja.get('/api/pos/catalogo')).body.config.umbral_rtn, 500);
   assert.equal((await caja.post('/api/pos/ventas', { items: [item('Naranja Pura', 10)], cobrar: { pagos: pagoEf(1000) } })).status, 400);
-  await t.db.query(`delete from core.config where empresa_id = $1 and clave = 'pos'`, [emp]);
+  await t.db.query(`update core.config set valor = valor - 'umbral_rtn' where empresa_id = $1 and clave = 'pos'`, [emp]);
 });
 
 test('orden abierta: se puede volver a Consumidor Final y guardar el carné de tercera edad a medias; el carné se exige al COBRAR', async () => {

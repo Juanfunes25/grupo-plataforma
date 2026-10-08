@@ -1,3 +1,4 @@
+import AvisoRecepcion from '../rep/AvisoRecepcion.jsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AvisoSinStock from '../eco/AvisoSinStock.jsx';
@@ -382,6 +383,7 @@ export default function Pos() {
 
   return (
     <div className="pos">
+      <AvisoRecepcion />
       {toast && <div className="pos-toast" role="status">{toast}</div>}
       <div className="pos-izq">
         <div className="pos-barra">

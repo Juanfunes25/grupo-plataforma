@@ -161,3 +161,6 @@
 @media (max-width: 640px) { .gt-hero-num { font-size: 2.6rem; } .gt-tiendas { grid-template-columns: 1fr; } }
 .rep-progreso { height: 10px; border-radius: 99px; background: var(--panel-3); overflow: hidden; margin: 8px 0 4px; }
 .rep-progreso i { display: block; height: 100%; background: var(--ok); border-radius: 99px; transition: width .4s; }
+.rep-aviso-pos { position: fixed; left: 12px; bottom: 12px; z-index: 40; display: flex; align-items: center; gap: 4px; white-space: nowrap; padding: 0 2px 0 12px; border-radius: 999px; background: var(--aviso-fondo); border: 1px solid var(--aviso); font-size: .85rem; box-shadow: var(--sombra); }
+.rep-aviso-pos a { color: var(--texto); font-weight: 600; text-decoration: none; padding: 10px 0; }
+.rep-aviso-pos .btn { min-height: 36px; padding: 0 10px; }

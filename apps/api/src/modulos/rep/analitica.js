@@ -43,21 +43,26 @@ export function rutasAnalitica({ db }) {
   r.get('/panel-despacho/:fecha', requierePermiso('rep:despachar'), async (req, res) => {
     const fecha = validar(fechaISO, req.params.fecha);
     const anterior = sumarDias(fecha, -1);
+    // Lo pesado después de la medianoche (hasta el mediodía) lleva la fecha del día nuevo pero es parte de ESTA noche.
+    const siguiente = sumarDias(fecha, 1);
+    const corteMadrugada = `((($2::date + 1)::timestamp + interval '18 hours') at time zone 'UTC')`;
     const [despachos, pedidos, ultima, reportes] = await Promise.all([
       db.query(
         `select d.id, d.fecha::text as fecha, d.sucursal_id, d.sabor_id, d.categoria, d.panas, d.gramos_enviados, d.estado, d.gramos_confirmados_recibidos::float8 as gramos_confirmados_recibidos, d.panas_recibidas,
                 d.discrepancia::int as discrepancia, d.discrepancia_resuelta::int as discrepancia_resuelta, d.notas, d.enviado_en::text as enviado_en, sa.nombre as sabor_nombre, su.nombre as sucursal_nombre
            from rep.despachos d join rep.sabores sa on sa.id = d.sabor_id join core.sucursales su on su.id = d.sucursal_id
-          where d.empresa_id = $1 and d.fecha = $2 order by su.nombre, d.categoria, sa.nombre`, [emp(req), fecha]).then((x) => x.rows),
+          where d.empresa_id = $1 and (d.fecha = $2 or (d.fecha = $2::date + 1 and exists (
+                  select 1 from rep.pesajes p where p.empresa_id = d.empresa_id and p.sucursal_id = d.sucursal_id and p.sabor_id = d.sabor_id and p.fecha = d.fecha and p.created_at < ${corteMadrugada})))
+          order by su.nombre, d.categoria, sa.nombre`, [emp(req), fecha]).then((x) => x.rows),
       db.query(
         `select p.id, p.sucursal_id, p.fecha::text as fecha, p.notas, p.estado, p.created_at as creado_en, su.nombre as sucursal_nombre
-           from rep.pedidos_insumos p join core.sucursales su on su.id = p.sucursal_id where p.empresa_id = $1 and p.fecha in ($2,$3) order by p.created_at desc`, [emp(req), fecha, anterior]).then((x) => x.rows),
+           from rep.pedidos_insumos p join core.sucursales su on su.id = p.sucursal_id where p.empresa_id = $1 and (p.fecha in ($2,$3) or (p.fecha = $4 and p.created_at < ${corteMadrugada})) order by p.created_at desc`, [emp(req), fecha, anterior, siguiente]).then((x) => x.rows),
       // Pista antes de ir al freezer: cuándo y cuánto se produjo de cada sabor por última vez.
       opcional(db, `select p.sabor_id, p.fecha::text as fecha, sum(p.kg)::float8 as kg from prod.producciones p
                       join (select sabor_id, max(fecha) as fecha from prod.producciones where empresa_id = $1 group by sabor_id) u on u.sabor_id = p.sabor_id and u.fecha = p.fecha
                      where p.empresa_id = $1 group by p.sabor_id, p.fecha`, [emp(req)]),
       // A qué hora mandó su reporte cada tienda: el último pesaje cargado esa noche.
-      db.query('select sucursal_id, max(created_at) as reportado_en from rep.pesajes where empresa_id = $1 and fecha = $2 group by sucursal_id', [emp(req), fecha]).then((x) => x.rows),
+      db.query(`select sucursal_id, max(created_at) as reportado_en from rep.pesajes where empresa_id = $1 and (fecha = $2 or (fecha = $2::date + 1 and created_at < ${corteMadrugada})) group by sucursal_id`, [emp(req), fecha]).then((x) => x.rows),
     ]);
     if (pedidos.length) {
       const items = (await db.query('select id, pedido_id, insumo_texto, cantidad, preparado::int as preparado, enviado::int as enviado from rep.pedido_items where pedido_id = any($1::uuid[]) order by created_at, id', [pedidos.map((p) => p.id)])).rows;

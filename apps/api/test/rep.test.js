@@ -349,3 +349,20 @@ test('tablero: «falta» solo con la noche cerrada; un pesaje de madrugada cuent
   const aud = (await t.db.query(`select count(*)::int as n from core.auditoria where accion = 'pesaje.reporte' and sucursal_id = $1 and usuario_nombre = 'Tienda Mackey (acceso)'`, [sucMackey])).rows[0].n;
   assert.ok(aud >= 1);   // queda registrado a nombre de la tienda y con la sucursal
 });
+
+test('despacho: los pesajes de madrugada (después de las 12 a. m.) aparecen en la noche anterior', async () => {
+  const f = ayer(70), sig = ayer(69);
+  const tk = cliente(await t.loginPin('italo', '4822'), 'italo');   // Próceres
+  assert.equal((await tk.post('/api/rep/pesajes/lote', { sucursal_id: sucProceres, fecha: sig, pesajes: [{ sabor_id: S.DUBAI.id, gramos: 500 }] })).status, 201);
+  await t.db.query(`update rep.pesajes set created_at = ($1::date + time '06:30') at time zone 'UTC' where sucursal_id = $2 and fecha = $1 and sabor_id = $3`, [sig, sucProceres, S.DUBAI.id]);
+  const noche = await bodega.get(`/api/rep/analitica/panel-despacho/${f}`);
+  assert.equal(noche.status, 200);
+  assert.ok((noche.body.porSucursal[sucProceres] || []).some((d) => d.sabor_id === S.DUBAI.id), 'el pesaje de las 12:30 a. m. es de la noche anterior');
+  assert.ok(noche.body.reportadoPorSucursal[sucProceres]);
+  // uno hecho de tarde con la fecha nueva NO se cuela en la noche anterior
+  const g = ayer(80), sig2 = ayer(79);
+  await tk.post('/api/rep/pesajes/lote', { sucursal_id: sucProceres, fecha: sig2, pesajes: [{ sabor_id: S.NUVOLA.id, gramos: 500 }] });
+  await t.db.query(`update rep.pesajes set created_at = ($1::date + time '20:00') at time zone 'UTC' where sucursal_id = $2 and fecha = $1 and sabor_id = $3`, [sig2, sucProceres, S.NUVOLA.id]);
+  const otra = await bodega.get(`/api/rep/analitica/panel-despacho/${g}`);
+  assert.ok(!(otra.body.porSucursal[sucProceres] || []).some((d) => d.sabor_id === S.NUVOLA.id));
+});
