@@ -1,0 +1,818 @@
+[
+  {
+    "part_number": "017070",
+    "nombre_es": "Aceite de Oliva Extra Virgen (1 L)",
+    "cantidad_total": 41,
+    "por_sucursal": {
+      "Próceres": 13,
+      "Mackey": 11,
+      "Los Andes": 11,
+      "10 Calle": 6
+    },
+    "nota": null
+  },
+  {
+    "part_number": "017065",
+    "nombre_es": "Aceite de Oliva Extra Virgen (250 ml)",
+    "cantidad_total": 24,
+    "por_sucursal": {
+      "Próceres": 5,
+      "Mackey": 1,
+      "Los Andes": 15,
+      "10 Calle": 3
+    },
+    "nota": null
+  },
+  {
+    "part_number": "017021",
+    "nombre_es": "Aceite de Oliva con Trufa Blanca",
+    "cantidad_total": 15,
+    "por_sucursal": {
+      "Próceres": 6,
+      "Mackey": 0,
+      "Los Andes": 6,
+      "10 Calle": 3
+    },
+    "nota": "Próceres anotó \"Aceite Tartufo\": asumido trufa blanca"
+  },
+  {
+    "part_number": "017028",
+    "nombre_es": "Condimento de Aceite con Chile",
+    "cantidad_total": 6,
+    "por_sucursal": {
+      "Próceres": 1,
+      "Mackey": 2,
+      "Los Andes": 1,
+      "10 Calle": 2
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0401",
+    "nombre_es": "Aceitunas Gigantes Salteadas",
+    "cantidad_total": 0,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "009520",
+    "nombre_es": "Aceitunas Negras al Horno",
+    "cantidad_total": 7,
+    "por_sucursal": {
+      "Próceres": 2,
+      "Mackey": 0,
+      "Los Andes": 5,
+      "10 Calle": 0
+    },
+    "nota": "Próceres anotó \"Aceitunas negras\": asumido al horno"
+  },
+  {
+    "part_number": "RT0404",
+    "nombre_es": "Aceitunas Taggiasche sin Hueso en Aceite de Oliva",
+    "cantidad_total": 0,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "009521",
+    "nombre_es": "Coctel de Aceitunas Gigantes",
+    "cantidad_total": 1,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 1,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0830",
+    "nombre_es": "Salsa de Aceitunas Negras",
+    "cantidad_total": 19,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 19,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0826",
+    "nombre_es": "Salsa de Aceitunas Verdes",
+    "cantidad_total": 22,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 20,
+      "10 Calle": 2
+    },
+    "nota": "Los Andes: 20 asumido pequeño (212 ml) ⚠️"
+  },
+  {
+    "part_number": "012570",
+    "nombre_es": "Salsa de Aceitunas Verdes",
+    "cantidad_total": 7,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 4,
+      "10 Calle": 3
+    },
+    "nota": "Los Andes: 4 asumido grande (580 ml) ⚠️"
+  },
+  {
+    "part_number": "005031",
+    "nombre_es": "Colatura de Anchoas",
+    "cantidad_total": 3,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 1,
+      "Los Andes": 1,
+      "10 Calle": 1
+    },
+    "nota": null
+  },
+  {
+    "part_number": "005074",
+    "nombre_es": "Tinta de Sepia",
+    "cantidad_total": 6,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 3,
+      "Los Andes": 2,
+      "10 Calle": 1
+    },
+    "nota": null
+  },
+  {
+    "part_number": "006500",
+    "nombre_es": "Champiñones Naturales (Especial Pizza)",
+    "cantidad_total": 3,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 3,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "010510",
+    "nombre_es": "Chiles Picantes en Rodajas",
+    "cantidad_total": 4,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 4,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0104",
+    "nombre_es": "Mezcla de Hongos en Aceite",
+    "cantidad_total": 3,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 3,
+      "Los Andes": 0,
+      "10 Calle": 0
+    },
+    "nota": "Mackey \"Musto Funghi\" = Misto Funghi"
+  },
+  {
+    "part_number": "RT0833",
+    "nombre_es": "Salsa de Tomates Secos",
+    "cantidad_total": 0,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "003556",
+    "nombre_es": "Tomates Pelados San Marzano D.O.P.",
+    "cantidad_total": 28,
+    "por_sucursal": {
+      "Próceres": 16,
+      "Mackey": 0,
+      "Los Andes": 12,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "001507",
+    "nombre_es": "Tomates Rojos Semisecos",
+    "cantidad_total": 0,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0005",
+    "nombre_es": "Tomates Secos",
+    "cantidad_total": 38,
+    "por_sucursal": {
+      "Próceres": 6,
+      "Mackey": 9,
+      "Los Andes": 23,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "001520",
+    "nombre_es": "Tomates Secos",
+    "cantidad_total": 10,
+    "por_sucursal": {
+      "Próceres": 4,
+      "Mackey": 2,
+      "Los Andes": 4,
+      "10 Calle": 0
+    },
+    "nota": "Mackey \"6 lb\" = frasco 3100 ml"
+  },
+  {
+    "part_number": "001528",
+    "nombre_es": "Tomates Verdes Semisecos",
+    "cantidad_total": 5,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 5,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "013050",
+    "nombre_es": "Crema de 'Nduja (Embutido Picante Calabrés)",
+    "cantidad_total": 59,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 59,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "013042",
+    "nombre_es": "Crema de Calabaza",
+    "cantidad_total": 2,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 2,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012629",
+    "nombre_es": "Crema de Champiñones",
+    "cantidad_total": 6,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 6,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "013028",
+    "nombre_es": "Crema de 5 Quesos",
+    "cantidad_total": 4,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 4,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012521",
+    "nombre_es": "Salsa de Pecorino Romano D.O.P.",
+    "cantidad_total": 3,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 3
+    },
+    "nota": null
+  },
+  {
+    "part_number": "004028",
+    "nombre_es": "Azafrán",
+    "cantidad_total": 0,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "004025",
+    "nombre_es": "Salsa de Azafrán",
+    "cantidad_total": 8,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 2,
+      "10 Calle": 6
+    },
+    "nota": null
+  },
+  {
+    "part_number": "015007",
+    "nombre_es": "Frutos del Bosque en Almíbar",
+    "cantidad_total": 15,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 15,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "004057",
+    "nombre_es": "Ravioles Secos Rellenos de Carne",
+    "cantidad_total": 0,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0804",
+    "nombre_es": "Pesto Rojo",
+    "cantidad_total": 55,
+    "por_sucursal": {
+      "Próceres": 4,
+      "Mackey": 3,
+      "Los Andes": 36,
+      "10 Calle": 12
+    },
+    "nota": "Mackey y Los Andes sin tamaño: asumido pequeño"
+  },
+  {
+    "part_number": "012721",
+    "nombre_es": "Pesto Rojo",
+    "cantidad_total": 82,
+    "por_sucursal": {
+      "Próceres": 11,
+      "Mackey": 0,
+      "Los Andes": 67,
+      "10 Calle": 4
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0801",
+    "nombre_es": "Pesto a la Genovesa",
+    "cantidad_total": 195,
+    "por_sucursal": {
+      "Próceres": 14,
+      "Mackey": 2,
+      "Los Andes": 169,
+      "10 Calle": 10
+    },
+    "nota": "Los Andes: 169 confirmado por Juan Carlos"
+  },
+  {
+    "part_number": "012715",
+    "nombre_es": "Pesto a la Genovesa (Catering)",
+    "cantidad_total": 109,
+    "por_sucursal": {
+      "Próceres": 10,
+      "Mackey": 2,
+      "Los Andes": 92,
+      "10 Calle": 5
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012607",
+    "nombre_es": "Pesto de Cítricos",
+    "cantidad_total": 16,
+    "por_sucursal": {
+      "Próceres": 4,
+      "Mackey": 0,
+      "Los Andes": 12,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "001005",
+    "nombre_es": "Pierna de Jamón (Stinco)",
+    "cantidad_total": 22,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 22,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "002570",
+    "nombre_es": "Ragú de Jabalí",
+    "cantidad_total": 3,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 3,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "002581",
+    "nombre_es": "Ragú de Pato",
+    "cantidad_total": 3,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 3,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "003014",
+    "nombre_es": "Arroz Arborio",
+    "cantidad_total": 127,
+    "por_sucursal": {
+      "Próceres": 4,
+      "Mackey": 6,
+      "Los Andes": 115,
+      "10 Calle": 2
+    },
+    "nota": "Los Andes: 115 confirmado por Juan Carlos"
+  },
+  {
+    "part_number": "003028",
+    "nombre_es": "Arroz Carnaroli",
+    "cantidad_total": 0,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012032",
+    "nombre_es": "Salsa Lista para Bruschetta",
+    "cantidad_total": 34,
+    "por_sucursal": {
+      "Próceres": 5,
+      "Mackey": 0,
+      "Los Andes": 29,
+      "10 Calle": 0
+    },
+    "nota": "Los Andes: 25 (hoja 3) + 4 (hoja 5)"
+  },
+  {
+    "part_number": "RT0811",
+    "nombre_es": "Salsa de Alcachofas",
+    "cantidad_total": 11,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 11
+    },
+    "nota": "10 Calle \"Carciofi\""
+  },
+  {
+    "part_number": "012612",
+    "nombre_es": "Salsa de Espárragos",
+    "cantidad_total": 10,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 2,
+      "Los Andes": 8,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012732",
+    "nombre_es": "Salsa de Nueces",
+    "cantidad_total": 4,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 1,
+      "Los Andes": 3,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0822",
+    "nombre_es": "Salsa de Pimientos",
+    "cantidad_total": 6,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 6
+    },
+    "nota": "10 Calle \"Peperoni (pequeño)\""
+  },
+  {
+    "part_number": "RT0819",
+    "nombre_es": "Salsa de Radicchio",
+    "cantidad_total": 3,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 3,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012556",
+    "nombre_es": "Salsa de Rúgula",
+    "cantidad_total": 11,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 11,
+      "10 Calle": 0
+    },
+    "nota": "Los Andes anotó \"Salsa di Rucoo\": asumido Rucola ⚠️"
+  },
+  {
+    "part_number": "012554",
+    "nombre_es": "Salsa de Salvia y Limón",
+    "cantidad_total": 6,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 6,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012615",
+    "nombre_es": "Carpaccio de Trufa Negra en Aceite de Oliva",
+    "cantidad_total": 1,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 1,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012637",
+    "nombre_es": "Polvo de Trufa",
+    "cantidad_total": 9,
+    "por_sucursal": {
+      "Próceres": 1,
+      "Mackey": 0,
+      "Los Andes": 8,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0807",
+    "nombre_es": "Salsa Trufada",
+    "cantidad_total": 9,
+    "por_sucursal": {
+      "Próceres": 7,
+      "Mackey": 0,
+      "Los Andes": 0,
+      "10 Calle": 2
+    },
+    "nota": "Tartufata pequeña"
+  },
+  {
+    "part_number": "012619",
+    "nombre_es": "Salsa Trufada (Elaborada en Fresco)",
+    "cantidad_total": 23,
+    "por_sucursal": {
+      "Próceres": 6,
+      "Mackey": 6,
+      "Los Andes": 11,
+      "10 Calle": 0
+    },
+    "nota": "Mackey y Los Andes sin tamaño: asumido grande ⚠️"
+  },
+  {
+    "part_number": "012626",
+    "nombre_es": "Salsa de Champiñones y Trufa Blanca",
+    "cantidad_total": 4,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 2,
+      "Los Andes": 2,
+      "10 Calle": 0
+    },
+    "nota": "Anotado como \"Tartufata Bianca\""
+  },
+  {
+    "part_number": "012654",
+    "nombre_es": "Pesto de Fresa",
+    "cantidad_total": 35,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 35,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012662",
+    "nombre_es": "Pesto de Piña",
+    "cantidad_total": 36,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 36,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012605",
+    "nombre_es": "Salsa de Pistacho - Receta Antigua",
+    "cantidad_total": 15,
+    "por_sucursal": {
+      "Próceres": 3,
+      "Mackey": 3,
+      "Los Andes": 2,
+      "10 Calle": 7
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0837",
+    "nombre_es": "Salsa Picantísima",
+    "cantidad_total": 11,
+    "por_sucursal": {
+      "Próceres": 6,
+      "Mackey": 0,
+      "Los Andes": 5,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "012565",
+    "nombre_es": "Salsa de Chiles Picantes",
+    "cantidad_total": 88,
+    "por_sucursal": {
+      "Próceres": 7,
+      "Mackey": 0,
+      "Los Andes": 75,
+      "10 Calle": 6
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0716",
+    "nombre_es": "Salsa Amatriciana",
+    "cantidad_total": 6,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 6,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0704",
+    "nombre_es": "Salsa Arrabbiata (Picante)",
+    "cantidad_total": 20,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 20,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0717",
+    "nombre_es": "Salsa Cacio e Pepe (Queso y Pimienta)",
+    "cantidad_total": 113,
+    "por_sucursal": {
+      "Próceres": 8,
+      "Mackey": 13,
+      "Los Andes": 86,
+      "10 Calle": 6
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0707",
+    "nombre_es": "Salsa Puttanesca",
+    "cantidad_total": 7,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 7,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0715",
+    "nombre_es": "Salsa de Hongos Porcini",
+    "cantidad_total": 10,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 10,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0701",
+    "nombre_es": "Salsa de Tomate",
+    "cantidad_total": 1,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 1,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "RT0700",
+    "nombre_es": "Salsa de Tomates Datterini",
+    "cantidad_total": 7,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 0,
+      "Los Andes": 7,
+      "10 Calle": 0
+    },
+    "nota": "Anotado \"Salsa pronta di datterini\""
+  },
+  {
+    "part_number": "017014",
+    "nombre_es": "Salsa de Vinagre Balsámico de Módena",
+    "cantidad_total": 26,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 13,
+      "Los Andes": 13,
+      "10 Calle": 0
+    },
+    "nota": null
+  },
+  {
+    "part_number": "017005",
+    "nombre_es": "Vinagre Balsámico de Módena I.G.P.",
+    "cantidad_total": 2,
+    "por_sucursal": {
+      "Próceres": 0,
+      "Mackey": 1,
+      "Los Andes": 0,
+      "10 Calle": 1
+    },
+    "nota": "10 Calle \"Aceto balsamico di Modena\": asignado a 250 ml por nombre ⚠️"
+  }
+]

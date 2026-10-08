@@ -1,0 +1,156 @@
+[
+  {
+    "nombre_completo": "Astrid Abigail Cabrera Lopez",
+    "fecha_ingreso": "2023-04-07",
+    "grupo": "San Pedro Sula",
+    "cargo": "Atencion al Cliente y Asistente de Produccion",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Maria Deisy Lopez Reyes",
+    "fecha_ingreso": "2023-03-13",
+    "grupo": "San Pedro Sula",
+    "cargo": "Atencion al Cliente y Asistente de Produccion",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Jose Dani Garcia Castaneda",
+    "fecha_ingreso": null,
+    "grupo": "San Pedro Sula",
+    "cargo": "Atencion al Cliente",
+    "nota": "Reingreso: la fecha del contrato viejo ya se liquidó, falta la nueva"
+  },
+  {
+    "nombre_completo": "Maryury Nicole Palma",
+    "fecha_ingreso": "2024-06-01",
+    "grupo": "San Pedro Sula",
+    "cargo": "Responsable de Sucursal 10 Calle y Atencion al Cliente",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Emerson David Perez Galeas",
+    "fecha_ingreso": "2024-06-28",
+    "grupo": "San Pedro Sula",
+    "cargo": "Atencion al Cliente",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Ana Carolina Licona Fuentes",
+    "fecha_ingreso": "2025-03-17",
+    "grupo": "San Pedro Sula",
+    "cargo": "Atencion al Cliente y Asistente de Produccion",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Marco Antonio Martinez Licona",
+    "fecha_ingreso": "2025-03-25",
+    "grupo": "San Pedro Sula",
+    "cargo": "Atencion al Cliente y Asistente de Produccion",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Michelle Sarahi Aguilar Perez",
+    "fecha_ingreso": "2025-02-19",
+    "grupo": "San Pedro Sula",
+    "cargo": "Atencion al Cliente",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Nicol Alejandra Funez Fajardo",
+    "fecha_ingreso": "2024-03-01",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente y Caja de la empresa",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Pamela Michell Castro",
+    "fecha_ingreso": "2024-03-01",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Ilquis Waleska Jimenez Reyes",
+    "fecha_ingreso": "2026-06-15",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente y Asistente de Produccion",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Stephany Gabriela Lopez Romero",
+    "fecha_ingreso": "2026-03-12",
+    "grupo": "Progreso",
+    "cargo": "Atencion al cliente",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Olga Marina Aguilar",
+    "fecha_ingreso": "2025-09-25",
+    "grupo": "Progreso",
+    "cargo": "Atencion al cliente",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Neyli Melani Vasquez Marquez",
+    "fecha_ingreso": "2025-11-10",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente y Asistente de Produccion",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Kelin Amanda Gonzales Rivera",
+    "fecha_ingreso": "2025-10-10",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Jennifer Andrea Castro Trochez",
+    "fecha_ingreso": "2026-01-10",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Jose David Delgado Sorto",
+    "fecha_ingreso": "2026-01-26",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente y Asistente de Produccion",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Carlos Adalberto Matamoros",
+    "fecha_ingreso": "2026-07-24",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente y Asistente de Produccion",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Jorge Alexis Ramos Hernandez",
+    "fecha_ingreso": "2025-10-01",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Jose Mario Diaz",
+    "fecha_ingreso": "2026-04-20",
+    "grupo": "Progreso",
+    "cargo": "Motorista",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Marelyn Sarahi Andino Mayorga",
+    "fecha_ingreso": "2026-08-18",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente",
+    "nota": null
+  },
+  {
+    "nombre_completo": "Jennifer Alejandra Soriano Goff",
+    "fecha_ingreso": "2026-05-02",
+    "grupo": "Progreso",
+    "cargo": "Atencion al Cliente",
+    "nota": null
+  }
+]

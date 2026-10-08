@@ -42,6 +42,7 @@ export default function Pos() {
   const [offline, setOffline] = useState(false);
   const [enLinea, setEnLinea] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
   const [error, setError] = useState('');
+  const [verOrden, setVerOrden] = useState(false);       // solo pantallas angostas: la orden se abre sobre el catálogo
   const [turno, setTurno] = useState(undefined);       // undefined = cargando, null = sin turno (se abre solo al primer cobro)
   const [resumenTurno, setResumenTurno] = useState(null);
   const [orden, setOrden] = useState(vacio);
@@ -345,7 +346,7 @@ export default function Pos() {
       pendienteRef.current = false; ventaIdRef.current = null;
       setModal(null); setOrden(vacio());
       const r = { ...venta, impresa: false };
-      setRecibo(r);
+      setRecibo(r); setVerOrden(false);
       cargarTurno(); contarAbiertas();
       if (leerConfigImpresora().autoImprimir) {
         imprimirTicket(venta.id).then(() => setRecibo((x) => (x && x.id === venta.id ? { ...x, impresa: true } : x)))
@@ -397,15 +398,15 @@ export default function Pos() {
 
         {!enLinea && <div className="aviso-caja mal">Sin conexión: lo que armes se guarda cuando vuelva el internet. No se puede cobrar sin conexión.</div>}
 
-        <div className="pos-cats">
+        <input ref={buscadorRef} className="pos-buscar" placeholder="Buscar o escanear… (Enter agrega)" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar producto"
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter') return;
+            const p = buscarPorCodigo(cat.productos, busca) ?? productos[0];
+            if (p) { tocar(p); setBusca(''); } else if (busca.trim()) mostrarToast(`"${busca.trim()}" no encontrado`);
+          }} />
+        <div className="pos-cats" aria-label="Categorías">
           <button className={catActiva === 'todas' ? 'on' : ''} onClick={() => setCatActiva('todas')}>Todo</button>
           {catsOrdenadas.map((c) => <button key={c.id} className={catActiva === c.id ? 'on' : ''} onClick={() => setCatActiva(c.id)} style={{ '--cc': c.color || 'var(--acento)' }}>{c.nombre}</button>)}
-          <input ref={buscadorRef} className="pos-buscar" placeholder="Buscar o escanear… (Enter agrega)" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar producto"
-            onKeyDown={(e) => {
-              if (e.key !== 'Enter') return;
-              const p = buscarPorCodigo(cat.productos, busca) ?? productos[0];
-              if (p) { tocar(p); setBusca(''); } else if (busca.trim()) mostrarToast(`"${busca.trim()}" no encontrado`);
-            }} />
         </div>
         {agotados && <div className="aviso-caja">Toca un producto para marcarlo agotado (o disponible de nuevo).</div>}
         <div className="pos-grid">
@@ -425,7 +426,15 @@ export default function Pos() {
         <small className="tenue">{productos.length} producto{productos.length === 1 ? '' : 's'} · el lector de código de barras funciona en cualquier momento</small>
       </div>
 
-      <aside className="pos-der" aria-label="Orden actual">
+      {!verOrden && (
+        <button className="pos-barra-orden" onClick={() => setVerOrden(true)}>
+          <span className="bo-cant">{orden.lineas.reduce((n, l) => n + (Number(l.cantidad) || 0), 0)}</span>
+          <span className="bo-txt">{hayLineas ? 'Ver orden y cobrar' : 'Orden vacía'}</span>
+          <b className="num bo-total">{lempiras(totales.total)}</b>
+        </button>
+      )}
+      <aside className={`pos-der${verOrden ? ' abierta' : ''}`} aria-label="Orden actual">
+        <button className="btn chico pos-volver" onClick={() => setVerOrden(false)}>← Seguir agregando</button>
         <div className="pos-sucursal-banner" style={{ background: colorSuc }}>
           <b>{nombreCortoSucursal(sucursal.nombre, sucursal.alias)}</b><span>{sucursal.nombre}</span>
         </div>
@@ -454,8 +463,6 @@ export default function Pos() {
             <button className="btn chico" onClick={() => setModal({ tipo: 'cliente' })}>{orden.cliente ? 'Cambiar' : 'Elegir'}</button>
           </div>
         </div>
-
-        <input placeholder="Nombre para llamar (opcional)" value={orden.nombre_orden} onChange={(e) => setOrden((o) => ({ ...o, nombre_orden: e.target.value }))} maxLength={60} />
 
         <div className="pos-lineas">
           {!hayLineas && <div className="vacio">Toca un producto para empezar.</div>}
@@ -502,7 +509,6 @@ export default function Pos() {
             {faltaCarne && <small style={{ color: 'var(--aviso)' }}>Obligatorio para cobrar con el 25 %.</small>}
           </div>
         )}
-        <input placeholder="Nota interna (no sale en la factura)" value={orden.nota} maxLength={300} onChange={(e) => setOrden((o) => ({ ...o, nota: e.target.value }))} />
 
         <div className="pos-tot">
           <div className="fila espacio"><small>Sub-total</small><small className="num">{lempiras(totales.subtotal_bruto)}</small></div>

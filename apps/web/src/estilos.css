@@ -226,3 +226,25 @@ td.der, th.der { text-align: right; }
   .menu-abierto .sidebar-velo { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .55); }
 }
 @media print { .app-shell { display: block; } .sidebar, .barra-movil { display: none !important; } }
+
+/* ── Documentos ─────────────────────────────────────────────────────────── */
+.doc-zona { border: 2px dashed var(--borde); border-radius: var(--radio); padding: 20px 14px; display: grid; justify-items: center; gap: 8px; text-align: center; background: var(--panel); color: var(--tenue); transition: border-color .12s, background .12s; }
+.doc-zona.encima { border-color: var(--acento); background: color-mix(in srgb, var(--acento) 10%, var(--panel)); }
+.doc-zona.ocupada { opacity: .6; }
+.doc-zona b { color: var(--texto); }
+.doc-visor { width: 100%; height: min(72vh, 760px); border: 0; background: #fff; border-radius: var(--radio-s); }
+.doc-imagen { max-width: 100%; max-height: 72vh; display: block; margin: 0 auto; border-radius: var(--radio-s); }
+.doc-fila { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; padding: 11px 14px; border-bottom: 1px solid var(--borde); }
+.doc-fila:last-child { border-bottom: 0; }
+.doc-fila .acciones { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.doc-tarjeta { text-align: left; display: grid; gap: 6px; align-content: start; cursor: pointer; width: 100%; }
+.doc-tarjeta:hover { border-color: var(--acento); }
+.doc-lista-check { display: grid; gap: 6px; }
+.doc-check { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 12px; border: 1px solid var(--borde); border-radius: var(--radio-s); background: var(--panel); }
+.doc-check.falta { border-color: color-mix(in srgb, var(--peligro) 55%, var(--borde)); background: var(--peligro-fondo); }
+.doc-check.vencido { border-color: color-mix(in srgb, var(--peligro) 55%, var(--borde)); }
+.doc-check.por_vencer { border-color: color-mix(in srgb, var(--aviso) 55%, var(--borde)); }
+.doc-punto { width: 12px; height: 12px; border-radius: 50%; background: var(--ok); }
+.doc-check.falta .doc-punto, .doc-check.vencido .doc-punto { background: var(--peligro); }
+.doc-check.por_vencer .doc-punto { background: var(--aviso); }
+@media (max-width: 640px) { .doc-fila { grid-template-columns: 1fr; } .doc-fila .acciones { justify-content: flex-start; } }

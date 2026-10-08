@@ -5,6 +5,8 @@ import { requierePermiso } from '../../lib/contexto.js';
 import { fechaISO, validar } from '../../lib/http.js';
 import { resultadosEmpresa } from '../fin/rutas.js';
 import { montarExtras } from './extras.js';
+import { montarRrhhGrupo } from './rrhh.js';
+import { montarDocumentos } from './documentos.js';
 
 export function rutasGrupo({ db, ctxMgr }) {
   const r = Router();
@@ -85,5 +87,7 @@ export function rutasGrupo({ db, ctxMgr }) {
   });
 
   montarExtras(r, { db, ctxMgr }, empresasConsolidables);
+  montarRrhhGrupo(r, { db, ctxMgr }, empresasConsolidables);
+  montarDocumentos(r, { db, ctxMgr }, empresasConsolidables);
   return r;
 }

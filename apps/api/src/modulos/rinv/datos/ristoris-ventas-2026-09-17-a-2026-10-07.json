@@ -1,0 +1,136 @@
+{
+  "desde": "2026-09-17",
+  "hasta": "2026-10-07",
+  "fuente": "Reporte de ventas de Ristoris exportado por el dueño",
+  "productos": [
+    {
+      "part_number": "017070",
+      "producto_csv": "OLIO EXTRAVERGINE DI OLIVA BOTTIGLIA - 1 L",
+      "unidades": 9,
+      "por_sucursal": {
+        "Los Andes": 5,
+        "Mackey": 2,
+        "Próceres": 2
+      }
+    },
+    {
+      "part_number": "012565",
+      "producto_csv": "SALSA PEPERONCINI PICCANTI VASO VETRO ML 580",
+      "unidades": 5,
+      "por_sucursal": {
+        "Los Andes": 3,
+        "Próceres": 2
+      }
+    },
+    {
+      "part_number": "012715",
+      "producto_csv": "PESTO ALLA GENOVESE S.C. VASO VETRO ML 580 - 500 G",
+      "unidades": 5,
+      "por_sucursal": {
+        "Los Andes": 2,
+        "Mackey": 1,
+        "Próceres": 2
+      }
+    },
+    {
+      "part_number": "003014",
+      "producto_csv": "RISO ARBORIO ASTUCCIO KG 1",
+      "unidades": 8,
+      "por_sucursal": {
+        "Mackey": 8
+      }
+    },
+    {
+      "part_number": "RT0801",
+      "producto_csv": "PESTO ALLA GENOVESE VASO 212ML - 210G",
+      "unidades": 5,
+      "por_sucursal": {
+        "10 Calle": 1,
+        "Mackey": 2,
+        "Próceres": 2
+      }
+    },
+    {
+      "part_number": "RT0717",
+      "producto_csv": "SUGO CACIO E PEPE VASO 212ML - 200G",
+      "unidades": 3,
+      "por_sucursal": {
+        "Mackey": 1,
+        "Próceres": 2
+      }
+    },
+    {
+      "part_number": "012032",
+      "producto_csv": "SALSA PRONTA PER BRUSCHETTA VASO VETRO ML 1062 - 1000 G",
+      "unidades": 2,
+      "por_sucursal": {
+        "Los Andes": 1,
+        "Próceres": 1
+      }
+    },
+    {
+      "part_number": "RT0807",
+      "producto_csv": "SALSA TARTUFATA VASO 212ML - 225G",
+      "unidades": 1,
+      "por_sucursal": {
+        "Próceres": 1
+      }
+    },
+    {
+      "part_number": "017021",
+      "producto_csv": "OLIO EVO AL TARTUFO BIANCO BOTTIGLIA - 250 ML",
+      "unidades": 1,
+      "por_sucursal": {
+        "Próceres": 1
+      }
+    },
+    {
+      "part_number": "013050",
+      "producto_csv": "CREMA DI 'NDUJA VASO 260 G - 314ML",
+      "unidades": 1,
+      "por_sucursal": {
+        "Los Andes": 1
+      }
+    },
+    {
+      "part_number": "017028",
+      "producto_csv": "Condimento Olio al Peperoncino 250 ml",
+      "unidades": 1,
+      "por_sucursal": {
+        "Próceres": 1
+      }
+    },
+    {
+      "part_number": "RT0837",
+      "producto_csv": "SALSA PICCANTISSIMA VASO 212ML - 225G",
+      "unidades": 1,
+      "por_sucursal": {
+        "Próceres": 1
+      }
+    },
+    {
+      "part_number": "004028",
+      "producto_csv": "ZAFFERANO BUSTINA GR 0,125",
+      "unidades": 6,
+      "por_sucursal": {
+        "Los Andes": 6
+      }
+    },
+    {
+      "part_number": "017014",
+      "producto_csv": "Salsa all’Aceto Balsamico di Modena 500 ml",
+      "unidades": 1,
+      "por_sucursal": {
+        "Los Andes": 1
+      }
+    },
+    {
+      "part_number": "017005",
+      "producto_csv": "ACETO BALSAMICO DI MODENA IGP BOTTIGLIA - 250 ML",
+      "unidades": 1,
+      "por_sucursal": {
+        "Próceres": 1
+      }
+    }
+  ]
+}

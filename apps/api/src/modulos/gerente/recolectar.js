@@ -1,6 +1,7 @@
 import { fechaHN, sumarDias } from '@grupo/shared';
 import { calcularAlertas } from '../pos/antifraude.js';
 import { estadoPunto } from '../pos/fiscal.js';
+import { resumenParaGerente } from '../documentos/servicio.js';
 
 const FECHA = (c) => `(${c} at time zone 'America/Tegucigalpa')::date`;
 
@@ -46,6 +47,7 @@ export async function recolectar(q, { empresa, sucursalIds = [], dias = 28, hast
     compras: co.rows[0].total, stock: st.rows, vencen: ve.rows[0],
     turnos: tu.rows, fiscal: pe.rows.map((p) => { const e = estadoPunto(p); return { sucursal: p.sucursal, borrador: p.es_borrador, restantes: p.correlativo_hasta - p.correlativo_actual + 1, dias_restantes: e.dias_restantes }; }),
     descuento: ds.rows[0], catalogo: cat.rows,
+    documentos: await resumenParaGerente(q, empresa, { hoy: fechaHN() }),
     antifraude: await calcularAlertas(q, { empresaId: E, sucursalIds, desde, hasta, reglas: ((await q.query(`select valor from core.config where empresa_id = $1 and clave = 'antifraude'`, [E])).rows[0]?.valor) ?? {} }),
   };
 }

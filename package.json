@@ -17,6 +17,7 @@
     "build": "npm run build -w @grupo/web",
     "start": "node apps/api/src/index.js",
     "migrate": "node apps/api/src/db/migrar.js",
+    "seed:rinv": "node apps/api/src/db/sembrar-rinv.js",
     "seed:origen": "node apps/api/src/db/sembrar.js origen",
     "test": "npm test -w @grupo/shared && npm test -w @grupo/api",
     "demo": "node apps/api/src/db/demo.js",

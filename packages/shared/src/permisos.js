@@ -21,6 +21,7 @@ export const PERMISOS = {
   'rrhh:ver':         'Ver personal',
   'rrhh:editar':      'Editar personal, horarios y vacaciones',
   'rrhh:asistencia':  'Registrar asistencia',
+  'rrhh:sensible':    'Ver y editar datos sensibles del personal (salario, cuenta bancaria, identidad)',
   // Finanzas
   'fin:ver':          'Ver finanzas',
   'fin:gastos':       'Registrar gastos',

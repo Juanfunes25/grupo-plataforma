@@ -34,8 +34,26 @@ const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', '
 const diaSemana = (f) => new Date(`${f}T12:00:00Z`).getUTCDay();
 const redondear5 = (n) => Math.ceil(n / 5) * 5;
 
+const resumenDoc = (d) => (d ? { vencidos: d.vencidos?.length ?? 0, por_vencer: d.por_vencer?.length ?? 0, faltantes: d.faltantes?.length ?? 0 } : null);
+
 function hallazgo(severidad, area, titulo, detalle, accion, extra = {}) {
   return { severidad, area, titulo, detalle, accion, ...extra };
+}
+
+/** Documentos de la empresa (permisos, contratos, registros): vencidos, por vencer y los que nunca se han registrado. */
+export function hallazgosDocumentos(doc) {
+  if (!doc) return [];
+  const H = [];
+  const venc = doc.vencidos ?? [], pv = doc.por_vencer ?? [], falt = doc.faltantes ?? [];
+  const lista = (a, f) => a.slice(0, 4).map(f).join(' · ') + (a.length > 4 ? ` y ${a.length - 4} más` : '');
+  const donde = (x) => (x.sucursal ? ` (${x.sucursal})` : '');
+  if (venc.length) H.push(hallazgo('alta', 'documentos', `${venc.length} documento(s) vencido(s)`, lista(venc, (x) => `${x.titulo}${donde(x)}: venció hace ${Math.max(1, -x.dias)} día(s)`), 'Renueva hoy lo que sea permiso o licencia (operar sin ARSA, alcaldía o seguro vigente trae multas o cierre) y sube la versión nueva en Documentos.'));
+  if (pv.length) {
+    const urgente = pv.some((x) => x.dias <= 15);
+    H.push(hallazgo(urgente ? 'alta' : 'media', 'documentos', `${pv.length} documento(s) por vencer`, lista(pv, (x) => `${x.titulo}${donde(x)}: vence en ${x.dias} día(s)`), 'Inicia el trámite de renovación con tiempo; los permisos sanitarios y municipales suelen tardar semanas.'));
+  }
+  if (falt.length) H.push(hallazgo('info', 'documentos', `Faltan ${falt.length} documento(s) por registrar`, lista(falt, (x) => `${x.tipo}${x.sucursal ? ` — ${x.sucursal}` : ''}`), 'Súbelos en Documentos para que el sistema te avise antes de que venzan.'));
+  return H;
 }
 
 /** datos: ver recolectar.js. `hasta` = último día del periodo actual (YYYY-MM-DD). */
@@ -73,7 +91,7 @@ export function analizar(datos, umbrales = {}) {
   };
 
   if (factA === 0) {
-    return { empresa, periodo, metricas, salud: null, hallazgos: [hallazgo('info', 'datos', 'Aún no hay ventas en el periodo', 'Sin facturas cobradas no hay números que analizar todavía.', 'Registra las primeras ventas; el gerente digital empieza a opinar con unos días de movimiento.')], resumen: `${empresa.nombre} todavía no registra ventas en los últimos ${dias} días.`, acciones: [] };
+    return { empresa, periodo, metricas, salud: null, hallazgos: [hallazgo('info', 'datos', 'Aún no hay ventas en el periodo', 'Sin facturas cobradas no hay números que analizar todavía.', 'Registra las primeras ventas; el gerente digital empieza a opinar con unos días de movimiento.'), ...hallazgosDocumentos(datos.documentos)], documentos: resumenDoc(datos.documentos), resumen: `${empresa.nombre} todavía no registra ventas en los últimos ${dias} días.`, acciones: [] };
   }
 
   // ── 1. Tendencia de ventas ──────────────────────────────────────────────
@@ -193,6 +211,8 @@ export function analizar(datos, umbrales = {}) {
     else if (f.dias_restantes != null && f.dias_restantes <= 15 || f.restantes <= 200) H.push(hallazgo('alta', 'fiscal', `${f.sucursal}: el CAI está por ${f.dias_restantes != null && f.dias_restantes <= 15 ? `vencer (${f.dias_restantes} días)` : `agotarse (quedan ${f.restantes} facturas)`}`, 'Facturar sin CAI vigente es una infracción.', 'Solicita el nuevo rango al SAR hoy.'));
   }
 
+  H.push(...hallazgosDocumentos(datos.documentos));
+
   const orden = { alta: 0, media: 1, info: 2, positivo: 3 };
   H.sort((a, b) => orden[a.severidad] - orden[b.severidad] || (b.valor ?? 0) - (a.valor ?? 0));
 
@@ -208,7 +228,7 @@ export function analizar(datos, umbrales = {}) {
   if (acciones.length) resumen += ` Lo más importante ahora: ${acciones.map((a) => a.titulo.toLowerCase()).join('; ')}.`;
   else resumen += ' No hay alertas importantes en este momento.';
 
-  return { empresa, periodo, metricas, salud: { puntaje: salud, nivel }, resumen, acciones, hallazgos: H };
+  return { empresa, periodo, metricas, salud: { puntaje: salud, nivel }, resumen, acciones, hallazgos: H, documentos: resumenDoc(datos.documentos) };
 }
 
 /** Gerente digital de Dirección: compara empresas y destaca lo cruzado. */
@@ -228,7 +248,11 @@ export function analizarGrupo(porEmpresa, intercompania = []) {
     const dif = ord[0].metricas.margen_bruto_pct - ord[ord.length - 1].metricas.margen_bruto_pct;
     if (dif >= 20) H.push(hallazgo('info', 'grupo', `Brecha de margen: ${ord[0].empresa.nombre} (${ord[0].metricas.margen_bruto_pct}%) vs ${ord[ord.length - 1].empresa.nombre} (${ord[ord.length - 1].metricas.margen_bruto_pct}%)`, `${r1(dif)} puntos de diferencia.`, `Comparte prácticas de costeo y precios de ${ord[0].empresa.nombre} con el resto.`));
   }
-  for (const e of con) for (const h of e.hallazgos.filter((x) => x.severidad === 'alta').slice(0, 2)) H.push({ ...h, titulo: `${e.empresa.nombre}: ${h.titulo}`, area: h.area });
+  for (const e of porEmpresa) {
+    const d = e.documentos;
+    if (d && (d.vencidos || d.por_vencer)) H.push(hallazgo(d.vencidos ? 'alta' : 'media', 'documentos', `${e.empresa.nombre}: ${d.vencidos ? `${d.vencidos} documento(s) vencido(s)` : ''}${d.vencidos && d.por_vencer ? ' y ' : ''}${d.por_vencer ? `${d.por_vencer} por vencer` : ''}`, 'Permisos, licencias o contratos que requieren renovación.', 'Abre Dirección → Documentos para ver cuáles son y renovarlos antes de que paren la operación.', { valor: d.vencidos * 1000 + d.por_vencer }));
+  }
+  for (const e of con) for (const h of e.hallazgos.filter((x) => x.severidad === 'alta' && x.area !== 'documentos').slice(0, 2)) H.push({ ...h, titulo: `${e.empresa.nombre}: ${h.titulo}`, area: h.area });
   const pendiente = suma(intercompania.filter((i) => i.estado === 'pendiente'), (i) => i.monto);
   if (pendiente > 0) H.push(hallazgo('info', 'finanzas', `${L(pendiente)} en operaciones entre empresas sin conciliar`, 'Ventas de una empresa a otra del grupo que aún no se concilian.', 'Concilíalas para que el consolidado no cuente ventas internas dos veces.'));
   const orden = { alta: 0, media: 1, info: 2, positivo: 3 };
