@@ -31,7 +31,7 @@ export function rutasAuth({ db, config, ctxMgr }) {
   const limPin = crearLimitador({ max: 8, ventanaMs: 10 * 60_000 });
   r.limitadores = { limLogin, limPin };
 
-  const ipDe = (req) => req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket?.remoteAddress || '';
+  const ipDe = (req) => req.ip || req.socket?.remoteAddress || '';
 
   const EMPRESA_GRUPO = { id: null, codigo: 'grupo', nombre: 'Dirección del Grupo', esGrupo: true };
 

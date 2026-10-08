@@ -121,7 +121,7 @@ Hub, los permisos, el POS y el consolidado ya la reconocen.
 | Auth propia + PIN | La caja necesita entrar en 2 segundos con PIN; Supabase Auth no lo hace. Se puede sumar Supabase Auth después (MFA para dueños) sin tocar el resto. |
 | Trigger de inventario en la base | Descontar recetas al cobrar funciona venga de donde venga la venta (caja, API, importación). |
 | Esquemas por módulo | Orden, permisos y backups por área; facilita sacar un módulo a su propio servicio si algún día hiciera falta. |
-| PGlite en pruebas y modo demo | Las 52 pruebas corren el API completo contra un Postgres real sin red ni instalación. |
+| PGlite en pruebas y modo demo | Las 60 pruebas corren el API completo contra un Postgres real sin red ni instalación. |
 
 ## 8. Límites actuales (honestos)
 

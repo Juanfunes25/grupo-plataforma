@@ -46,7 +46,8 @@ Los cuatro sistemas, por lo que realmente hay en los repositorios:
 
 ## Importación de datos (SQLite/Turso y Supabase → plataforma)
 
-- **De Supabase (facturación y EcoStone)**: los esquemas son casi iguales al nuevo (`ventas`, `detalle_venta`,
+- **✅ De `italo-facturacion` (hecho y probado)**: `npm run importar:italo` (ver abajo).
+- **De Supabase (EcoStone/DISERCO)**: los esquemas son casi iguales al nuevo (`ventas`, `detalle_venta`,
   `venta_pagos`, `puntos_emision`…). La importación es un script SQL/Node que mapea `sucursales` →
   `core.sucursales`, `perfiles` → `core.usuarios` + `core.accesos`, y copia ventas e históricos con su
   `empresa_id`. **Las contraseñas no se pueden migrar** (Supabase Auth no las expone): los usuarios
@@ -67,3 +68,29 @@ Prioridad alta antes de cortar WizPOS/`italo-facturacion`:
 - [ ] Exigir carné/identidad para el descuento de tercera edad (regla configurable).
 - [ ] Envío de factura por correo y resumen diario al dueño.
 - [ ] Modo sin conexión con cola de ventas.
+
+## Importar `italo-facturacion` (listo)
+
+```bash
+export LEGACY_DATABASE_URL='postgresql://…'   # la base de italo-facturacion (solo se LEE)
+export DATABASE_URL='postgresql://…'          # la base nueva de la plataforma
+
+npm run importar:italo                         # ENSAYO: dice qué haría y no guarda nada
+npm run importar:italo -- --aplicar            # guarda (idempotente: se puede repetir)
+npm run importar:italo -- --aplicar --desde=2026-01-01     # solo ventas desde esa fecha
+npm run importar:italo -- --aplicar --fiscal   # SOLO EL DÍA DEL CORTE: copia CAI y correlativo vigente
+```
+
+Qué trae: sucursales (emparejadas por alias), usuarios con su rol y sucursal (sin contraseña: se asignan PIN o
+contraseña nuevos), categorías, productos (ISV 15/18/0), clientes (unidos por RTN con el directorio común),
+formas de pago, ventas pagadas y anuladas con detalle y pagos (incluida la identidad del adulto mayor en
+descuentos del 25 %), cierres de caja como turnos cerrados enlazados a sus ventas, notas de crédito y la
+bitácora antigua como archivo de solo lectura. **No** trae: caja chica (se revisa con el contador),
+cotizaciones/eventos, alertas antifraude (fases siguientes).
+
+Probado contra el **esquema real** de `italo-facturacion` (sus 15 migraciones corridas en un Postgres embebido),
+incluido el escenario de corte: después de `--fiscal` la primera factura de la plataforma continúa el correlativo
+exacto donde iba el sistema viejo.
+
+**Plan de corte seguro (por tienda):** ensayo → aplicar (histórico) → semanas en paralelo → día del corte: detener el
+sistema viejo → `--aplicar --fiscal` → verificar la primera factura → abrir la nueva caja.

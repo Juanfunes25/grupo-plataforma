@@ -60,7 +60,8 @@ export function crearContexto({ db, config }) {
     return todas.filter((e) => rows.some((r) => r.empresa_id === e.id)).map((e) => ({ ...e, rol: rows.find((r) => r.empresa_id === e.id).rol }));
   }
 
-  const ipDe = (req) => (req.headers['x-forwarded-for']?.toString().split(',')[0].trim() || req.socket?.remoteAddress || '');
+  // req.ip respeta `trust proxy`: no se puede falsear con un X-Forwarded-For puesto por el cliente.
+  const ipDe = (req) => req.ip || req.socket?.remoteAddress || '';
 
   /** Middleware: exige sesión válida → req.auth */
   async function autenticar(req, _res, next) {

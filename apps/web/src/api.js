@@ -18,7 +18,7 @@ export async function api(ruta, { metodo = 'GET', cuerpo, empresa, sinSesion = f
   const s = almacen.leer();
   const headers = { 'content-type': 'application/json' };
   if (!sinSesion && s?.token) headers.authorization = `Bearer ${s.token}`;
-  const emp = empresa ?? empresaActiva;
+  const emp = empresa !== undefined ? empresa : empresaActiva;   // null = sin encabezado de empresa
   if (emp && emp !== 'grupo') headers['x-empresa'] = emp;
   let r;
   try {
