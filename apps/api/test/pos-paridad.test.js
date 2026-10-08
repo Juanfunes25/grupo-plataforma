@@ -44,8 +44,9 @@ test('RTN obligatorio sobre L 10,000: sin RTN no se cobra; con un cliente con RT
   assert.equal(ok.status, 201, JSON.stringify(ok.body));
   assert.equal(ok.body.cliente.rtn, '08011990123456');
   // exactamente en el umbral NO exige RTN (la ley dice "mayor a")
-  const justo = await caja.post('/api/pos/ventas', { items: [item('Naranja Pura', 40), item('Piña Fresca', 1)], cobrar: { pagos: pagoEf(20000) } });
-  assert.ok(justo.body.total <= 10000 ? justo.status === 201 : true);
+  const justo = await caja.post('/api/pos/ventas', { items: [item('Naranja Pura', 133)], cobrar: { pagos: pagoEf(20000) } });      // 133 × 75 = 9,975
+  assert.equal(justo.status, 201, JSON.stringify(justo.body));
+  assert.equal((await caja.post('/api/pos/ventas', { items: [item('Naranja Pura', 134)], cobrar: { pagos: pagoEf(20000) } })).status, 400);   // 10,050
   // el umbral se puede ajustar por empresa
   const emp = (await t.db.query(`select id from core.empresas where codigo = 'origen'`)).rows[0].id;
   await t.db.query(`insert into core.config (empresa_id, clave, valor) values ($1, 'pos', '{"umbral_rtn": 500}'::jsonb)`, [emp]);

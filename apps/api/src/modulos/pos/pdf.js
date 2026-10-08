@@ -127,7 +127,7 @@ export function generarPdfFactura({ empresa, sucursal, venta, lineas, pagos, pun
   const total = (etq, monto, negrita = false, tam = 10) => {
     salto(16);
     pg.texto(etq, MARGEN + 200, pg.y, { negrita, tam, derecha: true, w: 190 });
-    pg.texto(L(monto), cols.monto, pg.y, { negrita, tam, derecha: true, w: 92 });
+    pg.texto(Number(monto) < 0 ? `-${L(-monto)}` : L(monto), cols.monto, pg.y, { negrita, tam, derecha: true, w: 92 });
     pg.y -= tam + 5;
   };
   if (Number(venta.descuento) > 0) total('Descuentos:', -Number(venta.descuento));
