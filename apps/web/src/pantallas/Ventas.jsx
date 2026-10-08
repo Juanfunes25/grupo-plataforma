@@ -19,6 +19,8 @@ export default function Ventas() {
   const resumen = useDatos(() => get(`/pos/reportes/resumen${qs(f)}`), [desde, hasta, suc]);
   const facturas = useDatos(() => get(`/pos/ventas${qs({ ...f, limite: 200 })}`), [desde, hasta, suc]);
   const turnos = useDatos(() => (tab === 'turnos' ? get(`/pos/turno${qs({ sucursal_id: suc })}`) : Promise.resolve([])), [tab, suc]);
+  const caja = useDatos(() => (tab === 'caja_chica' ? get(`/pos/antifraude/movimientos-caja${qs(f)}`) : Promise.resolve([])), [tab, desde, hasta, suc]);
+  const alertas = useDatos(() => (tab === 'alertas' ? get(`/pos/antifraude${qs({ desde, hasta })}`) : Promise.resolve(null)), [tab, desde, hasta]);
   const [detalle, setDetalle] = useState(null);
 
   const libro = async () => {
@@ -36,7 +38,7 @@ export default function Ventas() {
           {puede('pos:reportes') && <button className="btn chico" onClick={libro}>Libro de ventas (CSV)</button>}
         </div>
       </div>
-      <Tabs tabs={[['resumen', 'Resumen'], ['facturas', 'Facturas'], ['turnos', 'Cierres de caja']]} valor={tab} onCambio={setTab} />
+      <Tabs tabs={[['resumen', 'Resumen'], ['facturas', 'Facturas'], ['turnos', 'Cierres de caja'], ['caja_chica', 'Caja chica'], ['alertas', 'Alertas']]} valor={tab} onCambio={setTab} />
 
       {tab === 'resumen' && <Estado d={resumen}>{(r) => (
         <>
@@ -81,6 +83,27 @@ export default function Ventas() {
         </table></div></div>
       )}</Estado>}
 
+      {tab === 'caja_chica' && <Estado d={caja}>{(l) => (
+        <>
+          <div className="rejilla cols-3"><Kpi etiqueta="Salidas" valor={lempiras(l.filter((m) => m.tipo === 'salida').reduce((a, m) => a + m.monto, 0))} /><Kpi etiqueta="Ingresos" valor={lempiras(l.filter((m) => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0))} /><Kpi etiqueta="Movimientos" valor={l.length} /></div>
+          <div className="tarjeta pad0"><div className="tabla-wrap"><table>
+            <thead><tr><th>Fecha</th><th>Sucursal</th><th>Usuario</th><th>Concepto</th><th>Tipo</th><th className="der">Monto</th></tr></thead>
+            <tbody>{l.map((m) => <tr key={m.id}><td>{horaHN(m.created_at)}</td><td>{m.sucursal}</td><td>{m.usuario}</td><td>{m.concepto}</td><td><span className={`chip ${m.tipo === 'salida' ? 'aviso' : 'ok'}`}>{m.tipo}</span></td><td className="der num">{lempiras(m.monto)}</td></tr>)}</tbody>
+          </table>{l.length === 0 && <div className="vacio">Sin movimientos de caja en este periodo.</div>}</div></div>
+        </>
+      )}</Estado>}
+
+      {tab === 'alertas' && <Estado d={alertas}>{(a) => !a ? null : (
+        <>
+          {a.alertas.length === 0 ? <div className="aviso-caja ok">Sin alertas en este periodo: descuentos, anulaciones, reimpresiones, numeración y cuadres dentro de lo normal.</div> : (
+            <div style={{ display: 'grid', gap: 8 }}>{a.alertas.map((x, i) => (
+              <div key={i} className={`aviso-caja ${x.severidad === 'alta' ? 'mal' : ''}`}><b>{x.titulo}</b><br /><small>{x.detalle}</small></div>
+            ))}</div>
+          )}
+          <small>Estas alertas solo señalan patrones para revisar; no acusan a nadie. Los umbrales se ajustan por empresa. Rangos: {a.desde} a {a.hasta}.</small>
+        </>
+      )}</Estado>}
+
       {detalle && <DetalleVenta id={detalle} onCerrar={() => { setDetalle(null); facturas.recargar(); resumen.recargar(); }} />}
     </div>
   );
@@ -98,6 +121,8 @@ function DetalleVenta({ id, onCerrar }) {
     const r = await ejecutar(() => get(`/pos/ventas/${id}/ticket${qs({ reimpresion: 'true' })}`));
     if (r && r !== true) { setTicket(r.lineas); setTimeout(() => { window.print(); setTicket(null); }, 150); }
   };
+  const [nc, setNc] = useState({ motivo: '', monto: '' });
+  const emitirNc = async () => { if (await ejecutar(() => post(`/pos/ventas/${id}/nota-credito`, { motivo: nc.motivo, ...(nc.monto ? { monto: parseFloat(nc.monto) } : {}) }), 'Nota de crédito emitida')) { setNc({ motivo: '', monto: '' }); d.recargar(); } };
   const anular = async () => { if (await ejecutar(() => post(`/pos/ventas/${id}/anular`, { motivo }), 'Venta anulada')) { avisar('Inventario revertido'); onCerrar(); } };
   return (
     <Modal titulo={v ? (v.numero_factura ?? `Orden #${v.ticket_dia}`) : 'Venta'} onCerrar={onCerrar} tam="ancho">
@@ -110,6 +135,13 @@ function DetalleVenta({ id, onCerrar }) {
             <tr><td className="der"><b>Total</b></td><td className="der num"><b>{lempiras(x.total)}</b></td></tr>
             {x.pagos.map((p, i) => <tr key={i}><td className="der tenue">{p.forma}{p.referencia ? ` (${p.referencia})` : ''}</td><td className="der num tenue">{lempiras(p.monto)}</td></tr>)}
           </tbody></table></div>
+          {x.tercera_edad_nombre && <div className="aviso-caja">Descuento de tercera edad: {x.tercera_edad_nombre} · {x.tercera_edad_identidad}</div>}
+          {x.notas_credito?.length > 0 && <div className="tarjeta pad0"><table><tbody>{x.notas_credito.map((n) => <tr key={n.id}><td>{n.numero_nota}</td><td>{n.motivo}</td><td className="der num">−{lempiras(n.monto)}</td></tr>)}</tbody></table></div>}
+          {x.estado === 'pagada' && puede('pos:anular') && (
+            <div className="fila"><input placeholder="Nota de crédito: motivo" value={nc.motivo} onChange={(e) => setNc({ ...nc, motivo: e.target.value })} style={{ flex: 1, minWidth: 180 }} />
+              <input placeholder="Monto (vacío = todo lo pendiente)" inputMode="decimal" value={nc.monto} onChange={(e) => setNc({ ...nc, monto: e.target.value.replace(/[^\d.]/g, '') })} style={{ maxWidth: 210 }} />
+              <button className="btn" disabled={nc.motivo.trim().length < 3 || ocupado} onClick={emitirNc}>Emitir nota de crédito</button></div>
+          )}
           {x.estado === 'anulada' && <div className="aviso-caja mal">Anulada: {x.motivo_anulacion}</div>}
           <div className="fila">
             {x.estado !== 'abierta' && puede('pos:reimprimir') && <button className="btn" onClick={imprimir} disabled={ocupado}>Reimprimir (copia)</button>}

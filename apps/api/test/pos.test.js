@@ -161,8 +161,12 @@ test('descuento: con el permiso quitado el cajero no puede; el dueño sí (25 % 
   assert.equal((await caja.post('/api/pos/ventas', { items: it })).status, 403);
   const r = await dueno.post('/api/pos/turno/abrir', { fondo_inicial: 0 });
   assert.equal(r.status, 201);
-  const v = await dueno.post('/api/pos/ventas', { items: it, cobrar: { pagos } });
+  const sinId = await dueno.post('/api/pos/ventas', { items: it, cobrar: { pagos } });
+  assert.equal(sinId.status, 400);                 // la ley exige identificar a la persona de tercera edad
+  assert.match(sinId.body.error, /tercera edad/);
+  const v = await dueno.post('/api/pos/ventas', { items: it, tercera_edad: { nombre: 'Marta Lopez', identidad: '0501-1950-00123' }, cobrar: { pagos } });
   assert.equal(v.status, 201, JSON.stringify(v.body));
+  assert.equal(v.body.tercera_edad_identidad, '0501-1950-00123');
   assert.equal(v.body.total, 71.25);
   assert.equal(v.body.descuento, 23.75);
   assert.equal(v.body.descuento_porcentaje, 25);

@@ -10,10 +10,11 @@ import CobroModal from './CobroModal.jsx';
 import ClienteModal from './ClienteModal.jsx';
 import AbiertasModal from './AbiertasModal.jsx';
 import { AbrirTurno, CerrarTurno, MovimientoCaja } from './TurnoPanel.jsx';
+import TerceraEdadModal from './TerceraEdadModal.jsx';
 
 let contador = 0;
 const nuevaLinea = (producto, extra = {}) => ({ key: ++contador, producto, cantidad: 1, opciones: [], notas: null, descuento_porcentaje: 0, ...extra });
-const vacio = () => ({ id: null, ticket: null, nombre_orden: '', tipo_orden: 'aqui', cliente: null, lineas: [] });
+const vacio = () => ({ id: null, ticket: null, nombre_orden: '', tipo_orden: 'aqui', cliente: null, tercera_edad: null, lineas: [] });
 const cacheKey = (e, s) => `grupo.catalogo.${e}.${s}`;
 
 export default function Pos() {
@@ -114,9 +115,15 @@ export default function Pos() {
   const cuerpoItems = () => orden.lineas.map((l) => ({ producto_id: l.producto.id, cantidad: l.cantidad, opciones: l.opciones.map((o) => o.id), notas: l.notas, descuento_porcentaje: l.descuento_porcentaje }));
   const cambiarCant = (key, d) => setOrden((o) => ({ ...o, lineas: o.lineas.flatMap((l) => (l.key !== key ? [l] : l.cantidad + d > 0 || l.producto.unidad !== 'unidad' ? [{ ...l, cantidad: Math.round((l.cantidad + d) * 1000) / 1000 }] : [])).filter((l) => l.cantidad > 0) }));
   const quitar = (key) => setOrden((o) => ({ ...o, lineas: o.lineas.filter((l) => l.key !== key) }));
-  const ciclarDescuento = (key) => setOrden((o) => ({ ...o, lineas: o.lineas.map((l) => (l.key === key ? { ...l, descuento_porcentaje: l.descuento_porcentaje === 0 ? 10 : l.descuento_porcentaje === 10 ? 25 : 0 } : l)) }));
+  const ciclarDescuento = (key) => {
+    const l = orden.lineas.find((x) => x.key === key);
+    const sig = l.descuento_porcentaje === 0 ? 10 : l.descuento_porcentaje === 10 ? 25 : 0;
+    setOrden((o) => ({ ...o, lineas: o.lineas.map((x) => (x.key === key ? { ...x, descuento_porcentaje: sig } : x)) }));
+    if (sig === 25 && !orden.tercera_edad) setModal({ tipo: 'tercera_edad' });   // la ley pide identificar a la persona
+  };
 
-  const base = () => ({ sucursal_id: sucursal.id, tipo_orden: orden.tipo_orden, nombre_orden: orden.nombre_orden || null, cliente_id: orden.cliente?.id ?? null, items: cuerpoItems() });
+  const base = () => ({ sucursal_id: sucursal.id, tipo_orden: orden.tipo_orden, nombre_orden: orden.nombre_orden || null, cliente_id: orden.cliente?.id ?? null, items: cuerpoItems(),
+    ...(orden.lineas.some((l) => l.descuento_porcentaje === 25) && orden.tercera_edad ? { tercera_edad: orden.tercera_edad } : {}) });
 
   // ── Guardar / cobrar / cargar abiertas ──────────────────────────────────
   const guardarOrden = async () => {
@@ -143,6 +150,7 @@ export default function Pos() {
     const porId = new Map(cat.productos.map((p) => [p.id, p]));
     setOrden({
       id: v.id, ticket: v.ticket_dia, nombre_orden: v.nombre_orden ?? '', tipo_orden: v.tipo_orden, cliente: v.cliente?.nombre === 'Consumidor Final' ? null : v.cliente,
+      tercera_edad: v.tercera_edad_nombre ? { nombre: v.tercera_edad_nombre, identidad: v.tercera_edad_identidad } : null,
       lineas: v.lineas.filter((l) => porId.has(l.producto_id)).map((l) => nuevaLinea(porId.get(l.producto_id), { cantidad: l.cantidad, opciones: l.opciones, notas: l.notas, descuento_porcentaje: l.descuento_porcentaje })),
     });
     setModal(null);
@@ -260,6 +268,7 @@ export default function Pos() {
             setModal(null);
           }} />
       )}
+      {modal?.tipo === 'tercera_edad' && <TerceraEdadModal inicial={orden.tercera_edad} onCerrar={() => setModal(null)} onListo={(d) => { setOrden((o) => ({ ...o, tercera_edad: d })); setModal(null); }} />}
       {modal?.tipo === 'peso' && <PesoModal producto={modal.producto} onCerrar={() => setModal(null)} onListo={(n) => { agregar(modal.producto, { cantidad: n }); setModal(null); }} />}
       {modal?.tipo === 'cliente' && <ClienteModal puedeCrear={puede('clientes:editar')} onCerrar={() => setModal(null)} onElegir={(c) => { setOrden((o) => ({ ...o, cliente: c })); setModal(null); }} />}
       {modal?.tipo === 'abiertas' && <AbiertasModal sucursalId={sucursal.id} onCerrar={() => setModal(null)} onElegir={abrirOrden} />}

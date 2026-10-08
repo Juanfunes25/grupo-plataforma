@@ -4,6 +4,7 @@ import { rutasVentas } from './ventas.js';
 import { rutasTurnos } from './turnos.js';
 import { rutasFiscal } from './fiscal.js';
 import { rutasReportes, rutasKds } from './reportes.js';
+import { rutasAntifraude } from './antifraude.js';
 
 export function rutasPos(deps) {
   const r = Router();
@@ -13,5 +14,6 @@ export function rutasPos(deps) {
   r.use('/puntos-emision', rutasFiscal(deps));
   r.use('/reportes', rutasReportes(deps));
   r.use('/kds', rutasKds(deps));
+  r.use('/antifraude', rutasAntifraude(deps));
   return r;
 }

@@ -22,6 +22,7 @@ const cuerpoVenta = z.object({
   notas: z.string().trim().max(300).optional().nullable(),
   cliente_id: uuid.optional().nullable(),
   items: z.array(item).min(1, 'La orden no tiene productos').max(100),
+  tercera_edad: z.object({ nombre: z.string().trim().min(3).max(120), identidad: z.string().trim().min(8).max(30) }).optional().nullable(),
   cobrar: z.object({ pagos: z.array(pago).min(1) }).optional(),
 });
 
@@ -46,15 +47,26 @@ export function rutasVentas({ db, ctxMgr }) {
     return v;
   }
   async function detalle(q, ctx, v) {
-    const [lineas, pagos, cliente, sucursal, cajero, punto] = await Promise.all([
+    const [lineas, pagos, cliente, sucursal, cajero, punto, notas] = await Promise.all([
       q.query('select * from pos.detalle_venta where venta_id = $1 order by orden', [v.id]),
       q.query('select p.monto, p.referencia, f.nombre as forma, f.tipo from pos.venta_pagos p join pos.formas_pago f on f.id = p.forma_pago_id where p.venta_id = $1', [v.id]),
       v.cliente_id ? q.query('select id, nombre, rtn from core.terceros where id = $1', [v.cliente_id]) : { rows: [] },
       q.query('select id, nombre, alias, direccion from core.sucursales where id = $1', [v.sucursal_id]),
       v.cajero_id ? q.query('select id, nombre from core.usuarios where id = $1', [v.cajero_id]) : { rows: [] },
       v.punto_emision_id ? q.query('select * from pos.puntos_emision where id = $1', [v.punto_emision_id]) : { rows: [] },
+      q.query('select id, numero_nota, motivo, monto, created_at from pos.notas_credito where venta_id = $1 order by created_at', [v.id]),
     ]);
-    return { ...v, lineas: lineas.rows, pagos: pagos.rows, cliente: cliente.rows[0] ?? null, sucursal: sucursal.rows[0], cajero: cajero.rows[0] ?? null, punto: punto.rows[0] ?? null };
+    return { ...v, notas_credito: notas.rows, lineas: lineas.rows, pagos: pagos.rows, cliente: cliente.rows[0] ?? null, sucursal: sucursal.rows[0], cajero: cajero.rows[0] ?? null, punto: punto.rows[0] ?? null };
+  }
+
+  /** Descuento de tercera edad (25 %): la ley exige identificar a la persona; la regla se puede apagar por empresa. */
+  async function datosTerceraEdad(q, ctx, tot, enviado, previo = {}) {
+    const hay25 = tot.lineas.some((l) => l.descuento_porcentaje === 25);
+    if (!hay25) return { nombre: null, identidad: null };
+    const cfg = (await q.query(`select valor from core.config where empresa_id = $1 and clave = 'pos'`, [ctx.empresa.id])).rows[0]?.valor ?? {};
+    const nombre = enviado?.nombre ?? previo.nombre ?? null, identidad = enviado?.identidad ?? previo.identidad ?? null;
+    if (cfg.exigir_tercera_edad !== false && !(nombre && identidad)) throw malaPeticion('Para el descuento de tercera edad registra el nombre y la identidad de la persona');
+    return { nombre, identidad };
   }
 
   async function guardarLineas(q, ventaId, tot) {
@@ -94,6 +106,7 @@ export function rutasVentas({ db, ctxMgr }) {
       const cliente = await clienteDe(q, b.cliente_id);
       const items = await armarItems(q, req.ctx, b.items);
       const tot = totalesDe(items, cliente, 0);
+      const te = await datosTerceraEdad(q, req.ctx, tot, b.tercera_edad);
       const ticket = (await q.query('select pos.siguiente_ticket($1) as n', [suc.id])).rows[0].n;
       const v = (await q.query(
         `insert into pos.ventas (empresa_id, sucursal_id, cliente_id, cajero_id, canal, tipo_orden, nombre_orden, notas, ticket_dia,
@@ -101,6 +114,7 @@ export function rutasVentas({ db, ctxMgr }) {
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning *`,
         [req.ctx.empresa.id, suc.id, cliente.id, req.ctx.usuario.id, b.canal, b.tipo_orden, b.nombre_orden ?? null, b.notas ?? null, ticket, ...camposTotales(tot)])).rows[0];
       await guardarLineas(q, v.id, tot);
+      if (te.nombre) await q.query('update pos.ventas set tercera_edad_nombre = $2, tercera_edad_identidad = $3 where id = $1', [v.id, te.nombre, te.identidad]);
       if (b.cobrar) await cobrar(q, req.ctx, v.id, b.cobrar.pagos);
       return detalle(q, req.ctx, await cargar(q, req.ctx, v.id));
     });
@@ -118,7 +132,9 @@ export function rutasVentas({ db, ctxMgr }) {
       let tot;
       if (b.items) {
         tot = totalesDe(await armarItems(q, req.ctx, b.items), cliente, 0);
+        const te = await datosTerceraEdad(q, req.ctx, tot, b.tercera_edad, { nombre: v.tercera_edad_nombre, identidad: v.tercera_edad_identidad });
         await guardarLineas(q, id, tot);
+        await q.query('update pos.ventas set tercera_edad_nombre = $2, tercera_edad_identidad = $3 where id = $1', [id, te.nombre, te.identidad]);
       }
       const t = tot ? camposTotales(tot) : null;
       await q.query(
@@ -161,6 +177,30 @@ export function rutasVentas({ db, ctxMgr }) {
       return detalle(q, req.ctx, await cargar(q, req.ctx, id));
     });
     res.json(out);
+  });
+
+  // ── Nota de crédito (devolución o ajuste parcial/total sobre una factura cobrada) ──
+  r.post('/:id/nota-credito', requierePermiso('pos:anular'), async (req, res) => {
+    const id = validar(uuid, req.params.id);
+    const b = validar(z.object({ motivo: z.string().trim().min(3, 'Escribe el motivo').max(300), monto: z.coerce.number().positive().optional() }), req.body);
+    const nota = await db.tx(async (q) => {
+      const v = await cargar(q, req.ctx, id, { bloquear: true });
+      if (v.estado !== 'pagada') throw conflicto('Solo se emite nota de crédito sobre facturas cobradas y vigentes');
+      const previas = Number((await q.query('select coalesce(sum(monto),0) as m from pos.notas_credito where venta_id = $1', [id])).rows[0].m);
+      const monto = Math.round((b.monto ?? v.total - previas) * 100) / 100;
+      if (!(monto > 0)) throw conflicto('Esta factura ya fue acreditada por completo');
+      if (monto + previas > Number(v.total) + 0.001) throw malaPeticion(`El monto excede lo acreditable (máximo ${(Number(v.total) - previas).toFixed(2)})`);
+      const pe = v.punto_emision_id ? (await q.query('select es_borrador from pos.puntos_emision where id = $1', [v.punto_emision_id])).rows[0] : null;
+      const borrador = pe?.es_borrador ?? true;
+      const n = (await q.query('select pos.siguiente_nc($1) as n', [req.ctx.empresa.id])).rows[0].n;
+      const numero = `${borrador ? 'BORRADOR-' : ''}NC-${String(n).padStart(6, '0')}`;
+      const nc = (await q.query(
+        `insert into pos.notas_credito (empresa_id, venta_id, sucursal_id, numero_nota, motivo, monto, usuario_id, es_borrador) values ($1,$2,$3,$4,$5,$6,$7,$8) returning *`,
+        [req.ctx.empresa.id, id, v.sucursal_id, numero, b.motivo, monto, req.ctx.usuario.id, borrador])).rows[0];
+      await auditar(q, req.ctx, 'nota_credito_emitida', 'venta', id, { nota: numero, monto, motivo: b.motivo, factura: v.numero_factura }, { sucursalId: v.sucursal_id });
+      return nc;
+    });
+    res.status(201).json(nota);
   });
 
   // ── Estado de preparación (cocina) ───────────────────────────────────────
