@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { fechaHoraHN } from '@grupo/shared';
 import { get, post, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
-import { Campo, Estado, Modal, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
+import { Campo, Estado, Modal, useAccion, useAviso, useConfirmar, useDatos } from '../ui/kit.jsx';
 import { colorDe } from '../ui/sucursales.js';
 
 const DIRECCION = ['dueno', 'admin', 'contador', 'solo_lectura'];            // entran con correo y contraseña
@@ -130,8 +130,9 @@ export function ContenidoUsuarios() {
     return (d.datos ?? []).filter((u) => (verInactivos || u.activo) && (!rolF || u.rol === rolF) && (!t || u.nombre.toLowerCase().includes(t) || (u.email ?? '').toLowerCase().includes(t)));
   }, [d.datos, q, rolF, verInactivos]);
 
+  const confirmar = useConfirmar();
   const alternarActivo = async (u) => {
-    if (u.activo && !window.confirm(`¿Desactivar a ${u.nombre}? No podrá entrar a esta empresa hasta que lo vuelvas a activar.`)) return;
+    if (u.activo && !(await confirmar({ titulo: 'Desactivar usuario', mensaje: `¿Desactivar a ${u.nombre}? No podrá entrar a esta empresa hasta que lo vuelvas a activar.`, textoOk: 'Desactivar', peligro: true }))) return;
     if (await ejecutar(() => put(`/admin/usuarios/${u.id}`, { activo: !u.activo }), u.activo ? 'Usuario desactivado' : 'Usuario activado')) d.recargar();
   };
 

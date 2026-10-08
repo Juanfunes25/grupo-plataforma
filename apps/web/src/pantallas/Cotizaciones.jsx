@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { lempiras } from '@grupo/shared';
 import { api, get, post, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
-import { Campo, Cargando, ErrorCaja, Modal, Tabs, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
+import { Campo, Cargando, ErrorCaja, Modal, Tabs, useAccion, useAviso, useConfirmar, useDatos } from '../ui/kit.jsx';
 import Calendario, { Estado, ModalAceptar, ModalEvento } from '../cotizaciones/Calendario.jsx';
 import Formulario from '../cotizaciones/Formulario.jsx';
 import { abrirDocumento } from '../cotizaciones/documento.js';
@@ -75,8 +75,9 @@ export default function Cotizaciones() {
     if (nuevo === 'aceptada') return setAceptando(c);
     if (await ejecutar(() => put(`/cotizaciones/${c.id}`, { estado: nuevo }), 'Estado actualizado')) d.recargar();
   };
+  const confirmar = useConfirmar();
   const eliminar = async (c) => {
-    if (!window.confirm(`¿Eliminar la cotización #${numCot(c)}?`)) return;
+    if (!(await confirmar({ titulo: 'Eliminar cotización', mensaje: `¿Eliminar la cotización #${numCot(c)}?`, textoOk: 'Eliminar', peligro: true }))) return;
     if (await ejecutar(() => api(`/cotizaciones/${c.id}`, { metodo: 'DELETE' }), 'Cotización eliminada')) d.recargar();
   };
   const documento = async (c) => {

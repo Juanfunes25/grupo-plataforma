@@ -32,16 +32,16 @@ function CambiarClave({ onCerrar, onListo }) {
 }
 
 const CLAVE_PLEGADOS = 'grupo.nav.plegados';
-const CLAVE_COMPACTO = 'grupo.nav.compacto';
-const leerCompacto = () => { try { const v = localStorage.getItem(CLAVE_COMPACTO); return v === null ? null : v === '1'; } catch { return null; } };
-// Pantalla de tablet/laptop pequeña (menú fijo a la izquierda): ahí el POS gana espacio con el menú en columna de íconos.
-function useRangoTablet() {
-  const q = '(min-width: 901px) and (max-width: 1400px)';
+const leerPlegados = () => { try { return JSON.parse(localStorage.getItem(CLAVE_PLEGADOS) || '[]'); } catch { return []; } };
+const CLAVE_MODO = 'grupo.nav.modo'; // visible | compacto | oculto (por dispositivo); sin valor = automático
+const leerModo = () => { try { const v = localStorage.getItem(CLAVE_MODO); return ['visible', 'compacto', 'oculto'].includes(v) ? v : null; } catch { return null; } };
+// Tablet / laptop pequeña (menú fijo a la izquierda): ahí el POS arranca con el menú oculto para facturar con más espacio.
+function useAnchoMenor(px) {
+  const q = `(min-width: 901px) and (max-width: ${px}px)`;
   const [v, setV] = useState(() => window.matchMedia(q).matches);
-  useEffect(() => { const m = window.matchMedia(q); const f = () => setV(m.matches); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, []);
+  useEffect(() => { const m = window.matchMedia(q); const f = () => setV(m.matches); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, [q]);
   return v;
 }
-const leerPlegados = () => { try { return JSON.parse(localStorage.getItem(CLAVE_PLEGADOS) || '[]'); } catch { return []; } };
 
 function BotonTema({ clase = 'btn chico fantasma', conTexto = false }) {
   const [tema, setTema] = useState(leerTema);
@@ -57,8 +57,8 @@ export default function Layout({ children, esGrupo = false }) {
   const [menu, setMenu] = useState(false);
   const [paleta, setPaleta] = useState(false);
   const [plegados, setPlegados] = useState(leerPlegados);
-  const [compactoPref, setCompactoPref] = useState(leerCompacto);
-  const enTablet = useRangoTablet();
+  const [modoPref, setModoPref] = useState(leerModo);
+  const enTablet = useAnchoMenor(1279);
   const location = useLocation();
   const { empresa: param } = useParams();
 
@@ -88,6 +88,16 @@ export default function Layout({ children, esGrupo = false }) {
       const enCampo = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
       if ((e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setPaleta(true); }
       else if (e.key === '/' && !enCampo && !e.ctrlKey && !e.metaKey) { e.preventDefault(); setPaleta(true); }
+    };
+    window.addEventListener('keydown', f);
+    return () => window.removeEventListener('keydown', f);
+  }, []);
+  // Ctrl/⌘+B alterna mostrar/ocultar el menú; Esc lo oculta si el foco está dentro de él (solo pantallas anchas).
+  useEffect(() => {
+    const f = (e) => {
+      if (window.innerWidth <= 900) return;
+      if ((e.key === 'b' || e.key === 'B') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); setModoPref((m) => { const act = m ?? 'visible'; const n = act === 'oculto' ? 'visible' : 'oculto'; try { localStorage.setItem(CLAVE_MODO, n); } catch { /* */ } return n; }); }
+      else if (e.key === 'Escape' && document.activeElement?.closest?.('.sidebar') && !document.querySelector('.velo, .paleta-velo')) { setModoPref('oculto'); try { localStorage.setItem(CLAVE_MODO, 'oculto'); } catch { /* */ } }
     };
     window.addEventListener('keydown', f);
     return () => window.removeEventListener('keydown', f);
@@ -149,11 +159,13 @@ export default function Layout({ children, esGrupo = false }) {
   // Empresa: menú lateral por grupos plegables (Operación · Negocio · Control · Ajustes).
   const activo = items.find((m) => location.pathname.startsWith(`${base}/${m.ruta}`));
   const sinCabecera = activo?.id === 'pos'; // el POS usa toda la altura
-  const compacto = compactoPref ?? (activo?.id === 'pos' && enTablet);
-  const alternarCompacto = () => { const n = !compacto; setCompactoPref(n); try { localStorage.setItem(CLAVE_COMPACTO, n ? '1' : '0'); } catch { /* sin almacenamiento */ } };
+  const modo = modoPref ?? (activo?.id === 'pos' && enTablet ? 'oculto' : 'visible');
+  const compacto = modo === 'compacto';
+  const oculto = modo === 'oculto';
+  const fijarModo = useCallback((m) => { setModoPref(m); try { localStorage.setItem(CLAVE_MODO, m); } catch { /* sin almacenamiento */ } }, []);
   const sucActual = s.sucursales.find((x) => x.id === s.sucursalId) ?? s.sucursales[0];
   return (
-    <div className={`app-shell no-print-shell${menu ? ' menu-abierto' : ''}${compacto ? ' compacto' : ''}`}>
+    <div className={`app-shell no-print-shell${menu ? ' menu-abierto' : ''}${compacto ? ' compacto' : ''}${oculto ? ' oculto' : ''}`}>
       <a className="saltar no-print" href="#contenido">Saltar al contenido</a>
       <header className="barra-movil no-print">
         <button className="btn fantasma" onClick={() => setMenu(true)} aria-label="Abrir menú" aria-expanded={menu} aria-controls="menu-lateral"><Icono n="menu" tam={22} /></button>
@@ -170,7 +182,8 @@ export default function Layout({ children, esGrupo = false }) {
             <span className="sidebar-marca-texto"><b className="titulo">{ctx.empresa.nombre}</b><small>{ctx.empresa.razon_social}</small></span>
           </Link>
           <button className="btn fantasma sidebar-cerrar" onClick={() => setMenu(false)} aria-label="Cerrar menú"><Icono n="x" /></button>
-          <button className="btn fantasma chico sidebar-compactar" onClick={alternarCompacto} aria-label={compacto ? 'Expandir menú' : 'Contraer menú'} aria-pressed={compacto} title={compacto ? 'Expandir menú' : 'Contraer menú'}><Icono n={compacto ? 'derecha' : 'atras'} tam={18} /></button>
+          <button className="btn fantasma sidebar-compactar" onClick={() => fijarModo(compacto ? 'visible' : 'compacto')} aria-label={compacto ? 'Expandir menú' : 'Solo íconos'} aria-pressed={compacto} title={compacto ? 'Expandir menú' : 'Solo íconos'}><Icono n={compacto ? 'derecha' : 'atras'} tam={18} /></button>
+          <button className="btn fantasma sidebar-ocultar" onClick={() => fijarModo('oculto')} aria-label="Ocultar menú (Ctrl B)" title="Ocultar menú (Ctrl B)"><Icono n="menu" tam={20} /></button>
         </div>
         {s.sucursales.length > 1 && (
           <div className="sidebar-sucursal">
@@ -217,6 +230,7 @@ export default function Layout({ children, esGrupo = false }) {
           </div>
         </div>
       </aside>
+      {oculto && <button className="menu-flotante no-print" onClick={() => fijarModo('visible')} aria-label="Mostrar menú (Ctrl B)" title="Mostrar menú (Ctrl B)"><Icono n="menu" tam={22} /></button>}
       <div className="principal" key={ctx.empresa.codigo}>
         {!sinCabecera && (
           <div className="cabecera-app no-print">

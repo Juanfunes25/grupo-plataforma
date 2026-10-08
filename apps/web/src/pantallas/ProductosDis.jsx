@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { lempiras, numero } from '@grupo/shared';
 import { api, get, post, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
-import { Campo, Estado, Modal, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
+import { Campo, Estado, Modal, useAccion, useAviso, useConfirmar, useDatos } from '../ui/kit.jsx';
 import '../diserco/diserco.css';
 
 const UNIDADES = ['unidad', 'kit', 'galon', 'cubeta', 'saco', 'litro', 'm2', 'ml', 'pieza', 'caja'];
@@ -16,6 +16,7 @@ const Seccion = ({ titulo, children }) => (
 export default function ProductosDis() {
   const { puede } = useSesion();
   const avisar = useAviso();
+  const confirmar = useConfirmar();
   const [ejecutar, ocupado] = useAccion();
   const d = useDatos(() => get('/diserco/productos?incluirInactivos=true'), []);
   const cats = useDatos(() => get('/diserco/categorias'), []);
@@ -43,12 +44,12 @@ export default function ProductosDis() {
     if (r) { setModal(null); d.recargar(); }
   }
   async function eliminar() {
-    if (!window.confirm(`¿Eliminar “${modal.form.nombre}” definitivamente? No se puede deshacer.`)) return;
+    if (!(await confirmar({ titulo: 'Eliminar producto', mensaje: `¿Eliminar “${modal.form.nombre}” definitivamente? No se puede deshacer.`, textoOk: 'Eliminar', peligro: true }))) return;
     try {
       await api(`/diserco/productos/${modal.id}?definitivo=1`, { metodo: 'DELETE' });
       avisar('Producto eliminado'); setModal(null); d.recargar();
     } catch (e) {
-      if (e.codigo === 'CON_HISTORIAL' && window.confirm(`${e.message}\n\n¿Desactivarlo ahora?`)) {
+      if (e.codigo === 'CON_HISTORIAL' && await confirmar({ titulo: 'Tiene historial', mensaje: `${e.message}\n\n¿Desactivarlo ahora?`, textoOk: 'Desactivar' })) {
         await ejecutar(() => api(`/diserco/productos/${modal.id}`, { metodo: 'DELETE' }), 'Producto desactivado');
         setModal(null); d.recargar();
       } else if (e.codigo !== 'CON_HISTORIAL') avisar(e.message, 'mal');

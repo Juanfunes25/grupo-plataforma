@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { get, post, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
-import { Campo, Estado, Modal, Tabs, useAccion, useDatos } from '../ui/kit.jsx';
+import { Campo, Estado, Modal, Tabs, useAccion, useConfirmar, useDatos } from '../ui/kit.jsx';
 import { PALETA_SUCURSALES, colorDe, colorLibre, nombreCorto } from '../ui/sucursales.js';
 
 const TIPOS = { tienda: 'Tienda', fabrica: 'Fábrica / producción', bodega: 'Bodega', oficina: 'Oficina' };
@@ -62,8 +62,9 @@ export function ContenidoSucursales() {
   const [edit, setEdit] = useState(null);
   const [ejecutar] = useAccion();
   const todas = d.datos ?? [];
+  const confirmar = useConfirmar();
   const desactivar = async (s) => {
-    if (!window.confirm(`¿Desactivar «${s.nombre}»? Deja de aparecer para facturar y en los selectores del sistema. No borra sus facturas ni su historial.`)) return;
+    if (!(await confirmar({ titulo: 'Desactivar sucursal', mensaje: `¿Desactivar «${s.nombre}»? Deja de aparecer para facturar y en los selectores del sistema. No borra sus facturas ni su historial.`, textoOk: 'Desactivar', peligro: true }))) return;
     if (await ejecutar(() => put(`/admin/sucursales/${s.id}`, { activo: false }), 'Sucursal desactivada')) { d.recargar(); recargar(); }
   };
   return (

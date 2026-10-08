@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { lempiras } from '@grupo/shared';
 import { api, get, post, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
-import { Campo, Estado, Modal, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
+import { Campo, Estado, Modal, useAccion, useAviso, useConfirmar, useDatos } from '../ui/kit.jsx';
 import { num } from '../eco/util.js';
 import '../eco/eco.css';
 
@@ -15,6 +15,7 @@ export default function Piedra() {
   const gerencia = puede('pos:catalogo');
   const [ejecutar, ocupado] = useAccion();
   const avisar = useAviso();
+  const confirmar = useConfirmar();
   const d = useDatos(async () => {
     const [productos, listas, precios] = await Promise.all([get('/eco/productos?incluirInactivos=true'), get('/eco/listas-precio'), get('/eco/listas-precio/precios')]);
     return { productos, listas, precios: Object.fromEntries(precios.map((x) => [`${x.producto_id}|${x.lista_id}`, Number(x.precio)])) };
@@ -53,10 +54,10 @@ export default function Piedra() {
   };
 
   const eliminar = async () => {
-    if (!window.confirm(`¿Eliminar “${f.nombre}” definitivamente? No se puede deshacer.`)) return;
+    if (!(await confirmar({ titulo: 'Eliminar producto', mensaje: `¿Eliminar “${f.nombre}” definitivamente? No se puede deshacer.`, textoOk: 'Eliminar', peligro: true }))) return;
     try { await api(`/eco/productos/${ed.id}?definitivo=1`, { metodo: 'DELETE' }); setEd(null); d.recargar(); }
     catch (e) {
-      if (e.codigo === 'CON_HISTORIAL' && window.confirm(`${e.message}\n\n¿Desactivarlo ahora?`)) {
+      if (e.codigo === 'CON_HISTORIAL' && await confirmar({ titulo: 'Tiene historial', mensaje: `${e.message}\n\n¿Desactivarlo ahora?`, textoOk: 'Desactivar' })) {
         if (await ejecutar(() => api(`/eco/productos/${ed.id}`, { metodo: 'DELETE' }), 'Producto desactivado')) { setEd(null); d.recargar(); }
       } else if (e.codigo !== 'CON_HISTORIAL') avisar(e.message, 'mal');
     }
