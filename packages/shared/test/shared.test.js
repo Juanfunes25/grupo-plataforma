@@ -85,3 +85,14 @@ test('antifraude y cotizaciones solo existen donde la empresa los enciende', () 
   assert.ok(con.includes('antifraude') && con.includes('cotizaciones'));
   assert.ok(!modulosVisibles(['pos', 'antifraude'], permisosDe('cajero')).some((m) => m.id === 'antifraude'));
 });
+
+test('reposición de gelato: el módulo de empresa muestra su grupo y oculta el inventario genérico', () => {
+  const d = modulosVisibles(['pos', 'inventario', 'reposicion'], permisosDe('dueno')).map((m) => m.id);
+  for (const id of ['rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_incidencias', 'rep_mantenimiento']) assert.ok(d.includes(id), id);
+  assert.ok(!d.includes('inventario'));
+  // roles de tienda: la cajera pesa y recibe; producción produce; bodega despacha
+  assert.ok(modulosVisibles(['reposicion'], permisosDe('cajero')).map((m) => m.id).includes('rep_pesaje'));
+  assert.ok(modulosVisibles(['reposicion'], permisosDe('produccion')).map((m) => m.id).includes('rep_produccion'));
+  assert.ok(modulosVisibles(['reposicion'], permisosDe('bodega')).map((m) => m.id).includes('rep_despacho'));
+  assert.ok(!modulosVisibles(['pos'], permisosDe('dueno')).some((m) => m.id.startsWith('rep_')));
+});

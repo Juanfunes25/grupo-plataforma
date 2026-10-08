@@ -68,6 +68,7 @@ export const MODULOS_DERIVADOS = {
   finanzas: ['finanzas'],
   fabrica: ['piedra', 'cot_eco', 'prod_registrar', 'prod_ordenes', 'prod_recetas', 'prod_insumos', 'prod_inventario', 'prod_trazabilidad', 'prod_reporte'],
   distribuidora: ['cot_dis', 'dis_salidas', 'dis_catalogo', 'dis_inventario'],
+  reposicion: ['rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_incidencias', 'rep_mantenimiento'],
   antifraude: ['antifraude'],      // solo Italo y Origen; EcoStone y DISERCO no lo usan
   cotizaciones: ['cotizaciones'],
 };
