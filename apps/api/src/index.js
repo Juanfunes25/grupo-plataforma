@@ -3,6 +3,7 @@ import { abrirDb } from './db/index.js';
 import { migrar } from './db/migrar.js';
 import { crearApp } from './app.js';
 import { sembrarSiVacio } from './modulos/rinv/siembra.js';
+import { sembrarCatalogoItaloSiVacio } from './db/italo-catalogo.js';
 
 const config = leerConfig();
 validarConfig(config);
@@ -14,6 +15,9 @@ if (hechas.length) console.log(`[db] ${hechas.length} migración(es) aplicada(s)
 
 // Inventario de reposición: carga idempotente de los datos reales de Italo la primera vez (si no, no hace nada).
 await sembrarSiVacio(db).catch((e) => console.error('[rinv] no se pudo sembrar:', e.message));
+
+// Catálogo y clientes reales de Italo (export de WizPOS): se cargan solos la primera vez, si Italo aún no tiene productos.
+await sembrarCatalogoItaloSiVacio(db, { log: console.log }).catch((e) => console.error('[italo] no se pudo cargar el catálogo:', e.message));
 
 const app = crearApp({ db, config });
 const servidor = app.listen(config.puerto, () => console.log(`[api] escuchando en :${config.puerto}`));

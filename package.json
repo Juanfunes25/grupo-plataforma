@@ -22,6 +22,7 @@
     "test": "npm test -w @grupo/shared && npm test -w @grupo/api",
     "demo": "node apps/api/src/db/demo.js",
     "crear-dueno": "node apps/api/src/db/crear-dueno.js",
-    "importar:italo": "node apps/api/src/migracion/italo-facturacion.js"
+    "importar:italo": "node apps/api/src/migracion/italo-facturacion.js",
+    "seed:italo": "node apps/api/src/db/italo-catalogo.js"
   }
 }

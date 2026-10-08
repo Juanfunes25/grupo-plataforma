@@ -125,6 +125,8 @@ export default function Layout({ children, esGrupo = false }) {
   }, [ctx, esGrupo, items, base, puedeCambiar, s.sucursales, s.sucursalId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // No se muestra (ni se piden datos) hasta que la empresa activa coincide con la de la dirección: evita ver datos de otra empresa.
+  const fijarModo = useCallback((m) => { setModoPref(m); try { localStorage.setItem(CLAVE_MODO, m); } catch { /* sin almacenamiento */ } }, []);
+
   if (!ctx || (!esGrupo && param && ctx.empresa.codigo !== param)) return <div className="pagina"><Cargando texto="Cargando…" /></div>;
 
   const usuarioChip = (
@@ -162,7 +164,6 @@ export default function Layout({ children, esGrupo = false }) {
   const modo = modoPref ?? (activo?.id === 'pos' && enTablet ? 'oculto' : 'visible');
   const compacto = modo === 'compacto';
   const oculto = modo === 'oculto';
-  const fijarModo = useCallback((m) => { setModoPref(m); try { localStorage.setItem(CLAVE_MODO, m); } catch { /* sin almacenamiento */ } }, []);
   const sucActual = s.sucursales.find((x) => x.id === s.sucursalId) ?? s.sucursales[0];
   return (
     <div className={`app-shell no-print-shell${menu ? ' menu-abierto' : ''}${compacto ? ' compacto' : ''}${oculto ? ' oculto' : ''}`}>
