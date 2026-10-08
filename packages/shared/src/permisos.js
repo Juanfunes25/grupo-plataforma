@@ -26,6 +26,7 @@ export const PERMISOS = {
   'fin:gastos':       'Registrar gastos',
   // Dirección
   'grupo:ver':        'Ver el consolidado del grupo',
+  'gerente:ver':      'Ver el gerente digital (análisis de la empresa)',
   // Administración
   'admin:usuarios':   'Administrar usuarios y accesos',
   'admin:empresa':    'Administrar sucursales y datos de la empresa',
@@ -37,11 +38,11 @@ export const PERMISOS = {
 const TODOS = Object.keys(PERMISOS);
 
 export const ROLES = {
-  dueno:   { nombre: 'Dueño',          permisos: TODOS },
-  admin:   { nombre: 'Administrador',  permisos: TODOS },
+  dueno:   { nombre: 'Dueño de la empresa', permisos: TODOS },
+  admin:   { nombre: 'Administrador', permisos: TODOS.filter((p) => p !== 'grupo:ver') },   // administra SU empresa; el consolidado es de dirección
   gerente: {
-    nombre: 'Gerente',
-    permisos: ['pos:vender', 'pos:caja', 'pos:anular', 'pos:descuento', 'pos:reimprimir', 'pos:catalogo', 'pos:reportes',
+    nombre: 'Manager',
+    permisos: ['gerente:ver', 'pos:vender', 'pos:caja', 'pos:anular', 'pos:descuento', 'pos:reimprimir', 'pos:catalogo', 'pos:reportes',
       'kds:ver', 'inv:ver', 'inv:mover', 'inv:recetas', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos',
       'clientes:ver', 'clientes:editar'],
   },
@@ -63,7 +64,7 @@ export const ROLES = {
   },
   contador: {
     nombre: 'Contador',
-    permisos: ['pos:reportes', 'fin:ver', 'fin:gastos', 'inv:ver', 'clientes:ver', 'auditoria:ver', 'grupo:ver'],
+    permisos: ['gerente:ver', 'pos:reportes', 'fin:ver', 'fin:gastos', 'inv:ver', 'clientes:ver', 'auditoria:ver', 'grupo:ver'],
   },
   solo_lectura: {
     nombre: 'Solo lectura',

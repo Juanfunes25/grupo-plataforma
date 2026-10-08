@@ -121,7 +121,7 @@ Hub, los permisos, el POS y el consolidado ya la reconocen.
 | Auth propia + PIN | La caja necesita entrar en 2 segundos con PIN; Supabase Auth no lo hace. Se puede sumar Supabase Auth después (MFA para dueños) sin tocar el resto. |
 | Trigger de inventario en la base | Descontar recetas al cobrar funciona venga de donde venga la venta (caja, API, importación). |
 | Esquemas por módulo | Orden, permisos y backups por área; facilita sacar un módulo a su propio servicio si algún día hiciera falta. |
-| PGlite en pruebas y modo demo | Las 65 pruebas corren el API completo contra un Postgres real sin red ni instalación. |
+| PGlite en pruebas y modo demo | Las 81 pruebas corren el API completo contra un Postgres real sin red ni instalación. |
 
 ## 8. Límites actuales (honestos)
 
@@ -133,3 +133,22 @@ Hub, los permisos, el POS y el consolidado ya la reconocen.
 - **Dependencias con avisos de `npm audit`** (esbuild/vite en desarrollo, react-router): no afectan
   producción tal como está (no hay SSR ni redirecciones con entrada del usuario); se actualizarán con
   la siguiente tanda.
+
+## 9. Perfiles y gerente digital
+
+**Perfiles.** Cada empresa trabaja con tres perfiles principales: **Ventas** (cobra y consulta), **Manager** (opera la empresa,
+anula, ve reportes y el gerente digital) y **Administrador** (usuarios, catálogo, fiscal e inventario de SU empresa). Encima de
+todos está el **Administrador general** (`es_dueno_grupo`): ve y controla las cuatro empresas, asigna perfiles en cualquiera
+y puede nombrar a otros administradores generales. El Administrador de una empresa no ve el consolidado del grupo ni otras empresas.
+Cada empresa lleva su propio inventario, caja y facturación; Dirección ve y controla las finanzas de todas.
+
+**Gerente digital** (`apps/api/src/modulos/gerente`). Es un motor de reglas explícitas, no una caja negra: toma los números de la
+empresa (ventas, costo de receta, gastos, inventario, caja, fiscal, antifraude), compara los últimos N días con los N anteriores y
+produce un resumen en lenguaje natural, un puntaje de salud 0–100, tres prioridades y una lista de hallazgos con "qué hacer".
+Detecta, entre otras cosas: caída o alza de ventas, días anómalos para su día de la semana, productos que venden pero tienen
+margen bajo (y el precio que llevaría al margen objetivo), productos en caída, concentración en un solo producto, ventas sin
+receta, carga fija excesiva, gastos que crecen más que las ventas, pérdida operativa, merma alta, insumos a punto de agotarse,
+stock negativo o dormido, producto por vencer, faltantes de caja, alertas de control y CAI por vencer. El de Dirección analiza
+cada empresa y las compara (ranking, brecha de margen, dependencia de una sola empresa, operaciones sin conciliar).
+Las reglas y umbrales están en `analisis.js` y se prueban con datos sintéticos. Una capa de redacción con IA (Claude) puede
+sumarse después para explicar los hallazgos en conversación; hoy no depende de ningún servicio externo.

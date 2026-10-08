@@ -4,6 +4,7 @@ import { permisosDe, fechaHN, sumarDias } from '@grupo/shared';
 import { requierePermiso } from '../../lib/contexto.js';
 import { fechaISO, validar } from '../../lib/http.js';
 import { resultadosEmpresa } from '../fin/rutas.js';
+import { montarExtras } from './extras.js';
 
 export function rutasGrupo({ db, ctxMgr }) {
   const r = Router();
@@ -83,5 +84,6 @@ export function rutasGrupo({ db, ctxMgr }) {
     res.json({ cai: cai.rows, stock_negativo: neg.rows, por_vencer: ven.rows, turnos_olvidados: turnos.rows });
   });
 
+  montarExtras(r, { db, ctxMgr }, empresasConsolidables);
   return r;
 }

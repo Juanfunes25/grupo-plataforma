@@ -17,8 +17,9 @@ const Finanzas = lazy(() => import('./pantallas/Finanzas.jsx'));
 const Terceros = lazy(() => import('./pantallas/Terceros.jsx'));
 const Admin = lazy(() => import('./pantallas/Admin.jsx'));
 const Grupo = lazy(() => import('./pantallas/Grupo.jsx'));
+const Gerente = lazy(() => import('./pantallas/GerenteEmpresa.jsx'));
 
-const PANTALLAS = { pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, terceros: Terceros, admin: Admin, grupo: Grupo };
+const PANTALLAS = { pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, terceros: Terceros, admin: Admin, grupo: Grupo, gerente: Gerente };
 
 function Protegida({ children }) {
   const s = useSesion();

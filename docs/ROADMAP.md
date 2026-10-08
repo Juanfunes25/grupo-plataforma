@@ -9,7 +9,7 @@ Cada fase deja algo **utilizable**; ninguna obliga a apagar un sistema que hoy f
 - Inventario con recetas/FEFO/mermas/conteos/traslados/compras; cocina (KDS).
 - RRHH único (persona + contrato por empresa), finanzas (gastos, utilidad, intercompañía), terceros comunes.
 - Dirección: consolidado de todas las empresas con alertas.
-- 65 pruebas automáticas y recorrido verificado en navegador real.
+- 81 pruebas automáticas y recorrido verificado en navegador real.
 
 ## Fase 2 · Poner Origen y Dirección en producción (≈ 1 semana de trabajo + tus datos)
 - Desplegar en Railway + Supabase (guía lista), cargar datos reales de Origen.

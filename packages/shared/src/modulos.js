@@ -9,13 +9,14 @@ export const MODULOS = {
   rrhh:       { nombre: 'Personal',        descripcion: 'Empleados, asistencia y vacaciones',     permiso: 'rrhh:ver',      ruta: 'personal',   icono: 'usuarios' },
   finanzas:   { nombre: 'Finanzas',        descripcion: 'Gastos y utilidad',                      permiso: 'fin:ver',       ruta: 'finanzas',   icono: 'dinero' },
   clientes:   { nombre: 'Clientes y proveedores', descripcion: 'Directorio común del grupo',      permiso: 'clientes:ver',  ruta: 'terceros',   icono: 'clientes' },
+  gerente:    { nombre: 'Gerente digital', descripcion: 'Análisis de tus números con recomendaciones', permiso: 'gerente:ver', ruta: 'gerente', icono: 'gerente' },
   grupo:      { nombre: 'Dirección',       descripcion: 'Consolidado de todas las empresas',      permiso: 'grupo:ver',     ruta: 'grupo',      icono: 'dashboard' },
   admin:      { nombre: 'Administración',  descripcion: 'Usuarios, sucursales, fiscal y auditoría', permiso: 'admin:usuarios', ruta: 'admin',    icono: 'sucursales' },
 };
 
 // Qué módulos "de base" se derivan de un módulo encendido en core.empresa_modulos.
 export const MODULOS_DERIVADOS = {
-  pos: ['pos', 'ventas', 'catalogo', 'clientes'],
+  pos: ['pos', 'ventas', 'catalogo', 'clientes', 'gerente'],
   kds: ['kds'],
   inventario: ['inventario'],
   rrhh: ['rrhh'],

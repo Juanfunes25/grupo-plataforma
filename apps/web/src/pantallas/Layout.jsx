@@ -42,7 +42,8 @@ export default function Layout({ children, esGrupo = false }) {
   useEffect(() => { if (color) document.documentElement.style.setProperty('--acento', color); }, [color]);
   useEffect(() => { document.title = esGrupo ? 'Dirección · Grupo' : ctx ? `${ctx.empresa.nombre} · Grupo` : 'Grupo · Plataforma'; }, [esGrupo, ctx]);
 
-  if (!ctx) return <div className="vacio">Cargando…</div>;
+  // No se muestra (ni se piden datos) hasta que la empresa activa coincide con la de la dirección: evita ver datos de otra empresa.
+  if (!ctx || (!esGrupo && param && ctx.empresa.codigo !== param)) return <div className="vacio">Cargando…</div>;
   const base = esGrupo ? '/grupo' : `/${ctx.empresa.codigo}`;
   const otras = s.empresas.filter((e) => e.codigo !== ctx.empresa.codigo);
 
@@ -64,12 +65,12 @@ export default function Layout({ children, esGrupo = false }) {
         {!esGrupo && s.sucursales.length === 1 && <span className="chip">{s.sucursales[0].nombre}</span>}
         {s.via !== 'pin' && (otras.length > 0 || s.usuario?.es_dueno_grupo) && <button className="btn chico fantasma" onClick={() => nav('/')} title="Cambiar de empresa"><Icono n="sucursales" tam={16} /> Empresas</button>}
         <div className="usuario-chip">
-          <span>{s.usuario?.nombre?.split(' ')[0]} · <small>{ctx.rol}</small></span>
+          <span>{s.usuario?.nombre?.split(' ')[0]} · <small>{s.usuario?.es_dueno_grupo ? 'administrador general' : ctx.rol}</small></span>
           {s.via !== 'pin' && <button className="btn chico fantasma" onClick={() => setCambiando(true)} aria-label="Cambiar contraseña" title="Cambiar contraseña"><Icono n="candado" tam={16} /></button>}
           <button className="btn chico fantasma" onClick={() => { s.salir(); nav('/'); }} aria-label="Cerrar sesión"><Icono n="salir" tam={16} /></button>
         </div>
       </header>
-      {children}
+      <div key={esGrupo ? 'grupo' : ctx.empresa.codigo}>{children}</div>
       {cambiando && <CambiarClave onCerrar={() => setCambiando(false)} onListo={() => { setCambiando(false); s.salir(); nav('/'); }} />}
     </>
   );
