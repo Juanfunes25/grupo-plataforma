@@ -29,7 +29,25 @@
 .pos-acciones-fila { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .pos-acciones-fila .btn { padding: 8px 6px; font-size: .84rem; }
 .pos-aviso-lleva { display: flex; gap: 6px; }
-@media (max-width: 960px) { .pos-der { max-height: none; position: static; } .pos-der .pos-lineas { max-height: 38vh; } }
+/* Pantallas angostas (celular/tablet vertical): el catálogo ocupa todo y la orden se abre en una hoja completa con una barra fija abajo. */
+.pos-barra-orden, .pos-volver { display: none; }
+.pos-buscar { max-width: none; width: 100%; margin-left: 0; }
+.pos-cats { flex-wrap: wrap; overflow: visible; }
+@media (min-width: 961px) { .pos-buscar { max-width: 360px; } }
+@media (max-width: 960px) {
+  .pos { height: auto; padding-bottom: 76px; }
+  .pos-cats { flex-wrap: nowrap; overflow-x: auto; margin: 0 -14px; padding: 0 14px 4px; }
+  .pos-barra-orden { display: flex; align-items: center; gap: 12px; position: fixed; left: 10px; right: 10px; bottom: 10px; z-index: 30; min-height: 58px; padding: 8px 16px; border: 0; border-radius: 16px; background: var(--acento); color: var(--acento-texto); box-shadow: var(--sombra); font-weight: 700; font-size: 1rem; }
+  .pos-barra-orden .bo-cant { min-width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.28); display: grid; place-items: center; font-size: .9rem; }
+  .pos-barra-orden .bo-txt { flex: 1; text-align: left; }
+  .pos-barra-orden .bo-total { font-size: 1.35rem; }
+  .pos-der { display: none; }
+  .pos-der.abierta { display: flex; position: fixed; inset: 0; z-index: 45; max-height: none; border: 0; padding: 12px; overflow-y: auto; }
+  .pos-der.abierta .pos-volver { display: inline-flex; align-self: flex-start; }
+  .pos-linea .pl-cant { display: flex; align-items: center; gap: 6px; }
+  .pos-linea .pl-cant > :first-child { order: 3; } .pos-linea .pl-cant > :nth-child(2) { order: 2; } .pos-linea .pl-cant > :last-child { order: 1; }
+  .pos-der .pos-lineas { flex: none; min-height: 0; height: auto; max-height: none; overflow: visible; }
+}
 
 /* Facturas */
 .fac-punto { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: middle; }
@@ -43,3 +61,5 @@ tr.fac-anulada td { opacity: .5; text-decoration: line-through; }
 .seg { display: flex; gap: 6px; flex-wrap: wrap; }
 .seg button { border: 1px solid var(--borde); background: var(--panel-2); border-radius: 10px; padding: 10px 16px; min-height: 46px; font-weight: 600; }
 .seg button.activo { background: var(--acento); border-color: transparent; color: #fff; }
+
+@media (min-width: 961px) { .pos { height: 100vh; } }
