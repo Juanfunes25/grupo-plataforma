@@ -59,7 +59,7 @@ function Hallazgos({ d }) {
   return <ul className="rep-hallazgos">{lista.map((t) => <li key={t}>{t}</li>)}</ul>;
 }
 
-function BloqueFiscal({ titulo, r, aviso }) {
+function BloqueFiscal({ titulo, r, aviso, conNc = false }) {
   return (
     <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
       <h3>{titulo}</h3>
@@ -70,7 +70,7 @@ function BloqueFiscal({ titulo, r, aviso }) {
         <tr><td>Ventas gravadas 15 % (base)</td><td className="der num">{L(r.gravado_15)}</td></tr>
         {r.gravado_18 > 0 && <tr><td>Ventas gravadas 18 % (base)</td><td className="der num">{L(r.gravado_18)}</td></tr>}
         <tr><td>ISV facturado</td><td className="der num">{L(r.isv)}</td></tr>
-        <tr><td>(−) ISV de notas de crédito parciales ({L(r.notas_credito)})</td><td className="der num">{L(-r.isv_notas_credito)}</td></tr>
+        {conNc && <tr><td>(−) ISV de notas de crédito parciales ({L(r.notas_credito)})</td><td className="der num">{L(-r.isv_notas_credito)}</td></tr>}
         <tr className="fila-total"><td>ISV neto</td><td className="der num">{L(r.isv_neto)}</td></tr>
         <tr><td>Facturas válidas / anuladas</td><td className="der num">{r.facturas} / {r.anuladas}</td></tr>
       </tbody></table></div>
@@ -95,7 +95,8 @@ function BloqueFiscal({ titulo, r, aviso }) {
 }
 
 export default function Reportes() {
-  const { sucursales, sucursalId } = useSesion();
+  const { sucursales, sucursalId, contexto } = useSesion();
+  const usaNc = Boolean(contexto?.usar_notas_credito);   // el negocio hoy no usa notas de crédito: no se muestran
   const [filtros, setFiltros] = useState(() => { const f = leerFiltros(); return sucursales.some((s) => s.id === f.sucursal_id) || !f.sucursal_id ? f : { ...f, sucursal_id: '' }; });
   const [datos, setDatos] = useState(null);
   const [tab, setTab] = useState('resumen');
@@ -158,7 +159,7 @@ export default function Reportes() {
       <div className="solo-impresion"><b>Reporte de ventas</b> · {nombreSucursal} · {filtros.desde} a {filtros.hasta}</div>
 
       {datos && (<>
-        <div className="no-imprimir"><Tabs tabs={PESTANAS.map(([id, n]) => [id, id === 'anulaciones' && k.anuladas + datos.notas_credito.length > 0 ? `${n} (${k.anuladas + datos.notas_credito.filter((x) => x.tipo === 'Parcial').length})` : n])} valor={tab} onCambio={setTab} /></div>
+        <div className="no-imprimir"><Tabs tabs={PESTANAS.map(([id, n]) => [id, id === 'anulaciones' && k.anuladas + (usaNc ? datos.notas_credito.length : 0) > 0 ? `${n} (${k.anuladas + (usaNc ? datos.notas_credito.filter((x) => x.tipo === 'Parcial').length : 0)})` : n])} valor={tab} onCambio={setTab} /></div>
 
         {tab === 'resumen' && (<>
           <div className="rep-kpis">
@@ -168,7 +169,7 @@ export default function Reportes() {
             <Kpi titulo="Unidades vendidas" valor={k.unidades} anterior={ka.unidades} dinero={false} />
             <Kpi titulo="Ventas brutas" valor={k.ventas_brutas} anterior={ka.ventas_brutas} detalle="antes de descuentos" />
             <Kpi titulo="Descuentos" valor={k.descuentos} anterior={ka.descuentos} invertir />
-            <Kpi titulo="Notas de crédito" valor={k.notas_credito} anterior={ka.notas_credito} invertir detalle="parciales" />
+            {usaNc && <Kpi titulo="Notas de crédito" valor={k.notas_credito} anterior={ka.notas_credito} invertir detalle="parciales" />}
             <Kpi titulo="ISV facturado" valor={k.isv} anterior={ka.isv} />
             <Kpi titulo="Gastos caja chica" valor={datos.gastos.total} detalle={`${datos.gastos.movimientos} movimientos`} />
             <Kpi titulo="Ventas netas − gastos" valor={k.ventas_netas - datos.gastos.total} />
@@ -291,12 +292,12 @@ export default function Reportes() {
         {tab === 'fiscal' && (
           <Seccion titulo="ISV — base para la declaración" onCsv={() => exportar(`isv-${sufijo}.csv`, [{ tipo: 'Fiscal (CAI real)', ...datos.isv.fiscal }, { tipo: 'Borrador (sin CAI)', ...datos.isv.borrador }],
             [['Tipo', (x) => x.tipo], ['Exento', (x) => d2(x.exento)], ['Exonerado', (x) => d2(x.exonerado)], ['Gravado 15%', (x) => d2(x.gravado_15)], ['Gravado 18%', (x) => d2(x.gravado_18)], ['ISV facturado', (x) => d2(x.isv)],
-              ['ISV notas de crédito', (x) => d2(x.isv_notas_credito)], ['ISV neto', (x) => d2(x.isv_neto)], ['Facturas', (x) => x.facturas], ['Anuladas', (x) => x.anuladas]])}>
+              ...(usaNc ? [['ISV notas de crédito', (x) => d2(x.isv_notas_credito)]] : []), ['ISV neto', (x) => d2(x.isv_neto)], ['Facturas', (x) => x.facturas], ['Anuladas', (x) => x.anuladas]])}>
             <div className="rep-dos">
-              <BloqueFiscal titulo="Facturas fiscales (CAI real)" r={datos.isv.fiscal} />
-              <BloqueFiscal titulo="Comprobantes en modo borrador" r={datos.isv.borrador} aviso="Emitidos sin CAI real: no son facturas fiscales. Coméntalos con el contador antes de declarar." />
+              <BloqueFiscal titulo="Facturas fiscales (CAI real)" r={datos.isv.fiscal} conNc={usaNc} />
+              <BloqueFiscal titulo="Comprobantes en modo borrador" r={datos.isv.borrador} conNc={usaNc} aviso="Emitidos sin CAI real: no son facturas fiscales. Coméntalos con el contador antes de declarar." />
             </div>
-            <small>Base de trabajo para el contador: no incluye compras (crédito fiscal). Las notas de crédito se cuentan en el periodo en que se emitieron.</small>
+            <small>Base de trabajo para el contador: no incluye compras (crédito fiscal).{usaNc && ' Las notas de crédito se cuentan en el periodo en que se emitieron.'}</small>
           </Seccion>
         )}
 
@@ -326,12 +327,12 @@ export default function Reportes() {
               { clave: 'sucursal', titulo: 'Sucursal' }, { clave: 'cliente', titulo: 'Cliente' }, { clave: 'cajero', titulo: 'Cajero' }, { clave: 'motivo', titulo: 'Motivo' },
               { clave: 'total', titulo: 'Total', numerica: true, render: (x) => L(x.total) }]} />
           </Seccion>
-          <Seccion titulo={`Notas de crédito emitidas (${datos.notas_credito.length})`} onCsv={() => exportar(`notas-de-credito-${sufijo}.csv`, datos.notas_credito, [['Nota', (x) => x.numero_nota], ['Factura', (x) => x.numero_factura], ['Fecha', (x) => fechaHora(x.fecha)], ['Tipo', (x) => x.tipo], ['Monto', (x) => d2(x.monto)], ['Motivo', (x) => x.motivo], ['Usuario', (x) => x.usuario]])}>
+          {usaNc && <Seccion titulo={`Notas de crédito emitidas (${datos.notas_credito.length})`} onCsv={() => exportar(`notas-de-credito-${sufijo}.csv`, datos.notas_credito, [['Nota', (x) => x.numero_nota], ['Factura', (x) => x.numero_factura], ['Fecha', (x) => fechaHora(x.fecha)], ['Tipo', (x) => x.tipo], ['Monto', (x) => d2(x.monto)], ['Motivo', (x) => x.motivo], ['Usuario', (x) => x.usuario]])}>
             <TablaOrdenable filas={datos.notas_credito.map((x, i) => ({ ...x, clave: `${x.numero_nota}-${i}` }))} ordenInicial={{ clave: 'fecha', desc: true }} vacio="Ninguna nota de crédito en este rango." columnas={[
               { clave: 'fecha', titulo: 'Fecha', render: (x) => fechaHora(x.fecha) }, { clave: 'numero_nota', titulo: 'Nota', render: (x) => <span className="mono">{x.numero_nota}</span> },
               { clave: 'numero_factura', titulo: 'Factura', render: (x) => <span className="mono">{x.numero_factura}</span> }, { clave: 'tipo', titulo: 'Tipo' }, { clave: 'motivo', titulo: 'Motivo' },
               { clave: 'usuario', titulo: 'Autorizó' }, { clave: 'monto', titulo: 'Monto', numerica: true, render: (x) => L(x.monto) }]} />
-          </Seccion>
+          </Seccion>}
         </>)}
       </>)}
 

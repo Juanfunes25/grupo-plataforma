@@ -76,6 +76,7 @@ test('anular: el mismo día basta pos:anular; días anteriores del mes piden aut
   r = await gerente.post(`/api/pos/ventas/${b.id}/anular`, { motivo: 'Error al cobrar', autorizacion: { email: 'do@origen.hn', password: 'mala' } });
   assert.equal(r.status, 403);
   assert.equal((await gerente.get(`/api/pos/ventas/${b.id}`)).body.estado, 'pagada');
+  assert.ok((await t.db.query(`select 1 from core.auditoria where accion = 'anulacion_autorizacion_fallida'`)).rowCount >= 1);
   r = await gerente.post(`/api/pos/ventas/${b.id}/anular`, { motivo: 'Error al cobrar', autorizacion: { email: 'do@origen.hn', password: 'ClaveDueno123' } });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   const bit = (await t.db.query(`select detalle from core.auditoria where accion = 'venta_anulada' and entidad_id = $1`, [b.id])).rows[0].detalle;

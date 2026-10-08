@@ -74,8 +74,7 @@ export function rutasVentas({ db, config, ctxMgr }) {
     if (ok && !u.es_dueno_grupo) rolAut = (await q.query('select rol from core.accesos where usuario_id = $1 and empresa_id = $2 and activo', [u.id, req.ctx.empresa.id])).rows[0]?.rol;
     if (!ok || !esDueno(u, rolAut)) {
       limAutorizacion.fallo(clave);
-      await auditar(db, req.ctx, 'anulacion_autorizacion_fallida', 'venta', v.id, { email }, { sucursalId: v.sucursal_id });
-      throw new ErrorHttp(403, 'No se pudo autorizar: el correo o la contraseña no son de un dueño de esta empresa.', 'autorizacion_invalida');
+      throw Object.assign(new ErrorHttp(403, 'No se pudo autorizar: el correo o la contraseña no son de un dueño de esta empresa.', 'autorizacion_invalida'), { intento: { email, sucursalId: v.sucursal_id } });
     }
     limAutorizacion.exito(clave);
     return { id: u.id, nombre: u.nombre, via: 'contraseña' };
@@ -250,7 +249,8 @@ export function rutasVentas({ db, config, ctxMgr }) {
       motivo: z.string().trim().min(3, 'Escribe el motivo de la anulación').max(300),
       autorizacion: z.object({ email: z.string().max(200), password: z.string().max(200) }).optional().nullable(),
     }), req.body);
-    const out = await db.tx(async (q) => {
+    let out;
+    try { out = await db.tx(async (q) => {
       const v = await cargar(q, req.ctx, id, { bloquear: true });
       let autorizo = null;
       if (v.estado === 'pagada') autorizo = await autorizarAnulacion(q, req, v, autorizacion);
@@ -262,7 +262,11 @@ export function rutasVentas({ db, config, ctxMgr }) {
       }
       await auditar(q, req.ctx, 'venta_anulada', 'venta', id, { motivo, factura: v.numero_factura, total: v.total, estado_previo: v.estado, ...(autorizo ? { autorizado_por: autorizo.nombre, autorizado_por_id: autorizo.id, autorizacion: autorizo.via } : {}) }, { sucursalId: v.sucursal_id });
       return detalle(q, req.ctx, await cargar(q, req.ctx, id));
-    });
+    }); } catch (e) {
+      // El intento fallido se anota FUERA de la transacción (que se revierte): quién intentó anular y con el correo de quién.
+      if (e.intento) await auditar(db, req.ctx, 'anulacion_autorizacion_fallida', 'venta', id, { email: e.intento.email }, { sucursalId: e.intento.sucursalId });
+      throw e;
+    }
     if (out.numero_factura) await vigilarVenta(db, req.ctx, 'anulada', id, { motivo });   // antifraude: factura anulada
     res.json(out);
   });

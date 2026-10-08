@@ -119,7 +119,7 @@ export default function Facturas() {
             <td>{f.es_consumidor_final ? 'Consumidor Final' : f.cliente}</td>
             <td className="num">{f.cliente_rtn ?? '—'}</td>
             <td className="der num">{lempiras(f.isv_total)}</td>
-            <td className="der num"><b>{lempiras(f.total)}</b>{f.estado !== 'anulada' && Number(f.acreditado) > 0 && <div><span className="chip aviso">Acreditado {lempiras(f.acreditado)}</span></div>}</td>
+            <td className="der num"><b>{lempiras(f.total)}</b>{contexto?.usar_notas_credito && f.estado !== 'anulada' && Number(f.acreditado) > 0 && <div><span className="chip aviso">Acreditado {lempiras(f.acreditado)}</span></div>}</td>
             <td>{f.estado === 'anulada' ? <span className="chip mal" style={{ textDecoration: 'none' }}>Anulada</span> : <ChipsPago pagos={f.pagos} />}</td>
             <td>{f.cajero ?? '—'}</td>
           </tr>))}</tbody>
@@ -134,7 +134,9 @@ function DetalleFactura({ id, sucursales, puede, avisar, onCerrar, onCambio }) {
   const [v, setV] = useState(null);
   const [error, setError] = useState('');
   const [motivo, setMotivo] = useState(null);          // 'reimprimir' | 'anular'
-  const { modulos } = useSesion();
+  const { modulos, contexto, usuario } = useSesion();
+  const usaNc = Boolean(contexto?.usar_notas_credito);   // el negocio hoy no usa notas de crédito (core.config pos.usar_notas_credito)
+  const [aut, setAut] = useState({ email: '', password: '' });
   const fabrica = modulos.some((m) => m.id === 'prod_inventario');   // EcoStone: una factura emitida solo se reimprime o se anula completa (sin notas de crédito parciales)
   const [nc, setNc] = useState(null);                  // {motivo, monto}
   const [ejecutar, ocupado] = useAccion();
@@ -150,7 +152,12 @@ function DetalleFactura({ id, sucursales, puede, avisar, onCerrar, onCambio }) {
   const vigente = v.estado === 'pagada';
   const reimprimir = (razon) => ejecutar(async () => { await imprimirTicket(v.id, { reimpresion: true, razon }); setMotivo(null); await cargar(); }, 'Ticket enviado a la impresora');
   const imprimirOriginal = () => ejecutar(async () => { const copia = await imprimirTicket(v.id); await cargar(); return copia; });
-  const anular = (razon) => ejecutar(async () => { await post(`/pos/ventas/${v.id}/anular`, { motivo: razon }); setMotivo(null); await cargar(); onCambio(); }, 'Factura anulada');
+  // Anular: el mismo día basta tu permiso; días anteriores del mes piden la autorización de un dueño; meses anteriores ya no se puede.
+  const fechaFactura = fechaHN(new Date(v.fecha_emision ?? v.created_at));
+  const esDueno = contexto?.rol === 'dueno' || usuario?.es_dueno_grupo;
+  const mesCerrado = fechaFactura.slice(0, 7) !== fechaHN().slice(0, 7);
+  const pideDueno = vigente && !mesCerrado && fechaFactura !== fechaHN() && !esDueno;
+  const anular = (razon) => ejecutar(async () => { await post(`/pos/ventas/${v.id}/anular`, { motivo: razon, ...(pideDueno ? { autorizacion: aut } : {}) }); setMotivo(null); setAut({ email: '', password: '' }); await cargar(); onCambio(); }, 'Factura anulada');
   const emitirNc = async () => {
     const r = await ejecutar(() => post(`/pos/ventas/${v.id}/nota-credito`, { motivo: nc.motivo, monto: Number(nc.monto) }), 'Nota de crédito emitida');
     if (r) { setNc(null); await cargar(); onCambio(); }
@@ -199,18 +206,21 @@ function DetalleFactura({ id, sucursales, puede, avisar, onCerrar, onCambio }) {
           <button className="btn" onClick={() => descargarPdf(v.id, `factura-${v.numero_factura}.pdf`).catch((e) => avisar(e.message, 'mal'))}>Descargar PDF</button>
         </div>
 
-        {v.notas_credito.length > 0 && (
+        {usaNc && v.notas_credito.length > 0 && (
           <div style={{ borderTop: '1px solid var(--borde)', paddingTop: 10, display: 'grid', gap: 4 }}>
             <b className="tenue" style={{ fontSize: '.85rem' }}>Notas de crédito emitidas</b>
             {v.notas_credito.map((n) => <div key={n.id} className="fila espacio"><span><span className="num">{n.numero_nota}</span> · {n.motivo} <small className="tenue">{fechaHoraHN(n.created_at)}</small></span><b className="num">{lempiras(n.monto)}</b></div>)}
           </div>
         )}
 
-        {vigente && puede('pos:anular') && (
+        {vigente && puede('pos:anular') && mesCerrado && (
+          <div className="aviso-caja" style={{ borderTop: '1px solid var(--borde)' }}>Esta factura es de un mes anterior y ya no se puede anular desde el sistema. Comunícate con contabilidad.</div>
+        )}
+        {vigente && puede('pos:anular') && !mesCerrado && (
           <div style={{ borderTop: '1px solid var(--borde)', paddingTop: 10, display: 'grid', gap: 10 }}>
             {!nc ? (
               <div className="fila">
-                {!fabrica && <button className="btn" disabled={restante <= 0} onClick={() => setNc({ motivo: '', monto: String(restante) })}>Nota de crédito{restante <= 0 ? ' (ya acreditada)' : ''}</button>}
+                {usaNc && !fabrica && <button className="btn" disabled={restante <= 0} onClick={() => setNc({ motivo: '', monto: String(restante) })}>Nota de crédito{restante <= 0 ? ' (ya acreditada)' : ''}</button>}
                 <button className="btn peligro" onClick={() => setMotivo('anular')}>Anular factura</button>
               </div>
             ) : (
@@ -220,12 +230,20 @@ function DetalleFactura({ id, sucursales, puede, avisar, onCerrar, onCambio }) {
                 <div className="fila"><button className="btn peligro" disabled={ocupado || nc.motivo.trim().length < 3 || !(Number(nc.monto) > 0) || Number(nc.monto) > restante + 0.001} onClick={emitirNc}>Emitir nota de crédito</button><button className="btn fantasma" onClick={() => setNc(null)}>Cancelar</button></div>
               </div>
             )}
-            <small className="tenue">{fabrica ? 'Una factura emitida no se modifica: solo se puede reimprimir o anular. Al anular conserva su número y la piedra regresa al inventario.' : 'Anular deja la factura marcada como anulada (con motivo y usuario), no reutiliza el correlativo y devuelve el inventario. La nota de crédito acredita dinero sin anular.'}</small>
+            <small className="tenue">{fabrica ? 'Una factura emitida no se modifica: solo se puede reimprimir o anular. Al anular conserva su número y la piedra regresa al inventario.' : 'Anular deja la factura marcada como anulada (con motivo y usuario), no reutiliza el correlativo y devuelve el inventario.'}{pideDueno && ' Como es de un día anterior, un dueño debe autorizarla.'}</small>
           </div>
         )}
       </Modal>
       {motivo === 'reimprimir' && <MotivoModal titulo="Reimprimir ticket" texto="Saldrá marcado como COPIA. Indica el motivo (queda en la bitácora)." opciones={MOTIVOS_REIMPRESION} etiquetaBoton="Reimprimir" ocupado={ocupado} onCerrar={() => setMotivo(null)} onListo={reimprimir} />}
-      {motivo === 'anular' && <MotivoModal titulo="Anular factura" texto={`Se anulará ${v.numero_factura} por ${lempiras(v.total)}. Esto no se puede deshacer.`} opciones={MOTIVOS_ANULACION} etiquetaBoton="Anular factura" peligro ocupado={ocupado} onCerrar={() => setMotivo(null)} onListo={anular} />}
+      {motivo === 'anular' && <MotivoModal titulo="Anular factura" texto={`Se anulará ${v.numero_factura} por ${lempiras(v.total)}. Esto no se puede deshacer.`} opciones={MOTIVOS_ANULACION} etiquetaBoton="Anular factura" peligro ocupado={ocupado} onCerrar={() => setMotivo(null)} onListo={anular}
+        bloqueado={pideDueno && !(aut.email.trim() && aut.password)}
+        extra={pideDueno ? (
+          <div style={{ display: 'grid', gap: 8, borderTop: '1px solid var(--borde)', paddingTop: 10 }}>
+            <small className="tenue">Factura de un día anterior: necesita la autorización de un dueño. Queda en la bitácora quién autorizó.</small>
+            <Campo etiqueta="Correo del dueño"><input type="email" autoComplete="off" value={aut.email} onChange={(e) => setAut({ ...aut, email: e.target.value })} /></Campo>
+            <Campo etiqueta="Contraseña del dueño"><input type="password" autoComplete="off" value={aut.password} onChange={(e) => setAut({ ...aut, password: e.target.value })} /></Campo>
+          </div>
+        ) : null} />}
     </>
   );
 }

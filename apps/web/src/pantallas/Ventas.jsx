@@ -77,7 +77,9 @@ export default function Ventas({ inicial = 'resumen', solo = false }) {
 }
 
 function DetalleVenta({ id, onCerrar }) {
-  const { puede } = useSesion();
+  const { puede, contexto, usuario } = useSesion();
+  const usaNc = Boolean(contexto?.usar_notas_credito);   // el negocio hoy no usa notas de crédito
+  const [aut, setAut] = useState({ email: '', password: '' });
   const avisar = useAviso();
   const d = useDatos(() => get(`/pos/ventas/${id}`), [id]);
   const [motivo, setMotivo] = useState('');
@@ -90,7 +92,7 @@ function DetalleVenta({ id, onCerrar }) {
   };
   const [nc, setNc] = useState({ motivo: '', monto: '' });
   const emitirNc = async () => { if (await ejecutar(() => post(`/pos/ventas/${id}/nota-credito`, { motivo: nc.motivo, ...(nc.monto ? { monto: parseFloat(nc.monto) } : {}) }), 'Nota de crédito emitida')) { setNc({ motivo: '', monto: '' }); d.recargar(); } };
-  const anular = async () => { if (await ejecutar(() => post(`/pos/ventas/${id}/anular`, { motivo }), 'Venta anulada')) { avisar('Inventario revertido'); onCerrar(); } };
+  const anular = async () => { if (await ejecutar(() => post(`/pos/ventas/${id}/anular`, { motivo, ...(aut.email ? { autorizacion: aut } : {}) }), 'Venta anulada')) { avisar('Inventario revertido'); onCerrar(); } };
   return (
     <Modal titulo={v ? (v.numero_factura ?? `Orden #${v.ticket_dia}`) : 'Venta'} onCerrar={onCerrar} tam="ancho">
       <Estado d={d}>{(x) => (
@@ -103,8 +105,8 @@ function DetalleVenta({ id, onCerrar }) {
             {x.pagos.map((p, i) => <tr key={i}><td className="der tenue">{p.forma}{p.referencia ? ` (${p.referencia})` : ''}</td><td className="der num tenue">{lempiras(p.monto)}</td></tr>)}
           </tbody></table></div>
           {x.tercera_edad_nombre && <div className="aviso-caja">Descuento de tercera edad: {x.tercera_edad_nombre} · {x.tercera_edad_identidad}</div>}
-          {x.notas_credito?.length > 0 && <div className="tarjeta pad0"><table><tbody>{x.notas_credito.map((n) => <tr key={n.id}><td>{n.numero_nota}</td><td>{n.motivo}</td><td className="der num">−{lempiras(n.monto)}</td></tr>)}</tbody></table></div>}
-          {x.estado === 'pagada' && puede('pos:anular') && (
+          {usaNc && x.notas_credito?.length > 0 && <div className="tarjeta pad0"><table><tbody>{x.notas_credito.map((n) => <tr key={n.id}><td>{n.numero_nota}</td><td>{n.motivo}</td><td className="der num">−{lempiras(n.monto)}</td></tr>)}</tbody></table></div>}
+          {usaNc && x.estado === 'pagada' && puede('pos:anular') && (
             <div className="fila"><input placeholder="Nota de crédito: motivo" value={nc.motivo} onChange={(e) => setNc({ ...nc, motivo: e.target.value })} style={{ flex: 1, minWidth: 180 }} />
               <input placeholder="Monto (vacío = todo lo pendiente)" inputMode="decimal" value={nc.monto} onChange={(e) => setNc({ ...nc, monto: e.target.value.replace(/[^\d.]/g, '') })} style={{ maxWidth: 210 }} />
               <button className="btn" disabled={nc.motivo.trim().length < 3 || ocupado} onClick={emitirNc}>Emitir nota de crédito</button></div>
@@ -113,6 +115,12 @@ function DetalleVenta({ id, onCerrar }) {
           <div className="fila">
             {x.estado !== 'abierta' && puede('pos:reimprimir') && <button className="btn" onClick={imprimir} disabled={ocupado}>Reimprimir (copia)</button>}
           </div>
+          {x.estado === 'pagada' && fechaHN(new Date(x.fecha_emision)).slice(0, 7) !== fechaHN().slice(0, 7) && <div className="aviso-caja">Esta factura es de un mes anterior y ya no se puede anular desde el sistema. Comunícate con contabilidad.</div>}
+          {x.estado === 'pagada' && fechaHN(new Date(x.fecha_emision)) !== fechaHN() && fechaHN(new Date(x.fecha_emision)).slice(0, 7) === fechaHN().slice(0, 7) && !(contexto?.rol === 'dueno' || usuario?.es_dueno_grupo) && puede('pos:anular') && (
+            <div className="fila"><small className="tenue">Factura de un día anterior: la anula un dueño.</small>
+              <input placeholder="Correo del dueño" type="email" value={aut.email} onChange={(e) => setAut({ ...aut, email: e.target.value })} style={{ maxWidth: 220 }} />
+              <input placeholder="Contraseña del dueño" type="password" value={aut.password} onChange={(e) => setAut({ ...aut, password: e.target.value })} style={{ maxWidth: 200 }} /></div>
+          )}
           {x.estado !== 'anulada' && puede('pos:anular') && (
             <div className="fila"><input placeholder="Motivo de la anulación (obligatorio)" value={motivo} onChange={(e) => setMotivo(e.target.value)} style={{ flex: 1 }} />
               <button className="btn peligro" disabled={motivo.trim().length < 3 || ocupado} onClick={anular}>Anular</button></div>
