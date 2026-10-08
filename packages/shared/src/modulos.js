@@ -19,7 +19,7 @@ export const MODULOS = {
   rep_costeo:     { nav: 'Reposición', nombre: 'Recetas y costeo',       descripcion: 'Recetas de gelato, insumos y costo por receta',              permiso: 'rep:costeo',    ruta: 'gelato-costeo',     icono: 'catalogo' },
   rep_inventario: { nav: 'Reposición', nombre: 'Inventario y RFID',      descripcion: 'Insumos por sucursal, lotes, vencimientos y lector RFID',    permiso: 'rep:inventario', ruta: 'gelato-inventario', icono: 'inventario' },
   rep_incidencias:{ nav: 'Reposición', nombre: 'Incidencias',            descripcion: 'Reportes con foto de las sucursales',                        permiso: 'rep:pesar',     ruta: 'incidencias',       icono: 'alerta' },
-  rep_mantenimiento:{ nav: 'Reposición', nombre: 'Mantenimiento',        descripcion: 'Equipos, mantenimientos y checklist',                        permiso: 'rep:ver',       ruta: 'mantenimiento',     icono: 'escudo' },
+  rep_mantenimiento:{ nav: 'Reposición', nombre: 'Mantenimiento',        descripcion: 'Equipos, mantenimientos y checklist',                        permiso: 'rep:pesar',       ruta: 'mantenimiento',     icono: 'escudo' },
   // Fabricación (EcoStone) — empresa con módulo 'fabrica'
   piedra:         { nav: 'Fabricación', nombre: 'Catálogo de piedra',   descripcion: 'Modelo + color, unidad de venta y listas de precio', permiso: 'pos:catalogo',  ruta: 'piedra',            icono: 'catalogo' },
   prod_registrar: { nav: 'Fabricación', nombre: 'Registrar producción', descripcion: 'Registro de producción desde el celular',          permiso: 'fab:registrar', ruta: 'registrar-produccion', icono: 'cocina' },
