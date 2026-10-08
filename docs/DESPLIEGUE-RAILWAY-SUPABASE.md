@@ -32,8 +32,8 @@ Opcional, para ver Origen con datos de ejemplo (jugos, recetas, existencias):
 
 ## 3. Railway (donde corre la aplicación)
 
-1. *New Project → Deploy from GitHub repo* → elige el repositorio. En *Settings → Root Directory*
-   pon `plataforma`. Railway lee `railway.json` (build, start y chequeo de salud `/api/health`).
+1. *New Project → Deploy from GitHub repo* → elige el repositorio. Si el repo
+   contiene la app en la raíz (como `grupo-plataforma`) no toques *Root Directory*; si vive dentro de otro repo, pon `plataforma`. Railway lee `railway.json` (build, start y chequeo de salud `/api/health`).
 2. *Variables* (todas obligatorias salvo donde se indica):
 
    | Variable | Valor |
@@ -79,3 +79,10 @@ conectada redespliega.
 - [ ] CAI real cargado y probado con una factura de prueba por sucursal.
 - [ ] Un cierre de turno de prueba cuadrado en cada sucursal.
 - [ ] Respaldo restaurado al menos una vez en un proyecto de prueba.
+
+## Nota: despliegue actual (Render)
+
+Hoy corre en Render (`grupo-plataforma`, plan gratis) apuntando a la rama de trabajo, con Supabase como base. En producción
+con Node, `NODE_ENV=production` omite las dependencias de desarrollo: hay que definir `NPM_CONFIG_INCLUDE=dev` (o instalar
+con `npm ci --include=dev`) para que `vite` compile la web. La base la usa un rol propio `grupo_app` (dueño de las tablas),
+porque el rol `postgres` de Supabase no permite cambiar su contraseña desde herramientas externas.
