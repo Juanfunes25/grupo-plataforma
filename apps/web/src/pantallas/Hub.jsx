@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useSesion } from '../sesion.jsx';
 import Icono from '../ui/Icono.jsx';
 
@@ -6,6 +6,9 @@ export default function Hub() {
   const { contexto, modulos, usuario } = useSesion();
   if (!contexto) return null;
   const base = `/${contexto.empresa.codigo}`;
+  // Como en Italo: se entra directo a Facturación (o al primer módulo disponible).
+  const inicio = modulos.find((m) => m.id === 'pos') ?? modulos.find((m) => m.nav === 'Operación') ?? modulos.find((m) => m.nav === 'Negocio');
+  if (inicio) return <Navigate to={`${base}/${inicio.ruta}`} replace />;
   return (
     <div className="pagina">
       <div className="encabezado-pagina">

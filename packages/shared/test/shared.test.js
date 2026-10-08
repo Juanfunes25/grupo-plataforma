@@ -69,11 +69,19 @@ test('módulos visibles dependen de empresa y permisos', () => {
   assert.ok(!v.includes('inventario'));
   assert.ok(!v.includes('grupo'));
   const d = modulosVisibles(['pos', 'inventario', 'grupo', 'kds'], permisosDe('dueno')).map((m) => m.id);
-  for (const id of ['pos', 'ventas', 'catalogo', 'inventario', 'kds', 'admin']) assert.ok(d.includes(id), id);
+  for (const id of ['pos', 'facturas', 'cierres', 'reportes', 'catalogo', 'inventario', 'kds', 'admin']) assert.ok(d.includes(id), id);
   assert.ok(!d.includes('grupo'), 'Dirección no aparece dentro de una empresa');
 });
 
 test('fecha Honduras (UTC-6) y sumarDias', () => {
   assert.equal(fechaHN(new Date('2026-03-02T03:00:00Z')), '2026-03-01');
   assert.equal(sumarDias('2026-02-28', 1), '2026-03-01');
+});
+
+test('antifraude y cotizaciones solo existen donde la empresa los enciende', () => {
+  const sin = modulosVisibles(['pos'], permisosDe('dueno')).map((m) => m.id);
+  assert.ok(!sin.includes('antifraude') && !sin.includes('cotizaciones'));
+  const con = modulosVisibles(['pos', 'antifraude', 'cotizaciones'], permisosDe('dueno')).map((m) => m.id);
+  assert.ok(con.includes('antifraude') && con.includes('cotizaciones'));
+  assert.ok(!modulosVisibles(['pos', 'antifraude'], permisosDe('cajero')).some((m) => m.id === 'antifraude'));
 });

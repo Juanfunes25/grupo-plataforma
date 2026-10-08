@@ -4,7 +4,7 @@ import { get, post, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Campo, Estado, Modal, Tabs, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
 
-export default function Admin() {
+export default function Admin({ inicial }) {
   const { puede } = useSesion();
   const tabs = [
     ...(puede('admin:usuarios') ? [['usuarios', 'Usuarios y accesos']] : []),
@@ -12,7 +12,7 @@ export default function Admin() {
     ...(puede('pos:fiscal') ? [['fiscal', 'Facturación (CAI)']] : []),
     ...(puede('auditoria:ver') ? [['auditoria', 'Auditoría']] : []),
   ];
-  const [tab, setTab] = useState(tabs[0]?.[0]);
+  const [tab, setTab] = useState(tabs.some((t) => t[0] === inicial) ? inicial : tabs[0]?.[0]);
   return (
     <div className="pagina">
       <div className="encabezado-pagina"><h1>Administración</h1></div>

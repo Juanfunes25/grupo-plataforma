@@ -189,3 +189,40 @@ td.der, th.der { text-align: right; }
 .columnas { align-items: flex-end; }
 .columnas .col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; height: 100%; min-width: 0; }
 .columnas .col i { display: block; width: 100%; max-width: 46px; background: var(--acento); border-radius: 5px 5px 0 0; }
+
+/* Menú lateral de empresa (mismo esquema que Italo Facturación: Operación · Negocio · Control · Ajustes) */
+.app-shell { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 100%; }
+.sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 6px; padding: 14px 10px; background: var(--panel); border-right: 1px solid var(--borde); overflow-y: auto; }
+.sidebar-marca { display: flex; align-items: center; gap: 10px; padding: 4px 6px 10px; min-width: 0; }
+.sidebar-logo { width: 38px; height: 38px; display: grid; place-items: center; flex: none; overflow: hidden; }
+.sidebar-logo > * { transform: scale(.42); transform-origin: center; flex: none; }
+.sidebar-marca-texto { display: flex; flex-direction: column; min-width: 0; }
+.sidebar-marca-texto b { font-size: 1.15rem; letter-spacing: .1em; line-height: 1.1; }
+.sidebar-marca-texto small { color: var(--tenue); font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-sucursal { display: grid; gap: 3px; padding: 8px 10px; border: 1px solid var(--borde); border-left: 4px solid var(--acento); border-radius: var(--radio-s); background: var(--panel-2); margin-bottom: 4px; }
+.sidebar-sucursal span { color: var(--tenue); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
+.sidebar-sucursal select { min-height: 32px; padding: 4px 8px; }
+.sidebar-nav { display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.sidebar-grupo { display: flex; flex-direction: column; gap: 2px; }
+.sidebar-grupo-titulo { color: var(--tenue); font-size: .66rem; text-transform: uppercase; letter-spacing: .1em; padding: 6px 10px 3px; }
+.sidebar-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radio-s); color: var(--texto); background: none; border: 0; font: inherit; font-size: .9rem; cursor: pointer; text-align: left; width: 100%; }
+.sidebar-item:hover { background: var(--panel-2); }
+.sidebar-item.activo { background: color-mix(in srgb, var(--acento) 22%, transparent); color: var(--texto); box-shadow: inset 3px 0 0 var(--acento); }
+.sidebar-pie { display: grid; gap: 6px; border-top: 1px solid var(--borde); padding-top: 8px; }
+.sidebar-usuario { display: flex; align-items: center; gap: 8px; padding: 4px; }
+.sidebar-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--acento); color: var(--acento-texto); display: grid; place-items: center; font-weight: 700; flex: none; }
+.sidebar-usuario-texto { display: flex; flex-direction: column; min-width: 0; flex: 1; font-size: .82rem; }
+.sidebar-usuario-texto strong, .sidebar-usuario-texto small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-usuario-texto small { color: var(--tenue); }
+.principal { min-width: 0; }
+.barra-movil { display: none; }
+.sidebar-velo { display: none; }
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .barra-movil { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: color-mix(in srgb, var(--fondo) 92%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--borde); }
+  .barra-movil .titulo { flex: 1; font-size: 1.1rem; letter-spacing: .08em; }
+  .sidebar { position: fixed; z-index: 40; left: 0; top: 0; width: 272px; max-width: 86vw; transform: translateX(-102%); transition: transform .2s ease; box-shadow: var(--sombra); }
+  .menu-abierto .sidebar { transform: none; }
+  .menu-abierto .sidebar-velo { display: block; position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .55); }
+}
+@media print { .app-shell { display: block; } .sidebar, .barra-movil { display: none !important; } }

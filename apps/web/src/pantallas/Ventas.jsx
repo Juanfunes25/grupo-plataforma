@@ -9,9 +9,10 @@ const rangos = () => {
   return { hoy: [hoy, hoy], ayer: [sumarDias(hoy, -1), sumarDias(hoy, -1)], '7 días': [sumarDias(hoy, -6), hoy], mes: [`${hoy.slice(0, 8)}01`, hoy], '30 días': [sumarDias(hoy, -29), hoy] };
 };
 
-export default function Ventas() {
+// `inicial` y `solo` permiten usar esta pantalla como Facturas, Cierre de caja, Caja chica… mientras cada una se rehace.
+export default function Ventas({ inicial = 'resumen', solo = false }) {
   const { sucursales, puede } = useSesion();
-  const [tab, setTab] = useState('resumen');
+  const [tab, setTab] = useState(inicial);
   const [rango, setRango] = useState('7 días');
   const [suc, setSuc] = useState('');
   const [desde, hasta] = rangos()[rango];
@@ -38,7 +39,7 @@ export default function Ventas() {
           {puede('pos:reportes') && <button className="btn chico" onClick={libro}>Libro de ventas (CSV)</button>}
         </div>
       </div>
-      <Tabs tabs={[['resumen', 'Resumen'], ['facturas', 'Facturas'], ['turnos', 'Cierres de caja'], ['caja_chica', 'Caja chica'], ['alertas', 'Alertas']]} valor={tab} onCambio={setTab} />
+      {!solo && <Tabs tabs={[['resumen', 'Resumen'], ['facturas', 'Facturas'], ['turnos', 'Cierres de caja'], ['caja_chica', 'Caja chica'], ['alertas', 'Alertas']]} valor={tab} onCambio={setTab} />}
 
       {tab === 'resumen' && <Estado d={resumen}>{(r) => (
         <>

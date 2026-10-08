@@ -36,13 +36,27 @@ test('el catálogo trae productos, opciones, formas de pago y estado fiscal', ()
   assert.equal(smoothie.grupo_ids.length, 3);
 });
 
-test('no se puede cobrar sin turno abierto', async () => {
-  const r = await caja.post('/api/pos/ventas', { items: [{ producto_id: prod('Naranja Pura').id, cantidad: 1 }], cobrar: { pagos: [{ forma_pago_id: fp('efectivo'), monto: 100 }] } });
+test('abrir turno NO es necesario: el primer cobro lo abre solo; se puede volver a exigir por empresa', async () => {
+  const venta = (n) => ({ items: [{ producto_id: prod('Naranja Pura').id, cantidad: n }], cobrar: { pagos: [{ forma_pago_id: fp('efectivo'), monto: 100 * n }] } });
+  const emp = (await t.db.query(`select id from core.empresas where codigo = 'origen'`)).rows[0].id;
+  // Con exigir_turno = true se rechaza y se revierte todo
+  await t.db.query(`insert into core.config (empresa_id, clave, valor) values ($1, 'pos', '{"exigir_turno": true}'::jsonb)`, [emp]);
+  const r = await caja.post('/api/pos/ventas', venta(1));
   assert.equal(r.status, 409);
   assert.match(r.body.error, /turno/i);
-  // la transacción completa se revirtió: no quedó la orden
-  const l = await caja.get('/api/pos/ventas');
-  assert.equal(l.body.length, 0);
+  assert.equal((await caja.get('/api/pos/ventas')).body.length, 0);
+  // Por defecto: vende y el turno se abre solo, con fondo 0
+  await t.db.query(`delete from core.config where empresa_id = $1 and clave = 'pos'`, [emp]);
+  const ok = await caja.post('/api/pos/ventas', venta(1));
+  assert.equal(ok.status, 201, JSON.stringify(ok.body));
+  const turno = (await caja.get('/api/pos/turno/actual')).body;
+  assert.ok(turno.turno, 'quedó un turno abierto');
+  assert.equal(Number(turno.turno.fondo_inicial), 0);
+  // Se deja el estado como lo espera el resto: anular la venta y cerrar el turno
+  const anul = await gerente.post(`/api/pos/ventas/${ok.body.id}/anular`, { motivo: 'prueba de turno automático' });
+  assert.equal(anul.status, 200, JSON.stringify(anul.body));
+  const cierre = await caja.post('/api/pos/turno/cerrar', { efectivo_contado: 0 });
+  assert.equal(cierre.status, 200, JSON.stringify(cierre.body));
 });
 
 test('abrir turno y vender con modificadores, cambio y factura en borrador', async () => {
@@ -59,7 +73,7 @@ test('abrir turno y vender con modificadores, cambio y factura en borrador', asy
   assert.equal(v.subtotal_gravado_15, 286.96);
   assert.equal(v.isv_total, 43.04);
   assert.equal(v.cambio, 70);
-  assert.equal(v.numero_factura, 'BORRADOR-001-001-01-00000001');
+  assert.equal(v.numero_factura, 'BORRADOR-001-001-01-00000002');
   assert.equal(v.es_borrador_fiscal, true);
   assert.equal(v.pagos.length, 1);
   assert.equal(v.pagos[0].monto, 330);              // pago neto, sin el cambio
@@ -245,7 +259,7 @@ test('reporte de ventas y margen', async () => {
   assert.equal(r.status, 200);
   assert.ok(r.body.facturas >= 5);
   assert.ok(r.body.total > 0 && r.body.ticket_promedio > 0);
-  assert.equal(r.body.anuladas.n, 1);
+  assert.equal(r.body.anuladas.n, 2);
   assert.ok(r.body.top_productos.length > 0);
   assert.ok(r.body.margen_pct > 0 && r.body.margen_pct < 100);
   assert.equal(r.body.por_hora.length > 0, true);

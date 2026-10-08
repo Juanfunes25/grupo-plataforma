@@ -163,8 +163,7 @@ export default function Pos() {
   useEffect(() => { if (ticket) { const t = setTimeout(() => { window.print(); setTicket(null); }, 150); return () => clearTimeout(t); } }, [ticket]);
 
   if (error && !cat) return <div className="pagina"><ErrorCaja error={error} /></div>;
-  if (!cat || !sucursal || turno === undefined) return <Cargando texto="Preparando la caja…" />;
-  if (!turno) return <AbrirTurno sucursal={sucursal} puede={puede('pos:caja')} onAbierto={cargarTurno} />;
+  if (!cat || !sucursal) return <Cargando texto="Preparando la caja…" />;
 
   const fiscal = cat.fiscal[sucursal.id];
   const hayLineas = orden.lineas.length > 0;
@@ -175,7 +174,7 @@ export default function Pos() {
       <div className="pos-izq">
         <div className="pos-barra">
           <div className="fila" style={{ gap: 6 }}>
-            <span className="chip ok">Turno {horaHN(turno.abierto_at)}</span>
+            {turno && <span className="chip ok">Caja desde {horaHN(turno.abierto_at)}</span>}
             {fiscal?.borrador && <span className="chip aviso" title="Sin CAI real: las facturas no tienen validez fiscal">Modo borrador</span>}
             {fiscal && !fiscal.borrador && fiscal.restantes <= 50 && <span className="chip mal">Quedan {fiscal.restantes} facturas</span>}
             {offline && <span className="chip mal">Sin conexión · catálogo guardado</span>}
@@ -183,8 +182,8 @@ export default function Pos() {
           <span className="sep" style={{ flex: 1 }} />
           <button className="btn chico" onClick={() => setModal({ tipo: 'abiertas' })}>Abiertas{abiertas > 0 && <span className="chip aviso">{abiertas}</span>}</button>
           {puede('pos:catalogo') || puede('pos:vender') ? <button className="btn chico" aria-pressed={agotados} onClick={() => setAgotados((a) => !a)} style={agotados ? { background: 'var(--aviso-fondo)', borderColor: 'var(--aviso)' } : undefined}>{agotados ? 'Terminar “agotados”' : 'Marcar agotados'}</button> : null}
-          <button className="btn chico" onClick={() => setModal({ tipo: 'movimiento' })}>Movimiento</button>
-          <button className="btn chico peligro" onClick={() => setModal({ tipo: 'cerrar' })}>Cerrar turno</button>
+          {turno && <button className="btn chico" onClick={() => setModal({ tipo: 'movimiento' })}>Movimiento</button>}
+          {turno && <button className="btn chico peligro" onClick={() => setModal({ tipo: 'cerrar' })}>Cerrar caja</button>}
         </div>
 
         <div className="pos-cats">

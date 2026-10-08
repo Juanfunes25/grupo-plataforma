@@ -18,8 +18,22 @@ const Terceros = lazy(() => import('./pantallas/Terceros.jsx'));
 const Admin = lazy(() => import('./pantallas/Admin.jsx'));
 const Grupo = lazy(() => import('./pantallas/Grupo.jsx'));
 const Gerente = lazy(() => import('./pantallas/GerenteEmpresa.jsx'));
+const Facturas = lazy(() => import('./pantallas/Facturas.jsx'));
+const Cierres = lazy(() => import('./pantallas/Cierres.jsx'));
+const CajaChica = lazy(() => import('./pantallas/CajaChica.jsx'));
+const Reportes = lazy(() => import('./pantallas/Reportes.jsx'));
+const Dashboard = lazy(() => import('./pantallas/Dashboard.jsx'));
+const Antifraude = lazy(() => import('./pantallas/Antifraude.jsx'));
+const Bitacora = lazy(() => import('./pantallas/Bitacora.jsx'));
+const Cai = lazy(() => import('./pantallas/Cai.jsx'));
+const Usuarios = lazy(() => import('./pantallas/Usuarios.jsx'));
+const Sucursales = lazy(() => import('./pantallas/Sucursales.jsx'));
+const Cotizaciones = lazy(() => import('./pantallas/Cotizaciones.jsx'));
+const Impresora = lazy(() => import('./pantallas/Impresora.jsx'));
 
-const PANTALLAS = { pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, terceros: Terceros, admin: Admin, gerente: Gerente };
+const PANTALLAS = { pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, terceros: Terceros, admin: Admin, gerente: Gerente,
+  facturas: Facturas, cierres: Cierres, 'caja-chica': CajaChica, reportes: Reportes, dashboard: Dashboard, antifraude: Antifraude, bitacora: Bitacora,
+  cai: Cai, usuarios: Usuarios, sucursales: Sucursales, cotizaciones: Cotizaciones, impresora: Impresora };
 
 function Protegida({ children }) {
   const s = useSesion();

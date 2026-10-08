@@ -90,8 +90,14 @@ export function rutasVentas({ db, ctxMgr }) {
   async function cobrar(q, ctx, ventaId, pagos) {
     const v = await cargar(q, ctx, ventaId, { bloquear: true });
     if (v.estado !== 'abierta') throw conflicto(`La venta ya está ${v.estado}`);
-    const turno = await turnoAbierto(q, ctx, v.sucursal_id);
-    if (!turno) throw conflicto('Abre tu turno de caja antes de cobrar');
+    let turno = await turnoAbierto(q, ctx, v.sucursal_id);
+    if (!turno) {
+      // Abrir turno NO es necesario: se abre solo (fondo 0) al primer cobro. Se puede volver a exigir con core.config 'pos'.exigir_turno = true.
+      const cfg = (await q.query(`select valor from core.config where empresa_id = $1 and clave = 'pos'`, [ctx.empresa.id])).rows[0]?.valor ?? {};
+      if (cfg.exigir_turno === true) throw conflicto('Abre tu turno de caja antes de cobrar');
+      turno = (await q.query('insert into pos.turnos (empresa_id, sucursal_id, cajero_id, fondo_inicial) values ($1,$2,$3,0) returning *', [ctx.empresa.id, v.sucursal_id, ctx.usuario.id])).rows[0];
+      await auditar(q, ctx, 'turno_abierto', 'turno', turno.id, { fondo: 0, automatico: true }, { sucursalId: v.sucursal_id });
+    }
     await q.query('update pos.ventas set turno_id = $1, cajero_id = $2 where id = $3', [turno.id, ctx.usuario.id, ventaId]);
     const pagado = (await q.query('select * from pos.cobrar_venta($1, $2::jsonb)', [ventaId, JSON.stringify(pagos)])).rows[0];
     await auditar(q, ctx, 'venta_cobrada', 'venta', ventaId, { factura: pagado.numero_factura, total: pagado.total }, { sucursalId: v.sucursal_id });

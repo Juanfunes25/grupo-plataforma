@@ -27,6 +27,8 @@ export const PERMISOS = {
   // Dirección
   'grupo:ver':        'Ver el consolidado del grupo',
   'gerente:ver':      'Ver el gerente digital (análisis de la empresa)',
+  'antifraude:ver':   'Ver y gestionar el antifraude (alertas, arqueos)',
+  'cotizaciones:ver': 'Ver y crear cotizaciones y eventos',
   // Administración
   'admin:usuarios':   'Administrar usuarios y accesos',
   'admin:empresa':    'Administrar sucursales y datos de la empresa',
@@ -44,7 +46,7 @@ export const ROLES = {
     nombre: 'Manager',
     permisos: ['gerente:ver', 'pos:vender', 'pos:caja', 'pos:anular', 'pos:descuento', 'pos:reimprimir', 'pos:catalogo', 'pos:reportes',
       'kds:ver', 'inv:ver', 'inv:mover', 'inv:recetas', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos',
-      'clientes:ver', 'clientes:editar'],
+      'clientes:ver', 'clientes:editar', 'cotizaciones:ver'],
   },
   cajero: {
     nombre: 'Cajero',
