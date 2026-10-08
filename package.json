@@ -4,8 +4,13 @@
   "private": true,
   "description": "Plataforma unificada del grupo: Italo, Origen, EcoStone y DISERCO",
   "type": "module",
-  "workspaces": ["packages/*", "apps/*"],
-  "engines": { "node": ">=22" },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev:api": "npm run dev -w @grupo/api",
     "dev:web": "npm run dev -w @grupo/web",
@@ -13,6 +18,8 @@
     "start": "node apps/api/src/index.js",
     "migrate": "node apps/api/src/db/migrar.js",
     "seed:origen": "node apps/api/src/db/sembrar.js origen",
-    "test": "npm test -w @grupo/shared && npm test -w @grupo/api"
+    "test": "npm test -w @grupo/shared && npm test -w @grupo/api",
+    "demo": "node apps/api/src/db/demo.js",
+    "crear-dueno": "node apps/api/src/db/crear-dueno.js"
   }
 }

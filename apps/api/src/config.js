@@ -18,7 +18,7 @@ export function leerConfig(env = process.env) {
     dataDir: env.PGLITE_DIR || path.join(aqui, '..', '..', '..', 'data', 'pglite'),
     migraciones: path.join(aqui, '..', '..', '..', 'supabase', 'migrations'),
     semillas: path.join(aqui, '..', '..', '..', 'supabase', 'seeds'),
-    webDist: env.WEB_DIST || path.join(aqui, '..', '..', 'web', 'dist'),
+    webDist: path.resolve(env.WEB_DIST || path.join(aqui, '..', '..', 'web', 'dist')),
     // Secreto con el que el API firma las sesiones (obligatorio en producción).
     jwtSecret: env.APP_JWT_SECRET || (produccion ? '' : 'dev-secreto-solo-para-desarrollo-local-0123456789'),
     sesionHoras: num(env.SESION_HORAS, 12),
