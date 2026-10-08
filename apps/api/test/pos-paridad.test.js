@@ -29,6 +29,10 @@ before(async () => {
 after(() => t.cerrar());
 
 test('RTN obligatorio sobre L 10,000: sin RTN no se cobra; con un cliente con RTN sí; Consumidor Final no basta', async () => {
+  // En la etapa de pruebas la migración 0026 deja el RTN como aviso; aquí se vuelve a exigir para comprobar la regla.
+  const empId = (await t.db.query(`select id from core.empresas where codigo = 'origen'`)).rows[0].id;
+  await t.db.query(`insert into core.config (empresa_id, clave, valor) values ($1, 'pos', '{"rtn_bloqueante": true}'::jsonb) on conflict (empresa_id, clave) do update set valor = core.config.valor || '{"rtn_bloqueante": true}'::jsonb`, [empId]);
+  cat = (await caja.get('/api/pos/catalogo')).body;
   assert.equal(cat.config.umbral_rtn, 10000);
   const grande = { items: [item('Naranja Pura', 200)], cobrar: { pagos: pagoEf(20000) } };       // 200 × 75 = 15,000
   const sin = await caja.post('/api/pos/ventas', grande);
@@ -54,6 +58,7 @@ test('RTN obligatorio sobre L 10,000: sin RTN no se cobra; con un cliente con RT
   assert.equal((await caja.get('/api/pos/catalogo')).body.config.umbral_rtn, 500);
   assert.equal((await caja.post('/api/pos/ventas', { items: [item('Naranja Pura', 10)], cobrar: { pagos: pagoEf(1000) } })).status, 400);
   await t.db.query(`update core.config set valor = valor - 'umbral_rtn' where empresa_id = $1 and clave = 'pos'`, [emp]);
+  await t.db.query(`update core.config set valor = valor || '{"rtn_bloqueante": false}'::jsonb where empresa_id = $1 and clave = 'pos'`, [emp]);   // vuelve al estado de pruebas de 0026
 });
 
 test('orden abierta: se puede volver a Consumidor Final y guardar el carné de tercera edad a medias; el carné se exige al COBRAR', async () => {

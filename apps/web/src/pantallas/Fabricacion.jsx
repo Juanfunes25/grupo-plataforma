@@ -6,6 +6,7 @@ import { useSesion } from '../sesion.jsx';
 import { Campo, Estado, Kpi, Modal, Tabs, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
 import { Chip, ChipEstado, fechaCorta, hoyIso, n } from '../fab/comun.jsx';
 import { imprimirEtiqueta } from '../fab/etiqueta.js';
+import CantidadEntera from '../ui/CantidadEntera.jsx';
 
 const TIPO_AGENDA = { colada: ['Colada', 'aviso'], inventario: ['Lista para vender', 'ok'] };
 
@@ -186,7 +187,7 @@ function FormOrden({ f: inicial, productos, moldes, onCerrar, onListo }) {
     <Modal titulo="Nueva orden de producción" onCerrar={onCerrar} pie={<button className="btn primario" disabled={ocupado || !f.producto_id || !f.m2_planificado} onClick={crear}>Crear</button>}>
       <Campo etiqueta="Producto"><select value={f.producto_id} onChange={set('producto_id')}><option value="">Elige…</option>{productos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}</select></Campo>
       <div className="rejilla cols-2">
-        <Campo etiqueta="m² a producir (buenos)"><input type="number" inputMode="numeric" step="1" min="1" value={f.m2_planificado} onChange={set('m2_planificado')} /></Campo>
+        <Campo etiqueta="Cajas a producir (de 1 m², completas)"><CantidadEntera value={f.m2_planificado} min={1} ariaLabel="Cajas a producir" onChange={(v) => setF({ ...f, m2_planificado: v })} /></Campo>
         <Campo etiqueta="Fecha programada"><input type="date" value={f.fecha_programada} onChange={set('fecha_programada')} /></Campo>
       </div>
       <Campo etiqueta="Molde" ayuda="Calcula cuántas coladas hacen falta"><select value={f.molde_id} onChange={set('molde_id')}><option value="">—</option>{moldes.map((m) => <option key={m.id} value={m.id}>{m.codigo} · {n(m.m2_por_colada, 2)} m²/colada</option>)}</select></Campo>
@@ -266,9 +267,9 @@ function Detalle({ id, produce, termina, gerencia, onCerrar, onCambio }) {
         <div style={{ marginTop: 12 }}>
           <h3 style={{ margin: '0 0 6px' }}>Pasar a lista para vender (entra al inventario)</h3>
           <div className="rejilla cols-3">
-            <Campo etiqueta="Buenos (1ª calidad)"><input type="number" step="1" min="0" value={lleno} onChange={(e) => setCierre({ ...cierre, m2_bueno: e.target.value })} /></Campo>
-            <Campo etiqueta="De segunda"><input type="number" step="1" min="0" value={cierre.m2_segunda} onChange={(e) => setCierre({ ...cierre, m2_segunda: e.target.value })} /></Campo>
-            <Campo etiqueta="Merma"><input type="number" step="1" min="0" value={cierre.m2_merma} onChange={(e) => setCierre({ ...cierre, m2_merma: e.target.value })} /></Campo>
+            <Campo etiqueta="Buenos (1ª calidad) (cajas)"><CantidadEntera value={lleno} min={0} ariaLabel="Buenos (1ª calidad)" onChange={(v) => setCierre({ ...cierre, m2_bueno: v })} /></Campo>
+            <Campo etiqueta="De segunda (cajas)"><CantidadEntera value={cierre.m2_segunda} min={0} ariaLabel="De segunda" onChange={(v) => setCierre({ ...cierre, m2_segunda: v })} /></Campo>
+            <Campo etiqueta="Merma (cajas)"><CantidadEntera value={cierre.m2_merma} min={0} ariaLabel="Merma" onChange={(v) => setCierre({ ...cierre, m2_merma: v })} /></Campo>
           </div>
           <button className="btn primario" disabled={ocupado || (!Number(lleno) && !Number(cierre.m2_segunda))} onClick={async () => {
             const r = await ejecutar(() => post(`/fab/ordenes/${o.id}/terminar`, { m2_bueno: Number(lleno), m2_segunda: Number(cierre.m2_segunda) || 0, m2_merma: Number(cierre.m2_merma) || 0 }));

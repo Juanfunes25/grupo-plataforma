@@ -8,7 +8,7 @@ import { malaPeticion, noEncontrado, prohibido, uuid, validar } from '../../lib/
 import { liberarVencidos, alerta } from '../fab/produccion.js';
 import { round3 } from './calculo.js';
 
-const entero = z.coerce.number().refine(Number.isInteger, 'La cantidad debe ser un número entero');
+const entero = z.coerce.number().refine(Number.isInteger, 'La piedra se maneja en cajas completas de 1 m²: la cantidad debe ser un número entero');
 
 export function rutasInventarioEco({ db }) {
   const r = Router();

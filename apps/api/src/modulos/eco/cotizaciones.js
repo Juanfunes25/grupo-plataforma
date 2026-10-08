@@ -115,11 +115,11 @@ export function rutasCotizacionesEco({ db }) {
         const p = prods.get(l.producto_id);
         if (!p) throw malaPeticion(`Producto no encontrado en la línea ${i + 1}`);
         const m2 = num(l.m2_neto);
-        if (m2 > 0 && !Number.isInteger(m2)) throw malaPeticion(`Los m² de la línea ${i + 1} deben ser un número entero`);
+        if (num(l.m2_neto) < 0 || num(l.desperdicio_pct) < 0) throw malaPeticion(`Los m² y el desperdicio de la línea ${i + 1} no pueden ser negativos`);
         const dim = tipo === 'producto' && m2 > 0 ? dimensionarLinea(p, m2, num(l.desperdicio_pct)) : null;
         const cantidad = dim ? dim.cantidad : num(l.cantidad);
         if (!(cantidad > 0)) throw malaPeticion(`Indica la cantidad en la línea ${i + 1}`);
-        if (!Number.isInteger(cantidad)) throw malaPeticion(`La cantidad de la línea ${i + 1} debe ser un número entero (no se vende media caja)`);
+        if (!Number.isInteger(cantidad)) throw malaPeticion(p.es_piedra ? 'La piedra solo se vende en cajas completas de 1 m²' : `La cantidad de la línea ${i + 1} debe ser un número entero`);
         const factor = dim?.factor_precio ?? 1;
         // El precio del catálogo es el de la lista Público (con ISV). En una lista sin ISV sin precio propio se quita el ISV (no se cobra doble).
         const tasa = Number(p.impuesto_tasa ?? 0.15);

@@ -313,7 +313,7 @@ export function rutasFab({ db, config }) {
       if (orden.estado !== 'curando') throw malaPeticion('Solo pasa a "lista para vender" una producción que está en secado');
       const bueno = bruto.m2_bueno === undefined || bruto.m2_bueno === '' ? num(orden.m2_planificado) : num(bruto.m2_bueno);
       const segunda = num(bruto.m2_segunda); const merma = num(bruto.m2_merma);
-      if (![bueno, segunda, merma].every(entero)) throw malaPeticion('Las cantidades deben ser números enteros');
+      if (![bueno, segunda, merma].every(entero)) throw malaPeticion('La piedra se cuenta en cajas completas de 1 m²: las cantidades deben ser números enteros');
       if (bueno < 0 || segunda < 0 || merma < 0) throw malaPeticion('Las cantidades no pueden ser negativas');
       if (bueno + segunda <= 0) throw malaPeticion('Indica cuántos salieron buenos (o de segunda)');
       const rech = (await q.query(`select 1 from fab.controles_calidad where orden_id = $1 and resultado = 'rechazado'`, [orden.id])).rowCount;
@@ -411,7 +411,7 @@ export function rutasFab({ db, config }) {
   });
   r.post('/registro', requierePermiso('fab:registrar'), async (req, res) => {
     const b = validar(z.object({ producto_id: uuid, cantidad: z.coerce.number().positive('Escribe la cantidad producida').max(5000, 'Esa cantidad es demasiado grande; revísala'), nota: textoOpc(200) }), req.body);
-    if (!entero(b.cantidad)) throw malaPeticion('La cantidad debe ser un número entero');
+    if (!entero(b.cantidad)) throw malaPeticion('La piedra se produce en cajas completas de 1 m²: la cantidad debe ser un número entero');
     const out = await db.tx(async (q) => {
       const producto = (await q.query('select id, nombre, unidad_venta from pos.productos where id = $1 and empresa_id = $2 and es_piedra and activo', [b.producto_id, empresa(req)])).rows[0];
       if (!producto) throw malaPeticion('Producto no válido');

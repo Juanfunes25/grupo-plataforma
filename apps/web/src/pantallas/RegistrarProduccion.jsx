@@ -3,6 +3,7 @@ import { get, post } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { ErrorCaja, useDatos, vibrar } from '../ui/kit.jsx';
 import { diaCorto, horaCorta, n, ChipEstado } from '../fab/comun.jsx';
+import CantidadEntera from '../ui/CantidadEntera.jsx';
 import { imprimirEtiqueta } from '../fab/etiqueta.js';
 
 /**
@@ -94,10 +95,10 @@ export default function RegistrarProduccion() {
 
           {producto && (
             <>
-              <h3>3 · Cuántas cajas</h3>
+              <h3>3 · Cuántas cajas (de 1 m², completas)</h3>
               <div className="reg-cant">
                 <button className="reg-btn" onClick={() => sumar(-1)} aria-label="Menos">−</button>
-                <input type="number" inputMode="numeric" min="0" step="1" value={cantidad || ''} placeholder="0" onChange={(e) => setCantidad(Math.max(0, Math.min(9999, Math.floor(Number(e.target.value) || 0))))} />
+                <CantidadEntera botones={false} style={{ width: '100%' }} value={cantidad || ''} min={0} max={9999} placeholder="0" ariaLabel="Cajas producidas" onChange={(v) => setCantidad(v === '' ? 0 : v)} />
                 <button className="reg-btn on" onClick={() => sumar(1)} aria-label="Más">+</button>
               </div>
               <div className="reg-atajos">{[5, 10, 20, 50].map((k) => <button key={k} className="reg-btn" onClick={() => sumar(k)}>+{k}</button>)}</div>

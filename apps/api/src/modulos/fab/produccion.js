@@ -63,6 +63,7 @@ export async function crearOrden(q, ctx, { producto_id, m2, fecha_programada = n
   if (!receta && !permitirSinReceta) throw malaPeticion('El producto no tiene una receta activa: créala en Fabricación → Recetas');
   const m2Plan = round3(m2);
   if (!(m2Plan > 0)) throw malaPeticion('La cantidad a producir debe ser mayor que 0');
+  if (!Number.isInteger(m2Plan)) throw malaPeticion('La piedra se produce en cajas completas de 1 m²: la cantidad debe ser un número entero');
   let molde = null;
   if (molde_id) molde = (await q.query('select * from fab.moldes where id = $1 and empresa_id = $2', [molde_id, empresaId])).rows[0] ?? null;
   const coladas = molde && num(molde.m2_por_colada) > 0 ? Math.ceil(m2Plan / num(molde.m2_por_colada)) : null;

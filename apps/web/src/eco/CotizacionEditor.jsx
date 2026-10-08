@@ -4,7 +4,8 @@ import { get, post, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Campo, ErrorCaja, useAccion, useDatos, Cargando } from '../ui/kit.jsx';
 import { calcularCotizacion, dimensionarLinea, sugerirAccesorios } from './cotizacion.js';
-import { entero, num } from './util.js';
+import { num } from './util.js';
+import CantidadEntera from '../ui/CantidadEntera.jsx';
 import './eco.css';
 
 const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
@@ -184,12 +185,12 @@ export default function CotizacionEditor({ inicial, onGuardada, onCancelar }) {
                       {pide > 0 && (st.disponible_primera >= pide ? ' · ✔ alcanza' : ` · faltan ${num(pide - st.disponible_primera, 2)} ${st.unidad}: al aprobar se ordenará producir`)}</span>}
                     {r?.p && r.precio_unitario < r.precio_lista * 0.995 && <span className="eco-sub eco-mal">Bajo lista ({lempiras(r.precio_lista)})</span>}
                   </td>
-                  <td>{esProd && <input type="number" inputMode="numeric" step="1" min="1" value={l.m2_neto} onChange={(e) => setL(i, { m2_neto: entero(e.target.value) })} />}</td>
+                  <td>{esProd && <CantidadEntera value={l.m2_neto} min={1} ariaLabel="m² netos" onChange={(v) => setL(i, { m2_neto: v })} />}</td>
                   <td>{esProd && <input type="number" inputMode="decimal" step="1" min="0" max="50" value={l.desperdicio_pct} placeholder="0" onChange={(e) => setL(i, { desperdicio_pct: e.target.value })} />}</td>
                   <td>{esProd && r?.dim ? (
-                    <span><b>{num(r.dim.cantidad, 0)} {r.dim.unidad_linea === 'caja' ? 'cajas' : r.p?.unidad_venta === 'm2' ? 'm²' : r.dim.unidad_linea}</b>
-                      {r.dim.unidad_linea === 'caja' && r.p?.unidad_venta === 'm2' && <span className="eco-sub">= {num(r.dim.m2_entregado, 2)} m² (cajas de {num(r.p.m2_por_caja, 2)} m²){r.dim.factor_precio !== 1 && ` · ${lempiras(r.precio_lista)} por caja`}</span>}</span>)
-                    : <span className="fila" style={{ gap: 4 }}><input type="number" inputMode="numeric" step="1" min="1" value={l.cantidad} onChange={(e) => setL(i, { cantidad: entero(e.target.value) })} /><small>{l.unidad}</small></span>}</td>
+                    <span><b>{num(r.dim.cantidad, 0)} {r.dim.unidad_linea === 'caja' ? (r.dim.cantidad === 1 ? 'caja' : 'cajas') : r.p?.unidad_venta === 'm2' ? 'm²' : r.dim.unidad_linea}{r.dim.unidad_linea === 'caja' && ` (${num(r.dim.m2_entregado, 2)} m²)`}</b>
+                      {r.dim.unidad_linea === 'caja' && r.p?.unidad_venta === 'm2' && <span className="eco-sub">cajas completas de {num(r.p.m2_por_caja, 2)} m², se redondea hacia arriba{r.dim.factor_precio !== 1 && ` · ${lempiras(r.precio_lista)} por caja`}</span>}</span>)
+                    : <span className="fila" style={{ gap: 4 }}><CantidadEntera value={l.cantidad} min={1} ariaLabel="Cantidad" onChange={(v) => setL(i, { cantidad: v })} /><small>{l.unidad}</small></span>}</td>
                   <td><input type="number" step="0.01" value={l.precio_unitario} placeholder={r?.p ? String(r.precio_lista) : ''} onChange={(e) => setL(i, { precio_unitario: e.target.value })} /></td>
                   <td className="der num">{lempiras(c?.monto ?? 0)}</td>
                   <td><button className="btn chico" aria-label="Quitar línea" onClick={() => setLineas(lineas.filter((_, j) => j !== i))}>✕</button></td>

@@ -11,7 +11,7 @@ export async function armarItems(q, ctx, items) {
   if (!Array.isArray(items) || items.length === 0) throw malaPeticion('La orden no tiene productos');
   const ids = [...new Set(items.map((i) => i.producto_id))];
   const prods = (await q.query(
-    `select id, nombre, precio, impuesto_tasa, exento, activo, disponible from pos.productos where empresa_id = $1 and id = any($2::uuid[])`,
+    `select id, nombre, precio, impuesto_tasa, exento, activo, disponible, es_piedra from pos.productos where empresa_id = $1 and id = any($2::uuid[])`,
     [ctx.empresa.id, ids])).rows;
   const porId = new Map(prods.map((p) => [p.id, p]));
 
@@ -33,6 +33,8 @@ export async function armarItems(q, ctx, items) {
     if (!p.disponible) throw malaPeticion(`"${p.nombre}" está marcado como agotado`);
     const cant = Number(it.cantidad);
     if (!(cant > 0) || cant > 999) throw malaPeticion(`Cantidad inválida en "${p.nombre}"`);
+    // EcoStone: la piedra se vende en cajas completas de 1 m² (no hay media caja ni venta porcionada).
+    if (p.es_piedra && (!Number.isInteger(cant) || cant < 1)) throw malaPeticion(`La piedra solo se vende en cajas completas de 1 m² ("${p.nombre}": ${cant} no es válido)`);
     const pct = Number(it.descuento_porcentaje || 0);
     if (![0, 10, 25].includes(pct)) throw malaPeticion('El descuento solo puede ser 0, 10 o 25 %');
 

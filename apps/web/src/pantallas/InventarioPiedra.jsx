@@ -4,6 +4,7 @@ import { get, post } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Campo, Estado, Kpi, Modal, Tabs, descargarCsv, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
 import { fechaCorta, num } from '../eco/util.js';
+import CantidadEntera from '../ui/CantidadEntera.jsx';
 import '../eco/eco.css';
 
 const TIPO = { inicial: 'Existencia inicial', produccion: 'Lista para vender', reserva: 'Reserva', liberacion: 'Liberación', despacho: 'Despacho', venta: 'Venta', merma: 'Merma', ajuste: 'Ajuste' };
@@ -135,8 +136,8 @@ export default function InventarioPiedra() {
           <div className="eco-form">
             <Campo etiqueta="Lote"><input value={dm.lote} onChange={(e) => set('lote', e.target.value)} placeholder={modal.tipo === 'inicial' ? 'Ej.: INICIAL-01' : 'Lote'} list="lotes-piedra" /><datalist id="lotes-piedra">{modal.producto.lotes.map((l) => <option key={l.lote + l.calidad} value={l.lote} />)}</datalist></Campo>
             {modal.tipo === 'conteo'
-              ? <Campo etiqueta={`Contado (${modal.producto.unidad})`} ayuda="Cuenta lo que hay físicamente; el sistema calcula la diferencia"><input type="number" inputMode="numeric" step="1" min="0" value={dm.contado} onChange={(e) => set('contado', e.target.value)} /></Campo>
-              : <Campo etiqueta={modal.producto.unidad} ayuda={modal.tipo === 'ajuste' ? 'Negativo para restar' : undefined}><input type="number" inputMode="numeric" step="1" value={dm.m2} onChange={(e) => set('m2', e.target.value)} /></Campo>}
+              ? <Campo etiqueta={`Contado (${modal.producto.esquina ? 'cajas' : 'cajas de 1 m²'})`} ayuda="Cuenta lo que hay físicamente; el sistema calcula la diferencia"><CantidadEntera value={dm.contado} min={0} ariaLabel="Contado" onChange={(v) => set('contado', v)} /></Campo>
+              : <Campo etiqueta="Cantidad (cajas de 1 m²)" ayuda={modal.tipo === 'ajuste' ? 'Solo cajas completas. Negativo para restar' : 'Solo cajas completas'}><CantidadEntera value={dm.m2} min={modal.tipo === 'ajuste' ? -99999 : 1} negativo={modal.tipo === 'ajuste'} ariaLabel="Cantidad" onChange={(v) => set('m2', v)} /></Campo>}
             {modal.tipo === 'inicial' && gerencia && <Campo etiqueta="Costo L/m²"><input type="number" step="0.01" value={dm.costo_m2} onChange={(e) => set('costo_m2', e.target.value)} /></Campo>}
             {modal.tipo !== 'conteo' && <Campo etiqueta="Motivo (obligatorio)"><input value={dm.motivo} onChange={(e) => set('motivo', e.target.value)} placeholder={modal.tipo === 'inicial' ? 'Ej.: existencia al arrancar el sistema' : 'Ej.: piezas rotas al manipular'} /></Campo>}
           </div>

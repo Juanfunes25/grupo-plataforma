@@ -13,6 +13,7 @@ import { registrarEvento } from '../lib/eventos.js';
 import { useCambiosVentas, useCatalogoVivo } from '../lib/enVivo.js';
 import OpcionesModal from './OpcionesModal.jsx';
 import PesoModal from './PesoModal.jsx';
+import CantidadEntera from '../ui/CantidadEntera.jsx';
 import CobroModal from './CobroModal.jsx';
 import ClienteModal from './ClienteModal.jsx';
 import AbiertasModal from './AbiertasModal.jsx';
@@ -209,7 +210,7 @@ export default function Pos() {
   const agregar = useCallback((p, extra) => {
     setRecibo(null);
     setOrden((o) => {
-      if (!extra && p.unidad === 'unidad') {
+      if (!extra && (p.unidad === 'unidad' || p.es_piedra)) {
         // Se suma a la línea del mismo producto SIN opciones ni descuento; si la existente tiene descuento, la unidad nueva va aparte.
         const i = o.lineas.findIndex((l) => l.producto.id === p.id && !l.opciones.length && !l.notas && !l.descuento_porcentaje);
         if (i >= 0) return { ...o, lineas: o.lineas.map((l, j) => (j === i ? { ...l, cantidad: l.cantidad + 1 } : l)) };
@@ -227,7 +228,7 @@ export default function Pos() {
     if (!p.disponible) { avisar(`${p.nombre} está agotado`, 'mal'); return; }
     // Con grupos OBLIGATORIOS (ej. tamaño) se pregunta; si todo es opcional se agrega directo y los extras se piden tocando la línea.
     if (gruposDe(p).some((g) => g.min_sel > 0)) setModal({ tipo: 'opciones', producto: p });
-    else if (p.unidad !== 'unidad') setModal({ tipo: 'peso', producto: p });
+    else if (p.unidad !== 'unidad' && !p.es_piedra) setModal({ tipo: 'peso', producto: p });
     else agregar(p);
   };
 
@@ -472,19 +473,20 @@ export default function Pos() {
           {orden.lineas.map((l) => {
             const i = orden.lineas.indexOf(l);
             const t = totales.lineas[i];
-            const unidad = l.producto.unidad === 'unidad';
+            const unidad = l.producto.unidad === 'unidad' || l.producto.es_piedra;
+            const piedra = Boolean(l.producto.es_piedra);
             const bruto = Math.round(t.precio_unitario * l.cantidad * 100) / 100;
             return (
               <div className={`pos-wz-tr${l.descuento_porcentaje ? ' con-descuento' : ''}`} key={l.key}>
                 <div className="pos-wz-prod" onClick={() => l.producto.grupo_ids.length && setModal({ tipo: 'opciones', producto: l.producto, editar: l })}>
-                  <b>{l.producto.nombre}</b>{!unidad && <small> ({l.producto.unidad})</small>}
+                  <b>{l.producto.nombre}</b>{!unidad && <small> ({l.producto.unidad})</small>}{piedra && <small> (caja · {Number(l.producto.m2_por_caja) || 1} m²)</small>}
                   {l.descuento_porcentaje > 0 && <small className="chip ok" style={{ marginLeft: 6 }}>−{l.descuento_porcentaje}%</small>}
                   {l.opciones.map((o) => <small key={o.id} className="tenue" style={{ display: 'block' }}>+ {o.nombre}</small>)}
                   {l.notas && <small style={{ display: 'block', color: 'var(--aviso)' }}>“{l.notas}”</small>}
                 </div>
                 <div className="pos-wz-cant">
                   <button onClick={() => cambiarCant(l.key, -1)} aria-label="Menos" disabled={!unidad}>−</button>
-                  {unidad ? <input type="number" inputMode="numeric" min="1" value={l.cantidad} aria-label={`Cantidad de ${l.producto.nombre}`} onChange={(e) => fijarCantidad(l.key, e.target.value)} /> : <b className="num">{l.cantidad}</b>}
+                  {piedra ? <CantidadEntera botones={false} value={l.cantidad} min={1} max={999} ariaLabel={`Cajas de ${l.producto.nombre}`} onChange={(v) => v !== '' && fijarCantidad(l.key, v)} style={{ flexWrap: 'nowrap' }} /> : unidad ? <input type="number" inputMode="numeric" min="1" value={l.cantidad} aria-label={`Cantidad de ${l.producto.nombre}`} onChange={(e) => fijarCantidad(l.key, e.target.value)} /> : <b className="num">{l.cantidad}</b>}
                   <button onClick={() => cambiarCant(l.key, 1)} aria-label="Más" disabled={!unidad}>+</button>
                 </div>
                 <div className="num der">{lempiras(t.precio_unitario).replace('L ', '')}</div>

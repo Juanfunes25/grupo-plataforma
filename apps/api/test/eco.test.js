@@ -115,7 +115,8 @@ test('cotización: lista Contratista (ISV aparte), cajas completas, accesorio, i
   const bajo = { ...cuerpo, lineas: [{ tipo: 'producto', producto_id: piedra.id, m2_neto: 10, precio_unitario: 100 }] };
   assert.equal((await ven.post('/api/eco/cotizaciones', bajo)).status, 403);
   assert.equal((await ven.post('/api/eco/cotizaciones', { ...cuerpo, descuento_pct: 5 })).status, 201);
-  assert.equal((await adm.post('/api/eco/cotizaciones', { ...cuerpo, lineas: [{ tipo: 'producto', producto_id: piedra.id, m2_neto: 10.5 }] })).status, 400);   // m² enteros
+  const dec = await adm.post('/api/eco/cotizaciones', { ...cuerpo, lineas: [{ tipo: 'producto', producto_id: piedra.id, m2_neto: 10.5 }] });   // 10.5 m² → 11 cajas completas
+  assert.equal(dec.status, 201, JSON.stringify(dec.body)); assert.equal(Number(dec.body.lineas[0].cantidad), 11);
   const doc = await adm.get(`/api/eco/cotizaciones/${cot.id}/documento`);
   assert.equal(doc.status, 200); assert.equal(doc.body.calculo.total, 30532.5); assert.ok(doc.body.condiciones.length);
   cot = d.body;
