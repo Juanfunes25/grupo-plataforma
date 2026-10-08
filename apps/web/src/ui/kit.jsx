@@ -1,35 +1,113 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import Icono from './Icono.jsx';
 
-// ── Avisos (toasts) ────────────────────────────────────────────────────────
+// ── Retroalimentación háptica (solo donde el dispositivo la tiene) ──────────
+export const vibrar = (patron = 12) => { try { navigator.vibrate?.(patron); } catch { /* sin vibración */ } };
+
+// ── Avisos (toasts) y diálogos de confirmación ─────────────────────────────
 const AvisoCtx = createContext(() => {});
+const DialogoCtx = createContext({ confirmar: async () => true, pedirTexto: async () => null });
 export const useAviso = () => useContext(AvisoCtx);
+/** const confirmar = useConfirmar(); if (!(await confirmar({ titulo, mensaje, peligro: true, textoOk: 'Borrar' }))) return; */
+export const useConfirmar = () => useContext(DialogoCtx).confirmar;
+/** const pedir = usePedirTexto(); const motivo = await pedir({ titulo, etiqueta, obligatorio: true }); // null = canceló */
+export const usePedirTexto = () => useContext(DialogoCtx).pedirTexto;
+
+function DialogoTexto({ op, onFin }) {
+  const [v, setV] = useState(op.valor ?? '');
+  const ok = !op.obligatorio || v.trim().length >= (op.minimo ?? 1);
+  const enviar = (e) => { e?.preventDefault(); if (ok) onFin(v.trim()); };
+  return (
+    <Modal titulo={op.titulo ?? 'Escribe un dato'} tam="angosto" onCerrar={() => onFin(null)}
+      pie={<><button type="button" className="btn" onClick={() => onFin(null)}>Cancelar</button><button type="submit" form="dialogo-texto" className="btn primario" disabled={!ok}>{op.textoOk ?? 'Aceptar'}</button></>}>
+      <form id="dialogo-texto" onSubmit={enviar} style={{ display: 'grid', gap: 12 }}>
+        {op.mensaje && <p style={{ margin: 0 }}>{op.mensaje}</p>}
+        <Campo etiqueta={op.etiqueta ?? ''} ayuda={op.obligatorio ? (op.ayuda ?? 'Es obligatorio.') : (op.ayuda ?? 'Es opcional.')}>
+          {op.largo ? <textarea value={v} onChange={(e) => setV(e.target.value)} autoFocus /> : <input value={v} onChange={(e) => setV(e.target.value)} type={op.tipo ?? 'text'} inputMode={op.inputMode} autoFocus />}
+        </Campo>
+      </form>
+    </Modal>
+  );
+}
+
 export function ProveedorAvisos({ children }) {
   const [lista, setLista] = useState([]);
+  const [dialogo, setDialogo] = useState(null);
   const avisar = useCallback((texto, tipo = 'ok') => {
     const id = Math.random();
-    setLista((l) => [...l, { id, texto, tipo }]);
-    setTimeout(() => setLista((l) => l.filter((x) => x.id !== id)), tipo === 'mal' ? 6000 : 3200);
+    setLista((l) => [...l.slice(-3), { id, texto, tipo }]);
+    vibrar(tipo === 'mal' ? [30, 40, 30] : 12);
+    setTimeout(() => setLista((l) => l.filter((x) => x.id !== id)), tipo === 'mal' ? 7000 : 3500);
   }, []);
+  const cerrarAviso = (id) => setLista((l) => l.filter((x) => x.id !== id));
+  const dialogos = useRef(null);
+  if (!dialogos.current) {
+    dialogos.current = {
+      confirmar: (op) => new Promise((res) => setDialogo({ tipo: 'confirmar', op: typeof op === 'string' ? { mensaje: op } : op, res })),
+      pedirTexto: (op) => new Promise((res) => setDialogo({ tipo: 'texto', op: typeof op === 'string' ? { titulo: op } : op, res })),
+    };
+  }
+  const fin = (valor) => { dialogo.res(valor); setDialogo(null); };
   return (
     <AvisoCtx.Provider value={avisar}>
-      {children}
-      <div className="toasts" role="status">{lista.map((t) => <div key={t.id} className={`toast ${t.tipo}`}>{t.texto}</div>)}</div>
+      <DialogoCtx.Provider value={dialogos.current}>
+        {children}
+        <div className="toasts" role="status" aria-live="polite">
+          {lista.map((t) => (
+            <div key={t.id} className={`toast ${t.tipo}`} role={t.tipo === 'mal' ? 'alert' : undefined}>
+              <Icono n={t.tipo === 'mal' ? 'alerta' : 'check'} tam={20} /><span>{t.texto}</span>
+              <button className="toast-x" onClick={() => cerrarAviso(t.id)} aria-label="Cerrar aviso"><Icono n="x" tam={16} /></button>
+            </div>
+          ))}
+        </div>
+        {dialogo?.tipo === 'confirmar' && (
+          <Modal titulo={dialogo.op.titulo ?? '¿Confirmas?'} tam="angosto" onCerrar={() => fin(false)}
+            pie={<><button className="btn" onClick={() => fin(false)} autoFocus>{dialogo.op.textoNo ?? 'Cancelar'}</button><button className={`btn ${dialogo.op.peligro ? 'peligro' : 'primario'}`} onClick={() => fin(true)}>{dialogo.op.textoOk ?? 'Sí, continuar'}</button></>}>
+            <div className="modal-confirmar"><p>{dialogo.op.mensaje}</p></div>
+          </Modal>
+        )}
+        {dialogo?.tipo === 'texto' && <DialogoTexto op={dialogo.op} onFin={fin} />}
+      </DialogoCtx.Provider>
     </AvisoCtx.Provider>
   );
 }
 
 // ── Modal ──────────────────────────────────────────────────────────────────
+// Foco atrapado y devuelto al cerrar, Escape cierra solo el de arriba, fondo sin scroll.
+const pilaModales = [];
+let bloqueos = 0;
+const ENFOCABLES = 'a[href], button:not(:disabled), input:not(:disabled):not([type=hidden]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
 export function Modal({ titulo, onCerrar, children, pie, tam = '' }) {
+  const ref = useRef(null);
+  const cerrar = useRef(onCerrar);
+  cerrar.current = onCerrar;
   useEffect(() => {
-    const f = (e) => e.key === 'Escape' && onCerrar?.();
+    const yo = Symbol('modal'); pilaModales.push(yo);
+    const previo = document.activeElement;
+    const el = ref.current;
+    if (el && !el.contains(document.activeElement)) el.focus({ preventScroll: true });
+    if (bloqueos++ === 0) document.body.style.overflow = 'hidden';
+    const f = (e) => { if (e.key === 'Escape' && pilaModales[pilaModales.length - 1] === yo) { e.stopPropagation(); cerrar.current?.(); } };
     window.addEventListener('keydown', f);
-    return () => window.removeEventListener('keydown', f);
-  }, [onCerrar]);
+    return () => {
+      window.removeEventListener('keydown', f);
+      pilaModales.splice(pilaModales.indexOf(yo), 1);
+      if (--bloqueos === 0) document.body.style.overflow = '';
+      if (previo && document.contains(previo)) try { previo.focus({ preventScroll: true }); } catch { /* */ }
+    };
+  }, []);
+  const teclas = (e) => {
+    if (e.key !== 'Tab') return;
+    const nodos = [...ref.current.querySelectorAll(ENFOCABLES)].filter((n) => n.offsetParent !== null);
+    if (!nodos.length) { e.preventDefault(); return; }
+    const [a, z] = [nodos[0], nodos[nodos.length - 1]];
+    if (e.shiftKey && (document.activeElement === a || document.activeElement === ref.current)) { e.preventDefault(); z.focus(); }
+    else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+  };
   return (
     <div className="velo" onMouseDown={(e) => e.target === e.currentTarget && onCerrar?.()}>
-      <div className={`modal ${tam}`} role="dialog" aria-modal="true" aria-label={titulo}>
-        <div className="modal-cab"><h2>{titulo}</h2><button className="btn fantasma chico" onClick={onCerrar} aria-label="Cerrar"><Icono n="x" /></button></div>
+      <div ref={ref} tabIndex={-1} onKeyDown={teclas} className={`modal ${tam}`} role="dialog" aria-modal="true" aria-label={titulo}>
+        <div className="modal-cab"><h2>{titulo}</h2><button className="btn fantasma" onClick={onCerrar} aria-label="Cerrar"><Icono n="x" /></button></div>
         <div className="modal-cuerpo">{children}</div>
         {pie && <div className="modal-pie">{pie}</div>}
       </div>
@@ -52,23 +130,86 @@ export function useDatos(fn, deps = []) {
   return { ...estado, recargar: cargar };
 }
 
-export const Cargando = ({ texto = 'Cargando…' }) => <div className="vacio">{texto}</div>;
-export const ErrorCaja = ({ error }) => error ? <div className="aviso-caja mal">{error}</div> : null;
-export const Vacio = ({ children }) => <div className="vacio">{children}</div>;
+export const Esqueleto = ({ alto = 80, ancho }) => <div className="esqueleto" style={{ height: alto, ...(ancho ? { width: ancho } : {}) }} aria-hidden="true" />;
+/** Esqueleto de carga (mejor percepción de velocidad que un texto suelto). */
+export const Cargando = ({ texto = 'Cargando…', filas = 3 }) => (
+  <div className="cargando-caja" role="status" aria-live="polite" aria-busy="true">
+    {Array.from({ length: filas }, (_, i) => <Esqueleto key={i} alto={i === 0 ? 64 : 92 - i * 12} />)}
+    <small className="centro">{texto}</small>
+  </div>
+);
+export const ErrorCaja = ({ error, onReintentar }) => error ? (
+  <div className="aviso-caja mal alerta" role="alert"><Icono n="alerta" tam={20} /><div>{error}</div>{onReintentar && <button className="btn chico" onClick={onReintentar}>Reintentar</button>}</div>
+) : null;
+/** Estado vacío con icono; si el texto es «Cargando…» muestra el esqueleto. */
+export function Vacio({ children, icono = 'bandeja', titulo, accion }) {
+  if (typeof children === 'string' && /^Cargando/i.test(children)) return <Cargando texto={children} filas={2} />;
+  return (
+    <div className="vacio-estado">
+      <span className="vacio-ico"><Icono n={icono} tam={26} /></span>
+      {titulo && <b>{titulo}</b>}
+      {children && <p>{children}</p>}
+      {accion}
+    </div>
+  );
+}
+/** Aviso en línea con icono (tipo: aviso | mal | ok | info). */
+export const Alerta = ({ tipo = 'aviso', titulo, children, accion }) => (
+  <div className={`aviso-caja ${tipo === 'aviso' ? '' : tipo} alerta`} role={tipo === 'mal' ? 'alert' : 'status'}>
+    <Icono n={tipo === 'ok' ? 'check' : tipo === 'info' ? 'info' : 'alerta'} tam={20} />
+    <div>{titulo && <b>{titulo}</b>}{children}</div>{accion}
+  </div>
+);
+/** Encabezado de página: título, descripción corta y acciones primarias a la derecha. */
+export const EncabezadoPagina = ({ titulo, descripcion, acciones }) => (
+  <div className="encabezado-pagina">
+    <div><h1>{titulo}</h1>{descripcion && <small className="desc">{descripcion}</small>}</div>
+    {acciones && <div className="acciones">{acciones}</div>}
+  </div>
+);
+/** Buscador con lupa y botón para limpiar. */
+export function Buscador({ valor, onCambio, placeholder = 'Buscar…', etiqueta = 'Buscar', ancho = 280 }) {
+  return (
+    <div style={{ position: 'relative', width: '100%', maxWidth: ancho }}>
+      <span aria-hidden="true" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--tenue)', display: 'grid' }}><Icono n="lupa" tam={18} /></span>
+      <input type="search" inputMode="search" value={valor} onChange={(e) => onCambio(e.target.value)} placeholder={placeholder} aria-label={etiqueta} style={{ paddingLeft: 38, paddingRight: valor ? 40 : 12 }} />
+      {valor && <button type="button" className="btn fantasma chico" onClick={() => onCambio('')} aria-label="Limpiar búsqueda" style={{ position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 36, minHeight: 36, padding: 0 }}><Icono n="x" tam={16} /></button>}
+    </div>
+  );
+}
 
 export function Estado({ d, children }) {
   if (d.cargando && !d.datos) return <Cargando />;
-  if (d.error && !d.datos) return <ErrorCaja error={d.error} />;
+  if (d.error && !d.datos) return <ErrorCaja error={d.error} onReintentar={d.recargar} />;
   return children(d.datos);
 }
 
 // ── Formularios ────────────────────────────────────────────────────────────
-export const Campo = ({ etiqueta, children, ayuda }) => (
-  <label>{etiqueta}{children}{ayuda && <small>{ayuda}</small>}</label>
+export const Campo = ({ etiqueta, children, ayuda, error, requerido }) => (
+  <label>
+    <span>{etiqueta}{requerido && <span className="obligatorio" aria-hidden="true"> *</span>}</span>
+    {children}
+    {error ? <small role="alert" style={{ color: 'var(--peligro-texto)', fontWeight: 600 }}>{error}</small> : ayuda && <small>{ayuda}</small>}
+  </label>
 );
 
-export function Tabs({ tabs, valor, onCambio }) {
-  return <div className="tabs" role="tablist">{tabs.map(([id, nombre]) => <button key={id} role="tab" className={valor === id ? 'activa' : ''} onClick={() => onCambio(id)}>{nombre}</button>)}</div>;
+/** Pestañas accesibles: flechas ← → mueven entre ellas. estilo="pildora" para filtros tipo botón. */
+export function Tabs({ tabs, valor, onCambio, estilo = '' }) {
+  const mover = (e, i) => {
+    const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (!d) return;
+    e.preventDefault();
+    const sig = tabs[(i + d + tabs.length) % tabs.length];
+    onCambio(sig[0]);
+    requestAnimationFrame(() => e.currentTarget.parentElement?.querySelector(`[data-tab="${CSS.escape(String(sig[0]))}"]`)?.focus());
+  };
+  return (
+    <div className={`tabs ${estilo === 'pildora' ? 'tabs-pildora' : ''}`} role="tablist">
+      {tabs.map(([id, nombre], i) => (
+        <button key={id} role="tab" data-tab={id} aria-selected={valor === id} tabIndex={valor === id ? 0 : -1} className={valor === id ? 'activa' : ''} onClick={() => onCambio(id)} onKeyDown={(e) => mover(e, i)}>{nombre}</button>
+      ))}
+    </div>
+  );
 }
 
 /** Ejecuta una acción async con aviso de error y bloqueo de doble clic. */
@@ -89,7 +230,7 @@ export function useAccion() {
 export function Columnas({ datos, etiqueta, valor, formato = (v) => v, max }) {
   const m = max ?? Math.max(1, ...datos.map(valor));
   return (
-    <div className="columnas">
+    <div className="columnas" role="img" aria-label={datos.map((d) => `${etiqueta(d)}: ${formato(valor(d))}`).join('; ')}>
       {datos.map((d, i) => (
         <div className="col" key={i} title={`${etiqueta(d)}: ${formato(valor(d))}`}>
           <i style={{ height: Math.max(3, Math.round((valor(d) / m) * 112)) }} />
@@ -114,8 +255,9 @@ export function BarrasH({ datos, etiqueta, valor, formato = (v) => v, color }) {
   );
 }
 
-export const Kpi = ({ etiqueta, valor, sub, acento }) => (
-  <div className={`kpi ${acento ? 'acento' : ''}`}><div className="etq">{etiqueta}</div><div className="val">{valor}</div>{sub && <div className="sub">{sub}</div>}</div>
+/** KPI legible de un vistazo. tono: ok | mal | aviso pinta el valor con significado (verde/rojo/ámbar). */
+export const Kpi = ({ etiqueta, valor, sub, acento, tono, icono }) => (
+  <div className={`kpi ${acento ? 'acento' : ''} ${tono ?? ''}`}><div className="etq">{icono && <Icono n={icono} tam={14} />}{etiqueta}</div><div className="val">{valor}</div>{sub && <div className="sub">{sub}</div>}</div>
 );
 
 export function descargarCsv(nombre, filas, columnas) {

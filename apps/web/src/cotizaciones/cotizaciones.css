@@ -34,10 +34,10 @@
 .cal-progreso > div { height: 100%; background: var(--ok); border-radius: 999px; }
 .cal-progreso.mini { height: 4px; }
 .cal-sit { font-size: .78rem; font-weight: 600; }
-.cal-sit.urgente { color: var(--aviso); } .cal-sit.vencido { color: #ff8f8f; } .cal-sit.listo, .cal-sit.cerrado { color: var(--ok); } .cal-sit.en-curso { color: var(--tenue); }
+.cal-sit.urgente { color: var(--aviso); } .cal-sit.vencido { color: var(--peligro-texto); } .cal-sit.listo, .cal-sit.cerrado { color: var(--ok); } .cal-sit.en-curso { color: var(--tenue); }
 .cal-banner { padding: 9px 13px; border-radius: 9px; font-weight: 600; font-size: .88rem; background: var(--panel-2); border: 1px solid var(--borde); }
-.cal-banner.urgente { background: var(--aviso-fondo); border-color: var(--aviso); color: #f1d28a; } .cal-banner.vencido { background: var(--peligro-fondo); border-color: var(--peligro); color: #ffb0b0; }
-.cal-banner.listo, .cal-banner.cerrado { background: var(--ok-fondo); border-color: var(--ok); color: #9be0bd; }
+.cal-banner.urgente { background: var(--aviso-fondo); border-color: var(--aviso); color: var(--aviso-texto); } .cal-banner.vencido { background: var(--peligro-fondo); border-color: var(--peligro); color: var(--peligro-texto); }
+.cal-banner.listo, .cal-banner.cerrado { background: var(--ok-fondo); border-color: var(--ok); color: var(--ok-texto); }
 .cal-ficha-cab { --c-evento: var(--acento); border-left: 5px solid var(--c-evento); padding-left: 12px; }
 .cal-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
 .cal-dato { background: var(--panel-2); border: 1px solid var(--borde); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; }
@@ -52,7 +52,7 @@
 .cal-paso.hecho .cal-paso-check { border-color: var(--ok); }
 .cal-paso small { display: block; }
 .cot-estado { display: inline-flex; padding: 2px 9px; border-radius: 999px; font-size: .72rem; font-weight: 700; background: var(--panel-3); color: var(--tenue); }
-.cot-estado.ok { background: var(--ok-fondo); color: var(--ok); } .cot-estado.mal { background: var(--peligro-fondo); color: #ff8f8f; } .cot-estado.info { background: color-mix(in srgb, var(--info) 18%, transparent); color: var(--info); }
+.cot-estado.ok { background: var(--ok-fondo); color: var(--ok); } .cot-estado.mal { background: var(--peligro-fondo); color: var(--peligro-texto); } .cot-estado.info { background: color-mix(in srgb, var(--info) 18%, transparent); color: var(--info); }
 .cot-partidas { display: grid; gap: 8px; }
 .cot-partida { display: grid; grid-template-columns: minmax(0, 1fr) 90px 120px 38px; gap: 8px; align-items: center; }
 @media (max-width: 640px) { .cot-partida { grid-template-columns: 1fr 1fr; } .cot-partida > :first-child { grid-column: 1 / -1; } }

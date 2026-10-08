@@ -19,7 +19,7 @@
 .af-alerta-texto { flex: 1 1 260px; min-width: 0; display: grid; gap: 2px; }
 .af-alerta-texto > span { color: var(--tenue); font-size: .8rem; }
 .af-sev { text-transform: uppercase; font-size: .68rem; letter-spacing: .06em; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--aviso-fondo); color: var(--aviso); }
-.af-sev.alta { background: var(--peligro-fondo); color: #ff8f8f; } .af-sev.baja { background: var(--panel-3); color: var(--tenue); }
+.af-sev.alta { background: var(--peligro-fondo); color: var(--peligro-texto); } .af-sev.baja { background: var(--panel-3); color: var(--tenue); }
 .af-alerta select { width: auto; min-height: 34px; padding: 4px 8px; }
 .af-alerta-detalle { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px 16px; padding: 4px 14px 12px; border-top: 1px solid var(--borde); padding-top: 10px; }
 .af-alerta-detalle span { display: block; font-size: .72rem; color: var(--tenue); text-transform: uppercase; letter-spacing: .05em; }
@@ -30,7 +30,7 @@
 
 .af-senales { display: flex; flex-wrap: wrap; gap: 4px; min-width: 220px; }
 .af-senal { font-size: .74rem; padding: 2px 8px; border-radius: 999px; background: var(--aviso-fondo); color: var(--aviso); }
-.af-senal.alta { background: var(--peligro-fondo); color: #ff8f8f; } .af-senal.baja { background: var(--panel-3); color: var(--tenue); }
+.af-senal.alta { background: var(--peligro-fondo); color: var(--peligro-texto); } .af-senal.baja { background: var(--panel-3); color: var(--tenue); }
 tr.af-fila-alta td { background: color-mix(in srgb, var(--peligro) 9%, transparent); }
 tr.af-fila-media td { background: color-mix(in srgb, var(--aviso) 7%, transparent); }
 
@@ -39,7 +39,7 @@ tr.af-fila-media td { background: color-mix(in srgb, var(--aviso) 7%, transparen
 .af-linea-hora { color: var(--tenue); font-variant-numeric: tabular-nums; font-size: .84rem; text-align: right; }
 .af-linea-punto { width: 10px; height: 10px; margin-top: 5px; border-radius: 50%; background: var(--borde); box-shadow: 0 0 0 3px var(--panel); }
 .af-linea li.sensible .af-linea-punto { background: var(--peligro); }
-.af-linea li.sensible strong { color: #ff9b9b; }
+.af-linea li.sensible strong { color: var(--peligro-texto); }
 
 .af-feed { display: grid; gap: 8px; max-height: 420px; overflow: auto; }
 .af-evento { display: grid; grid-template-columns: 110px 1fr; gap: 10px; font-size: .86rem; padding-bottom: 8px; border-bottom: 1px solid color-mix(in srgb, var(--borde) 60%, transparent); }

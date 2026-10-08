@@ -49,7 +49,7 @@
 /* Recepción */
 .rep-recep { display: grid; gap: 8px; padding: 12px 0; border-top: 1px solid var(--borde); }
 .rep-recep:first-child { border-top: 0; }
-.rep-btn-no { min-height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--peligro) 50%, transparent); background: var(--peligro-fondo); color: #ff9b9b; font-weight: 700; }
+.rep-btn-no { min-height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--peligro) 50%, transparent); background: var(--peligro-fondo); color: var(--peligro-texto); font-weight: 700; }
 
 /* Despacho: tiendas */
 .rep-tienda { display: flex; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 14px; border-radius: var(--radio); background: var(--panel); border: 1px solid var(--borde); min-height: 72px; }

@@ -22,7 +22,7 @@
 .cierre-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .cierre-pie { display: grid; gap: 12px; } .cierre-total { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-weight: 700; }
 .cierre-dif { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: .78rem; font-weight: 700; } .cierre-dif.grande { font-size: 1.05rem; padding: 6px 14px; }
-.cierre-dif.ok { background: var(--ok-fondo); color: var(--ok); } .cierre-dif.mal { background: var(--peligro-fondo); color: #ff8f8f; } .cierre-dif.aviso { background: var(--aviso-fondo); color: var(--aviso); } .cierre-dif.nd { background: var(--panel-3); color: var(--tenue); }
+.cierre-dif.ok { background: var(--ok-fondo); color: var(--ok); } .cierre-dif.mal { background: var(--peligro-fondo); color: var(--peligro-texto); } .cierre-dif.aviso { background: var(--aviso-fondo); color: var(--aviso); } .cierre-dif.nd { background: var(--panel-3); color: var(--tenue); }
 .cierre-resultado { display: grid; gap: 14px; } .cierre-resultado-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; } .cierre-resultado-grid > div { display: grid; gap: 6px; justify-items: start; }
 .conteo { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; } .conteo label { grid-template-columns: 70px 1fr; align-items: center; gap: 8px; color: var(--texto); font-size: .86rem; } .conteo input { min-height: 36px; padding: 6px 8px; text-align: right; }
 .conteo-sub { display: flex; justify-content: space-between; font-weight: 700; }
@@ -41,7 +41,7 @@
 .rep-buscar { max-width: 240px; min-height: 36px; padding: 6px 10px; }
 .th-orden { cursor: pointer; user-select: none; } .th-orden:hover { color: var(--texto); }
 tr.fila-total td { font-weight: 700; border-top: 2px solid var(--borde); } tr.fila-anulada td { opacity: .55; text-decoration: line-through; } tr.fila-sel td { background: color-mix(in srgb, var(--acento) 18%, transparent); }
-.alerta-num { color: #ff8f8f; font-weight: 700; } .mono { font-family: ui-monospace, Menlo, monospace; font-size: .84rem; }
+.alerta-num { color: var(--peligro-texto); font-weight: 700; } .mono { font-family: ui-monospace, Menlo, monospace; font-size: .84rem; }
 .filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; } .filtros label { min-width: 150px; } .filtros select { width: auto; min-width: 190px; }
 .atajos { display: flex; gap: 6px; flex-wrap: wrap; }
 .solo-impresion { display: none; }
