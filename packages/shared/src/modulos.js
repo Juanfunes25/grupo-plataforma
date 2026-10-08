@@ -19,7 +19,6 @@ export const MODULOS = {
   rep_consumo:    { nav: 'Gelato', nombre: 'Consumo y reposición',   descripcion: 'Cuánto gelato se consume, se envía y se vende por sucursal', permiso: 'rep:ver',       ruta: 'consumo',           icono: 'reportes' },
   rep_costeo:     { nav: 'Gelato', nombre: 'Recetas y costeo',       descripcion: 'Recetas de gelato, insumos y costo por receta',              permiso: 'rep:costeo',    ruta: 'gelato-costeo',     icono: 'catalogo' },
   rep_inventario: { nav: 'Gelato', nombre: 'Inventario y RFID',      descripcion: 'Insumos por sucursal, lotes, vencimientos y lector RFID',    permiso: 'rep:inventario', ruta: 'gelato-inventario', icono: 'inventario' },
-  rep_incidencias:{ nav: 'Gelato', nombre: 'Incidencias',            descripcion: 'Reportes con foto de las sucursales',                        permiso: 'rep:pesar',     ruta: 'incidencias',       icono: 'alerta' },
   rep_mantenimiento:{ nav: 'Gelato', nombre: 'Mantenimiento',        descripcion: 'Equipos, mantenimientos y checklist',                        permiso: 'rep:pesar',       ruta: 'mantenimiento',     icono: 'escudo' },
   // Fabricación (EcoStone) — empresa con módulo 'fabrica'
   piedra:         { nav: 'Fabricación', nombre: 'Catálogo de piedra',   descripcion: 'Modelo + color, unidad de venta y listas de precio', permiso: 'pos:catalogo',  ruta: 'piedra',            icono: 'catalogo' },
@@ -69,7 +68,7 @@ export const MODULOS_DERIVADOS = {
   finanzas: ['finanzas'],
   fabrica: ['piedra', 'cot_eco', 'prod_registrar', 'prod_ordenes', 'prod_recetas', 'prod_insumos', 'prod_inventario', 'prod_trazabilidad', 'prod_reporte'],
   distribuidora: ['cot_dis', 'dis_salidas', 'dis_catalogo', 'dis_inventario'],
-  reposicion: ['rep_tablero', 'rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_incidencias', 'rep_mantenimiento'],
+  reposicion: ['rep_tablero', 'rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_mantenimiento'],
   antifraude: ['antifraude'],      // solo Italo y Origen; EcoStone y DISERCO no lo usan
   cotizaciones: ['cotizaciones'],
 };

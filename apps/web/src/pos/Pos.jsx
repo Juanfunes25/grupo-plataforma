@@ -394,8 +394,6 @@ export default function Pos() {
           </div>
           <span className="sep" style={{ flex: 1 }} />
           <button className="btn chico" onClick={() => setModal({ tipo: 'abiertas' })}>Abiertas{otrasAbiertas > 0 && <span className="chip aviso">{otrasAbiertas}</span>}</button>
-          {(puede('pos:catalogo') || puede('pos:vender')) && <button className="btn chico" aria-pressed={agotados} onClick={() => setAgotados((a) => !a)} style={agotados ? { background: 'var(--aviso-fondo)', borderColor: 'var(--aviso)' } : undefined}>{agotados ? 'Terminar “agotados”' : 'Marcar agotados'}</button>}
-          {turno && <button className="btn chico" onClick={() => setModal({ tipo: 'movimiento' })}>Movimiento</button>}
           {turno && <button className="btn chico peligro" onClick={() => setModal({ tipo: 'cerrar' })}>Cerrar caja</button>}
         </div>
 

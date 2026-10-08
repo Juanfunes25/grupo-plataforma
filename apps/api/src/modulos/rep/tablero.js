@@ -132,9 +132,7 @@ export function rutasTablero({ db }) {
     for (const [nombre, lista] of Object.entries(Object.groupBy(viejas, (d) => d.sucursal_nombre))) {
       alertas.push({ id: `sin-confirmar-${nombre}`, tono: 'aviso', titulo: `${nombre}: ${lista.length} sabor${lista.length === 1 ? '' : 'es'} enviado${lista.length === 1 ? '' : 's'} sin confirmar`, detalle: `Salieron de fábrica el ${diaCorto(lista[0].enviado_en)} y la tienda no marcó que llegaron.`, ir: 'pesaje' });
     }
-    const altas = incidencias.find((i) => i.gravedad === 'alta')?.n ?? 0;
-    const totalInc = incidencias.reduce((a, i) => a + i.n, 0);
-    if (totalInc) alertas.push({ id: 'incidencias', tono: altas ? 'mal' : 'aviso', titulo: `${totalInc} incidencia${totalInc === 1 ? '' : 's'} abierta${totalInc === 1 ? '' : 's'}${altas ? ` (${altas} grave${altas === 1 ? '' : 's'})` : ''}`, detalle: 'Reportes con foto de las sucursales.', ir: 'incidencias' });
+    // Incidencias: ya no se usan en la operación; el módulo se quitó del menú y no genera alertas.
     const faltaStock = rotacion.sabores.filter((s) => s.clasificacion === CLASIFICACION.FALTA_STOCK);
     if (faltaStock.length) alertas.push({ id: 'falta-stock', tono: 'aviso', titulo: `${faltaStock.length} sabor${faltaStock.length === 1 ? '' : 'es'} se pidieron y no había`, detalle: `${faltaStock.slice(0, 4).map((s) => s.nombre).join(', ')}: conviene producir más.`, ir: 'gelato-produccion', tab: 'plan' });
     const parados = rotacion.sabores.filter((s) => s.clasificacion === CLASIFICACION.MUERTO || s.clasificacion === CLASIFICACION.LENTO);

@@ -6,7 +6,7 @@ import { horaDeHN } from '@grupo/shared';
 import { api, get, patch, post, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Tabs, useAviso } from '../ui/kit.jsx';
-import { BotonesPanas, CatalogoInsumos, CatalogoSabores, Esqueleto, FajaConexion, SelectorSucursal, useSucursalesRep } from './comun.jsx';
+import { BotonesPanas, CatalogoInsumos, CatalogoSabores, Esqueleto, FajaConexion, useSucursalesRep } from './comun.jsx';
 import { Historial } from './Historial.jsx';
 import { alVolverLaSenal, contarPendientes, cuandoTexto, fechaCorta, guardarCache, hoyIso, idCliente, leerCache, postConCola, reducirFoto, sincronizar, sumarDias, vibrar } from './lib.js';
 
@@ -53,6 +53,7 @@ export default function Pesaje() {
   const [ocupadoRecep, setOcupadoRecep] = useState(null);
   const [porConfirmar, setPorConfirmar] = useState(null);   // sabores que fábrica envió (hoy o ayer) y nadie ha confirmado; null = aún no se sabe
   const tabElegida = useRef(false);
+  const [eligiendo, setEligiendo] = useState(true);   // primero se elige la sucursal; solo se salta si el usuario ya está fijo en una
 
   // ── Carga ──
   const aplicarSabores = useCallback((datos) => {
@@ -215,6 +216,24 @@ export default function Pesaje() {
 
   if (cargandoSuc && !sucursal) return <div className="rep"><Esqueleto alto={160} /></div>;
   if (!sucursal) return <div className="rep"><div className="aviso-caja">No hay sucursales de reposición disponibles para tu usuario.</div></div>;
+  if (lista.length > 1 && eligiendo) {
+    return (
+      <div className="rep">
+        <div className="encabezado-pagina"><div><h1>Pesaje de la noche</h1><div className="rep-sub">{fechaCorta(hoy)}</div></div></div>
+        <div className="rep-elegir" role="group" aria-label="Elige la sucursal que vas a pesar">
+          <h2>¿Qué sucursal vas a pesar?</h2>
+          <div className="rep-elegir-grid">
+            {lista.map((s) => (
+              <button key={s.id} className="rep-elegir-btn" onClick={() => { setId(s.id); setEligiendo(false); }} style={{ '--sc': s.color || 'var(--acento)' }}>
+                <span className="rep-elegir-punto" aria-hidden="true" />
+                <b>{s.nombre}</b>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const tabs = [['sabores', 'Pesar gelato'], ['insumos', `Pedir insumos${carrito.length ? ` (${carrito.length})` : ''}`], ['recepcion', `Recibir${porConfirmar?.length ? ` (${porConfirmar.length})` : ''}`], ['catalogo', 'Mis sabores'], ...(puede('rep:ver') ? [['historial', 'Reportes']] : [])];
 
@@ -229,7 +248,7 @@ export default function Pesaje() {
         <div><h1>Pesaje de {sucursal.nombre}</h1><div className="rep-sub">Pesaje de la noche · {fechaCorta(hoy)}</div></div>
         {modulos.some((m) => m.id === 'pos') && puede('pos:vender') && <Link className="btn" to={`/${contexto.empresa.codigo}/pos`}>Ir a la caja</Link>}
       </div>
-      <SelectorSucursal lista={lista} valor={sucursal.id} onCambio={setId} />
+      {lista.length > 1 && <div><button className="btn chico" onClick={() => setEligiendo(true)}>← Cambiar de sucursal</button></div>}
       <FajaConexion pendientes={sinSenal} />
 
       {porConfirmar?.length > 0 && tab !== 'recepcion' && (

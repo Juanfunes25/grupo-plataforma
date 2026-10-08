@@ -1,0 +1,50 @@
+codigo,nombre,categoria,tipo,modelo,color,unidad_venta,precio,costo_wizpos,descripcion
+WP-1,Rustic Quick fit Gran Cañon,Rustic Quick fit,piedra,Rustic Quick fit,Gran Cañon,m2,1166.24,190.523,
+WP-2,Rustic Quick fit Arizona,Rustic Quick fit,piedra,Rustic Quick fit,Arizona,m2,1166.24,201.2394,
+WP-3,Rustic Quick fit Golden Mine,Rustic Quick fit,piedra,Rustic Quick fit,Golden Mine,m2,1166.24,180.852,
+WP-4,Rustic Quick fit Gray smoke,Rustic Quick fit,piedra,Rustic Quick fit,Gray smoke,m2,1166.24,183.73,
+WP-5,Rustic Quick fit Desert Sand,Rustic Quick fit,piedra,Rustic Quick fit,Desert Sand,m2,1166.24,170.659,
+WP-6,Rustic Quick fit Slate,Rustic Quick fit,piedra,Rustic Quick fit,Slate,m2,1166.24,212.221,
+WP-7,Rustic Quick fit Perla,Rustic Quick fit,piedra,Rustic Quick fit,Perla,m2,1166.24,155.5,
+WP-8,Rustic Quick fit Everest,Rustic Quick fit,piedra,Rustic Quick fit,Everest,m2,1213.5,242.358,
+WP-9,Rustic Quick fit New Mexico,Rustic Quick fit,piedra,Rustic Quick fit,New Mexico,m2,1213.5,205.682,
+WP-30,Rustic Quick fit Gran Cañon Caja esquina,Rustic Quick fit,piedra,Rustic Quick fit,Gran Cañon,caja,1319.55,0,Caja de piezas de esquina
+WP-31,Rustic Quick fit Arizona Caja esquina,Rustic Quick fit,piedra,Rustic Quick fit,Arizona,caja,1319.55,0,Caja de piezas de esquina
+WP-32,Rustic Quick fit Golden Mine Caja esquina,Rustic Quick fit,piedra,Rustic Quick fit,Golden Mine,caja,1319.55,0,Caja de piezas de esquina
+WP-33,Rustic Quick fit Gray smoke Caja esquina,Rustic Quick fit,piedra,Rustic Quick fit,Gray smoke,caja,1319.55,0,Caja de piezas de esquina
+WP-34,Rustic Quick fit Desert Sand Caja esquina,Rustic Quick fit,piedra,Rustic Quick fit,Desert Sand,caja,1319.55,0,Caja de piezas de esquina
+WP-35,Rustic Quick fit Slate Caja esquina,Rustic Quick fit,piedra,Rustic Quick fit,Slate,caja,1319.55,0,Caja de piezas de esquina
+WP-36,Rustic Quick fit Perla Caja esquina,Rustic Quick fit,piedra,Rustic Quick fit,Perla,caja,1319.55,0,Caja de piezas de esquina
+WP-37,Rustic Quick fit Everest Caja esquina,Rustic Quick fit,piedra,Rustic Quick fit,Everest,caja,1194.59,0,Caja de piezas de esquina
+WP-38,Rustic Quick fit New Mexico Caja esquina,Rustic Quick fit,piedra,Rustic Quick fit,New Mexico,caja,1194.59,0,Caja de piezas de esquina
+WP-10,Castillo Europeo Desert Sand,Castillo Europeo,piedra,Castillo Europeo,Desert Sand,m2,1166.24,234.477,
+WP-11,Castillo Europeo Blanco,Castillo Europeo,piedra,Castillo Europeo,Blanco,m2,1212.74,261.084,
+WP-12,Castillo Europeo Gray smoke,Castillo Europeo,piedra,Castillo Europeo,Gray smoke,m2,1166.24,368.2,
+WP-13,Castillo Europeo Onyx,Castillo Europeo,piedra,Castillo Europeo,Onyx,m2,1295.82,411.65,
+WP-39,Castillo Europeo Desert Sand Caja esquina,Castillo Europeo,piedra,Castillo Europeo,Desert Sand,caja,1319.55,0,Caja de piezas de esquina
+WP-40,Castillo Europeo Blanco Caja esquina,Castillo Europeo,piedra,Castillo Europeo,Blanco,caja,1194.59,0,Caja de piezas de esquina
+WP-41,Castillo Europeo Gray smoke Caja esquina,Castillo Europeo,piedra,Castillo Europeo,Gray smoke,caja,1319.55,0,Caja de piezas de esquina
+WP-42,Castillo Europeo Onyx Caja esquina,Castillo Europeo,piedra,Castillo Europeo,Onyx,caja,1278.21,0,Caja de piezas de esquina
+WP-14,Monasterio Desert Sand,Monasterio,piedra,Monasterio,Desert Sand,m2,1166.24,208.984,
+WP-15,Monasterio Ozark,Monasterio,piedra,Monasterio,Ozark,m2,1166.24,322.804,
+WP-16,Monasterio Smoke Gray,Monasterio,piedra,Monasterio,Smoke Gray,m2,1166.24,275.51,
+WP-17,Monasterio Blanco,Monasterio,piedra,Monasterio,Blanco,m2,1212.74,253.094,
+WP-43,Monasterio Desert Sand Caja esquina,Monasterio,piedra,Monasterio,Desert Sand,caja,1319.55,0,Caja de piezas de esquina
+WP-44,Monasterio Ozark Caja esquina,Monasterio,piedra,Monasterio,Ozark,caja,1319.55,0,Caja de piezas de esquina
+WP-45,Monasterio Smoke Gray Caja esquina,Monasterio,piedra,Monasterio,Smoke Gray,caja,1319.55,0,Caja de piezas de esquina
+WP-46,Monasterio Blanco Caja esquina,Monasterio,piedra,Monasterio,Blanco,caja,1194.59,0,Caja de piezas de esquina
+WP-18,Ledgestone/Laja Desert,Ledgestone/Laja,piedra,Ledgestone/Laja,Desert,m2,1166.24,214.802,
+WP-19,Ledgestone/Laja Slate,Ledgestone/Laja,piedra,Ledgestone/Laja,Slate,m2,1166.24,286.148,
+WP-20,Cliff/Risco Charcoal,Cliff/Risco,piedra,Cliff/Risco,Charcoal,m2,1222.16,269.498,
+WP-21,Cliff/Risco Slate,Cliff/Risco,piedra,Cliff/Risco,Slate,m2,1222.16,242.051,
+WP-22,Cliff/Risco Perla,Cliff/Risco,piedra,Cliff/Risco,Perla,m2,1222.16,179.32,
+WP-23,Cliff/Risco Coquina,Cliff/Risco,piedra,Cliff/Risco,Coquina,m2,1222.16,257.5575,
+WP-47,Cliff/Risco Ivory,Cliff/Risco,piedra,Cliff/Risco,Ivory,m2,1295.82,254.729,
+WP-24,Travertino Gold,Travertino,piedra,Travertino,Gold,m2,1222.16,310.971,
+WP-25,Travertino Monaco,Travertino,piedra,Travertino,Monaco,m2,1222.16,207.106,
+WP-26,Travertino Blanco,Travertino,piedra,Travertino,Blanco,m2,1222.16,248.938,
+WP-27,Travertino Onyx,Travertino,piedra,Travertino,Onyx,m2,1295.82,271.4,
+WP-28,Eco Protector galon,Eco Protector galon,accesorio,,,galon,719.76,0,
+WP-56,Sellador Acrilico Clear Sealer Galon,Eco Protector galon,accesorio,,,galon,1217.24,0,
+WP-29,PegaPiedra saco,PegaPiedra saco,accesorio,,,saco,567.14,0,
+WP-60,PegaPiedra Blanco Saco,PegaPiedra saco,accesorio,,,saco,686.82,0,
