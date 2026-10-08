@@ -1,0 +1,45 @@
+/* Punto de venta · detalles heredados de Italo Facturación (banner de sucursal, descuentos por línea, cobro de un toque) */
+.pos-der { display: flex; flex-direction: column; overflow-y: auto; gap: 8px; min-height: 0; }
+.pos-der > * { flex: none; }
+.pos-der .pos-lineas { flex: 1 1 auto; min-height: 150px; }
+.pos-sucursal-banner { display: flex; align-items: baseline; gap: 10px; padding: 8px 12px; border-radius: 10px; color: #14110d; font-weight: 700; min-width: 0; }
+.pos-sucursal-banner b { font-family: 'Barlow Condensed'; font-size: 1.35rem; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.pos-sucursal-banner span { font-size: .72rem; opacity: .75; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-cliente { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 1px solid var(--borde); border-radius: 10px; background: var(--panel-2); min-height: 48px; }
+.pos-cliente .quien { min-width: 0; display: grid; gap: 1px; line-height: 1.2; }
+.pos-cliente .quien b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pos-cliente.falta { border-color: var(--aviso); background: var(--aviso-fondo); }
+.pos-linea { grid-template-columns: auto 1fr auto; align-items: start; }
+.pos-linea.con-descuento { border-left: 3px solid var(--ok); }
+.pl-cant input { width: 52px; text-align: center; padding: 4px; min-height: 34px; font-weight: 700; }
+.pos-linea-desc { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
+.pos-chip-desc { border: 1px solid var(--borde); background: var(--panel-3); border-radius: 999px; padding: 6px 12px; min-height: 34px; font-size: .8rem; font-weight: 600; color: var(--tenue); }
+.pos-chip-desc.activo { background: var(--ok-fondo); border-color: var(--ok); color: var(--ok); }
+.pos-chip-desc.separar { border-style: dashed; }
+.pos-tercera-edad { display: grid; gap: 6px; padding: 10px; border: 1px solid var(--borde); border-radius: 10px; background: var(--panel-2); }
+.pos-tercera-edad.incompleto { border-color: var(--aviso); }
+.pos-tercera-edad .tit { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ok); }
+.pos-botones-cobro { display: flex; align-items: stretch; justify-content: space-between; gap: 0; }
+.boton-cobro { flex: 0 0 44%; min-height: 76px; border-radius: 16px; border: 0; font-weight: 800; letter-spacing: .08em; font-size: 1.05rem; display: grid; place-items: center; align-content: center; gap: 2px; color: #fff; }
+.boton-cobro.efectivo { background: #2f9a68; } .boton-cobro.tarjeta { background: #3f6fd1; }
+.boton-cobro:disabled { opacity: .35; cursor: not-allowed; }
+.boton-cobro:not(:disabled):active { transform: scale(.97); }
+.pos-cobro-separador { flex: 1 1 12%; }
+.pos-toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: var(--panel-3); border: 1px solid var(--borde); padding: 8px 16px; border-radius: 999px; z-index: 60; box-shadow: var(--sombra); pointer-events: none; }
+.pos-acciones-fila { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.pos-acciones-fila .btn { padding: 8px 6px; font-size: .84rem; }
+.pos-aviso-lleva { display: flex; gap: 6px; }
+@media (max-width: 960px) { .pos-der { max-height: none; position: static; } .pos-der .pos-lineas { max-height: 38vh; } }
+
+/* Facturas */
+.fac-punto { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: middle; }
+.chip-pago { display: inline-flex; padding: 2px 9px; border-radius: 999px; font-size: .74rem; font-weight: 700; margin-right: 4px; background: var(--panel-3); color: var(--tenue); white-space: nowrap; }
+.chip-pago.efectivo { background: rgba(63,182,122,.16); color: #5fd49b; } .chip-pago.tarjeta { background: rgba(91,155,239,.16); color: #8fbaf5; } .chip-pago.transferencia { background: rgba(201,162,39,.16); color: #e1c25c; }
+tr.fac-anulada td { opacity: .5; text-decoration: line-through; }
+.fac-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; align-items: end; }
+.pasos { padding-left: 20px; display: grid; gap: 12px; }
+.codigo-copiable { display: flex; gap: 8px; align-items: center; background: var(--panel-2); border: 1px solid var(--borde); border-radius: 10px; padding: 8px 10px; margin-top: 6px; }
+.codigo-copiable code { flex: 1; font-size: .78rem; word-break: break-all; color: #cfe3ff; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button { border: 1px solid var(--borde); background: var(--panel-2); border-radius: 10px; padding: 10px 16px; min-height: 46px; font-weight: 600; }
+.seg button.activo { background: var(--acento); border-color: transparent; color: #fff; }

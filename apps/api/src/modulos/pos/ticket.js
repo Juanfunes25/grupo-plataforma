@@ -1,5 +1,8 @@
-// Ticket de texto para impresora térmica (42 col ≈ 80 mm, 32 col ≈ 58 mm).
-// Devuelve un arreglo de renglones; el frontend lo imprime en monoespaciado.
+// Ticket de texto para impresora térmica (48/42 col ≈ 80 mm, 32 col ≈ 58 mm).
+// Devuelve un arreglo de renglones; el frontend lo imprime en monoespaciado (o como HTML con envolverTicketHtml).
+import { envolverTicketHtml, ANCHOS_TICKET } from '@grupo/shared';
+export { envolverTicketHtml };
+export const anchoValido = (n) => (ANCHOS_TICKET[Number(n)] ? Number(n) : 48);
 const centrar = (t, w) => { const s = String(t).slice(0, w); const e = w - s.length; const i = Math.floor(e / 2); return ' '.repeat(i) + s; };
 const fila = (izq, der, w) => { const d = String(der); const i = String(izq).slice(0, Math.max(1, w - d.length - 1)); return i + ' '.repeat(Math.max(1, w - i.length - d.length)) + d; };
 const L = (n) => `L ${Number(n).toFixed(2)}`;
@@ -58,9 +61,31 @@ export function formatearTicket({ empresa, sucursal, venta, lineas, pagos, punto
   t.push(fila('TOTAL', L(venta.total), ancho));
   t.push(raya);
   for (const p of pagos ?? []) t.push(fila(p.forma, L(p.monto) + (p.referencia ? ` (${p.referencia})` : ''), ancho));
-  if (Number(venta.cambio) > 0) { t.push(fila('Efectivo recibido', L(venta.efectivo_recibido), ancho)); t.push(fila('Cambio', L(venta.cambio), ancho)); }
+  if (venta.efectivo_recibido != null) { t.push(fila('Efectivo recibido', L(Number(venta.efectivo_recibido)), ancho)); t.push(fila('Cambio', L(Number(venta.cambio ?? 0)), ancho)); }
+  if (venta.tercera_edad_identidad) for (const r of ajustar(`Desc. 3ra edad: ${venta.tercera_edad_nombre ?? ''} ID ${venta.tercera_edad_identidad}`, ancho)) t.push(r);
   t.push(raya);
   t.push(centrar('LA FACTURA ES BENEFICIO DE TODOS, EXÍJALA', ancho));
   t.push(centrar('¡Gracias por su visita!', ancho));
+  t.push('');
+  return t;
+}
+
+/** Ticket de prueba para ajustar el ancho del papel de la impresora de una caja. */
+export function formatearTicketPrueba(ancho, { empresa, sucursal } = {}) {
+  const t = [];
+  const raya = '-'.repeat(ancho);
+  t.push(centrar(String(empresa?.razon_social ?? empresa?.nombre ?? '').toUpperCase(), ancho));
+  t.push(centrar('PRUEBA DE IMPRESORA', ancho));
+  t.push(raya);
+  if (sucursal) for (const r of ajustar(sucursal, ancho)) t.push(centrar(r, ancho));
+  t.push(`Papel: ${ANCHOS_TICKET[ancho]} (${ancho} columnas)`);
+  t.push(`Fecha: ${new Intl.DateTimeFormat('es-HN', { timeZone: 'America/Tegucigalpa', dateStyle: 'short', timeStyle: 'short' }).format(new Date())}`);
+  t.push(raya);
+  t.push('0123456789'.repeat(Math.ceil(ancho / 10)).slice(0, ancho));
+  t.push(fila('Si esta línea cabe completa', L(123.45), ancho));
+  t.push('='.repeat(ancho));
+  t.push(centrar('Si ve todo derecho y sin cortes,', ancho));
+  t.push(centrar('la impresora quedó bien configurada.', ancho));
+  t.push('');
   return t;
 }

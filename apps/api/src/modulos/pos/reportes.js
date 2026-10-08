@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { fechaHN, sumarDias } from '@grupo/shared';
 import { requierePermiso } from '../../lib/contexto.js';
-import { uuid, validar, fechaISO } from '../../lib/http.js';
+import { malaPeticion, uuid, validar, fechaISO } from '../../lib/http.js';
+import { reporteCompleto } from './reportes-completo.js';
 
 const FECHA = (col) => `(${col} at time zone 'America/Tegucigalpa')::date`;
 
@@ -57,6 +58,14 @@ export function rutasReportes({ db }) {
     const hoy = fechaHN();
     res.json(await resumenVentas(db, {
       empresaId: req.ctx.empresa.id, sucursalIds: req.ctx.sucursalIds, desde: f.desde ?? sumarDias(hoy, -6), hasta: f.hasta ?? hoy, sucursalId: f.sucursal_id ?? null }));
+  });
+
+  // Reporte completo (pantalla Reportes): todas las secciones de un rango, con el periodo anterior para comparar.
+  r.get('/completo', requierePermiso('pos:reportes'), async (req, res) => {
+    const f = validar(z.object({ desde: fechaISO, hasta: fechaISO, sucursal_id: uuid.optional() }), req.query);
+    if (f.hasta < f.desde) throw malaPeticion('La fecha final es anterior a la inicial');
+    if ((Date.parse(f.hasta) - Date.parse(f.desde)) / 86400000 > 800) throw malaPeticion('El rango máximo es de 800 días');
+    res.json(await reporteCompleto(db, { empresaId: req.ctx.empresa.id, sucursalIds: req.ctx.sucursalIds, sucursalId: f.sucursal_id ?? null, desde: f.desde, hasta: f.hasta }));
   });
 
   // Libro de ventas (formato SAR: una fila por factura con sus importes) — listo para exportar a CSV/Excel.

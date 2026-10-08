@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { requierePermiso, sucursalesPermitidas } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
 import { noEncontrado, uuid, validar, dinero } from '../../lib/http.js';
+import { UMBRAL_RTN_OBLIGATORIO } from '@grupo/shared';
+import { estadoPunto } from './fiscal.js';
 
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable();
 const esqProducto = z.object({
@@ -31,7 +33,7 @@ export function rutasCatalogo({ db }) {
   // Todo lo que la caja necesita en UNA llamada (se cachea offline en el frontend).
   r.get('/', requierePermiso('pos:vender', 'pos:catalogo', 'pos:reportes'), async (req, res) => {
     const eid = req.ctx.empresa.id;
-    const [cats, prods, pg, grupos, mods, fp, suc, pe] = await Promise.all([
+    const [cats, prods, pg, grupos, mods, fp, suc, pe, cfg] = await Promise.all([
       db.query('select id, nombre, color, orden from pos.categorias where empresa_id = $1 and activo order by orden, nombre', [eid]),
       db.query(`select id, codigo, codigo_barras, nombre, descripcion, categoria_id, precio, impuesto_tasa, exento, tipo, unidad, color, imagen, tiempo_prep_min, disponible
                   from pos.productos where empresa_id = $1 and activo order by orden, nombre`, [eid]),
@@ -41,17 +43,39 @@ export function rutasCatalogo({ db }) {
                  where g.empresa_id = $1 and m.activo and g.activo order by m.orden, m.nombre`, [eid]),
       db.query('select id, nombre, tipo from pos.formas_pago where empresa_id = $1 and activo order by orden', [eid]),
       sucursalesPermitidas(db, req.ctx),
-      db.query(`select sucursal_id, es_borrador, cai, fecha_limite_emision, correlativo_actual, correlativo_hasta from pos.puntos_emision where empresa_id = $1 and activo`, [eid]),
+      db.query(`select sucursal_id, es_borrador, cai, fecha_limite_emision, correlativo_desde, correlativo_actual, correlativo_hasta from pos.puntos_emision where empresa_id = $1 and activo`, [eid]),
+      db.query(`select valor from core.config where empresa_id = $1 and clave = 'pos'`, [eid]),
     ]);
+    const c = cfg.rows[0]?.valor ?? {};
     res.json({
       categorias: cats.rows,
       productos: prods.rows.map((p) => ({ ...p, grupo_ids: pg.rows.filter((x) => x.producto_id === p.id).map((x) => x.grupo_id) })),
       grupos: grupos.rows.map((g) => ({ ...g, modificadores: mods.rows.filter((m) => m.grupo_id === g.id) })),
       formas_pago: fp.rows,
       sucursales: suc,
-      fiscal: Object.fromEntries(pe.rows.map((p) => [p.sucursal_id, {
-        borrador: p.es_borrador, restantes: p.correlativo_hasta - p.correlativo_actual + 1, vence: p.fecha_limite_emision }])),
+      // Estado del CAI por sucursal. Una sucursal SIN entrada aquí no tiene punto de emisión activo (no puede facturar).
+      fiscal: Object.fromEntries(pe.rows.map((p) => {
+        const e = estadoPunto({ ...p, fecha_limite_emision: p.fecha_limite_emision ? String(p.fecha_limite_emision).slice(0, 10) : null });
+        return [p.sucursal_id, {
+          borrador: p.es_borrador, restantes: Math.max(0, p.correlativo_hasta - p.correlativo_actual + 1), vence: e.fecha_limite_emision,
+          dias_restantes: e.dias_restantes, agotado: e.agotado, vencido: e.vencido, alerta: e.alerta, porcentaje_usado: e.porcentaje_usado,
+        }];
+      })),
+      // Reglas de caja de la empresa (con los valores de fábrica de Italo).
+      config: { umbral_rtn: Number(c.umbral_rtn) > 0 ? Number(c.umbral_rtn) : UMBRAL_RTN_OBLIGATORIO, exigir_tercera_edad: c.exigir_tercera_edad !== false },
     });
+  });
+
+  // Huella barata del catálogo: la caja la consulta cada pocos segundos y solo descarga el catálogo completo si cambió
+  // (un precio nuevo, un "se acabó" marcado desde otra caja…). Es la sincronización "en vivo" del POS.
+  r.get('/version', requierePermiso('pos:vender', 'pos:catalogo', 'pos:reportes'), async (req, res) => {
+    const eid = req.ctx.empresa.id;
+    const [p, c, m] = await Promise.all([
+      db.query(`select md5(coalesce(string_agg(id::text || nombre || precio::text || activo::text || disponible::text || coalesce(categoria_id::text,'') || coalesce(codigo_barras,'') || orden::text, ',' order by id), '')) as h from pos.productos where empresa_id = $1`, [eid]),
+      db.query(`select md5(coalesce(string_agg(id::text || nombre || activo::text || orden::text || coalesce(color,''), ',' order by id), '')) as h from pos.categorias where empresa_id = $1`, [eid]),
+      db.query(`select md5(coalesce(string_agg(m.id::text || m.nombre || m.precio_extra::text || m.activo::text, ',' order by m.id), '')) as h from pos.modificadores m join pos.modificador_grupos g on g.id = m.grupo_id where g.empresa_id = $1`, [eid]),
+    ]);
+    res.json({ v: `${p.rows[0].h}${c.rows[0].h}${m.rows[0].h}` });
   });
 
   // ── Administración del catálogo ──────────────────────────────────────────

@@ -6,6 +6,8 @@ import Icono from '../ui/Icono.jsx';
 import Logo from '../ui/Logo.jsx';
 import { Campo, Modal, useAccion, useAviso } from '../ui/kit.jsx';
 import { post } from '../api.js';
+import Vigilancia from '../antifraude/Vigilancia.jsx';
+import ContadorAlertas from '../antifraude/ContadorAlertas.jsx';
 
 // Cambio de contraseña propio (solo sesiones de correo; el PIN lo administra Administración).
 function CambiarClave({ onCerrar, onListo }) {
@@ -113,7 +115,7 @@ export default function Layout({ children, esGrupo = false }) {
                 <span className="sidebar-grupo-titulo">{g}</span>
                 {lista.map((m) => (
                   <NavLink key={m.id} to={`${base}/${m.ruta}`} className={({ isActive }) => `sidebar-item${isActive ? ' activo' : ''}`} onClick={() => setMenu(false)}>
-                    <Icono n={m.icono} tam={18} /><span>{m.nombre}</span>
+                    <Icono n={m.icono} tam={18} /><span>{m.nombre}</span>{m.id === 'antifraude' && <ContadorAlertas />}
                   </NavLink>
                 ))}
               </div>
@@ -131,6 +133,7 @@ export default function Layout({ children, esGrupo = false }) {
         </div>
       </aside>
       <main className="principal" key={ctx.empresa.codigo}>{children}</main>
+      <Vigilancia base={base} />
       {cambiando && <CambiarClave onCerrar={() => setCambiando(false)} onListo={() => { setCambiando(false); salir(); }} />}
     </div>
   );

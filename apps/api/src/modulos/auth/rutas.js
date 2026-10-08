@@ -8,6 +8,7 @@ import { hashPin, PIN_RE } from '../../auth/pin.js';
 import { crearLimitador } from '../../lib/limitador.js';
 import { auditar } from '../../lib/auditoria.js';
 import { ErrorHttp, malaPeticion, validar } from '../../lib/http.js';
+import { vigilarDispositivo, vigilarLoginFallido } from '../antifraude/vigilancia.js';
 
 const FALLA_CRED = 'Correo o contraseña incorrectos';
 
@@ -70,6 +71,7 @@ export function rutasAuth({ db, config, ctxMgr }) {
     if (!ok) {
       limLogin.fallo(clave);
       await auditar(db, null, 'login_fallido', 'usuario', u?.id ?? null, { email }, { empresaId: emp.id, ip: ipDe(req) });
+      await vigilarLoginFallido(db, { empresa: emp, clave: email, ip: ipDe(req), via: 'password' });   // antifraude
       throw new ErrorHttp(401, FALLA_CRED);
     }
     if (emp.esGrupo) {
@@ -84,6 +86,7 @@ export function rutasAuth({ db, config, ctxMgr }) {
     }
     limLogin.exito(clave);
     await auditar(db, null, 'login', 'usuario', u.id, { via: 'password' }, { empresaId: emp.id, usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
+    await vigilarDispositivo(db, { empresa: emp, usuario: u, dispositivo: req.headers['x-dispositivo'], navegador: req.headers['user-agent'], ip: ipDe(req) });   // antifraude
     res.json(await respuestaSesion(u, emp, 'password', false));
   });
 
@@ -102,10 +105,12 @@ export function rutasAuth({ db, config, ctxMgr }) {
     if (!u) {
       limPin.fallo(clave);
       await auditar(db, null, 'pin_fallido', 'usuario', null, {}, { empresaId: emp.id, ip: ipDe(req) });
+      await vigilarLoginFallido(db, { empresa: emp, clave: ipDe(req), ip: ipDe(req), via: 'pin' });   // antifraude
       throw new ErrorHttp(401, 'PIN incorrecto');
     }
     limPin.exito(clave);
     await auditar(db, null, 'login', 'usuario', u.id, { via: 'pin' }, { empresaId: emp.id, usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
+    await vigilarDispositivo(db, { empresa: emp, usuario: u, dispositivo: req.headers['x-dispositivo'], navegador: req.headers['user-agent'], ip: ipDe(req) });   // antifraude
     res.json(await respuestaSesion(u, emp, 'pin', true));
   });
 

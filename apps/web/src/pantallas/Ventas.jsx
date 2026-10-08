@@ -9,7 +9,7 @@ const rangos = () => {
   return { hoy: [hoy, hoy], ayer: [sumarDias(hoy, -1), sumarDias(hoy, -1)], '7 días': [sumarDias(hoy, -6), hoy], mes: [`${hoy.slice(0, 8)}01`, hoy], '30 días': [sumarDias(hoy, -29), hoy] };
 };
 
-// `inicial` y `solo` permiten usar esta pantalla como Facturas, Cierre de caja, Caja chica… mientras cada una se rehace.
+// `inicial` y `solo` permiten usar esta pantalla como Facturas mientras se rehace. Cierre de caja, Caja chica, Reportes y Dashboard ya tienen su pantalla propia.
 export default function Ventas({ inicial = 'resumen', solo = false }) {
   const { sucursales, puede } = useSesion();
   const [tab, setTab] = useState(inicial);
@@ -19,9 +19,6 @@ export default function Ventas({ inicial = 'resumen', solo = false }) {
   const f = { desde, hasta, sucursal_id: suc };
   const resumen = useDatos(() => get(`/pos/reportes/resumen${qs(f)}`), [desde, hasta, suc]);
   const facturas = useDatos(() => get(`/pos/ventas${qs({ ...f, limite: 200 })}`), [desde, hasta, suc]);
-  const turnos = useDatos(() => (tab === 'turnos' ? get(`/pos/turno${qs({ sucursal_id: suc })}`) : Promise.resolve([])), [tab, suc]);
-  const caja = useDatos(() => (tab === 'caja_chica' ? get(`/pos/antifraude/movimientos-caja${qs(f)}`) : Promise.resolve([])), [tab, desde, hasta, suc]);
-  const alertas = useDatos(() => (tab === 'alertas' ? get(`/pos/antifraude${qs({ desde, hasta })}`) : Promise.resolve(null)), [tab, desde, hasta]);
   const [detalle, setDetalle] = useState(null);
 
   const libro = async () => {
@@ -39,7 +36,7 @@ export default function Ventas({ inicial = 'resumen', solo = false }) {
           {puede('pos:reportes') && <button className="btn chico" onClick={libro}>Libro de ventas (CSV)</button>}
         </div>
       </div>
-      {!solo && <Tabs tabs={[['resumen', 'Resumen'], ['facturas', 'Facturas'], ['turnos', 'Cierres de caja'], ['caja_chica', 'Caja chica'], ['alertas', 'Alertas']]} valor={tab} onCambio={setTab} />}
+      {!solo && <Tabs tabs={[['resumen', 'Resumen'], ['facturas', 'Facturas']]} valor={tab} onCambio={setTab} />}
 
       {tab === 'resumen' && <Estado d={resumen}>{(r) => (
         <>
@@ -72,37 +69,6 @@ export default function Ventas({ inicial = 'resumen', solo = false }) {
               <td><span className={`chip ${v.estado === 'pagada' ? 'ok' : v.estado === 'anulada' ? 'mal' : 'aviso'}`}>{v.estado}</span></td><td className="der num">{lempiras(v.total)}</td>
             </tr>))}</tbody>
         </table>{l.length === 0 && <div className="vacio">Sin facturas en este periodo.</div>}</div></div>
-      )}</Estado>}
-
-      {tab === 'turnos' && <Estado d={turnos}>{(l) => (
-        <div className="tarjeta pad0"><div className="tabla-wrap"><table>
-          <thead><tr><th>Apertura</th><th>Sucursal</th><th>Cajero</th><th className="der">Ventas</th><th className="der">Esperado</th><th className="der">Contado</th><th className="der">Diferencia</th></tr></thead>
-          <tbody>{l.map((t) => (
-            <tr key={t.id}><td>{horaHN(t.abierto_at)}</td><td>{t.sucursal}</td><td>{t.cajero}</td><td className="der num">{t.total_ventas == null ? '—' : lempiras(t.total_ventas)}</td>
-              <td className="der num">{t.efectivo_esperado == null ? '—' : lempiras(t.efectivo_esperado)}</td><td className="der num">{t.efectivo_contado == null ? <span className="chip aviso">abierto</span> : lempiras(t.efectivo_contado)}</td>
-              <td className="der num">{t.diferencia == null ? '' : <span className={`chip ${t.diferencia === 0 ? 'ok' : t.diferencia < 0 ? 'mal' : 'aviso'}`}>{lempiras(t.diferencia)}</span>}</td></tr>))}</tbody>
-        </table></div></div>
-      )}</Estado>}
-
-      {tab === 'caja_chica' && <Estado d={caja}>{(l) => (
-        <>
-          <div className="rejilla cols-3"><Kpi etiqueta="Salidas" valor={lempiras(l.filter((m) => m.tipo === 'salida').reduce((a, m) => a + m.monto, 0))} /><Kpi etiqueta="Ingresos" valor={lempiras(l.filter((m) => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0))} /><Kpi etiqueta="Movimientos" valor={l.length} /></div>
-          <div className="tarjeta pad0"><div className="tabla-wrap"><table>
-            <thead><tr><th>Fecha</th><th>Sucursal</th><th>Usuario</th><th>Concepto</th><th>Tipo</th><th className="der">Monto</th></tr></thead>
-            <tbody>{l.map((m) => <tr key={m.id}><td>{horaHN(m.created_at)}</td><td>{m.sucursal}</td><td>{m.usuario}</td><td>{m.concepto}</td><td><span className={`chip ${m.tipo === 'salida' ? 'aviso' : 'ok'}`}>{m.tipo}</span></td><td className="der num">{lempiras(m.monto)}</td></tr>)}</tbody>
-          </table>{l.length === 0 && <div className="vacio">Sin movimientos de caja en este periodo.</div>}</div></div>
-        </>
-      )}</Estado>}
-
-      {tab === 'alertas' && <Estado d={alertas}>{(a) => !a ? null : (
-        <>
-          {a.alertas.length === 0 ? <div className="aviso-caja ok">Sin alertas en este periodo: descuentos, anulaciones, reimpresiones, numeración y cuadres dentro de lo normal.</div> : (
-            <div style={{ display: 'grid', gap: 8 }}>{a.alertas.map((x, i) => (
-              <div key={i} className={`aviso-caja ${x.severidad === 'alta' ? 'mal' : ''}`}><b>{x.titulo}</b><br /><small>{x.detalle}</small></div>
-            ))}</div>
-          )}
-          <small>Estas alertas solo señalan patrones para revisar; no acusan a nadie. Los umbrales se ajustan por empresa. Rangos: {a.desde} a {a.hasta}.</small>
-        </>
       )}</Estado>}
 
       {detalle && <DetalleVenta id={detalle} onCerrar={() => { setDetalle(null); facturas.recargar(); resumen.recargar(); }} />}

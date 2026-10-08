@@ -6,6 +6,8 @@ import { rutasFin } from './fin/rutas.js';
 import { rutasTerceros } from './terceros/rutas.js';
 import { rutasGrupo } from './grupo/rutas.js';
 import { rutasGerente } from './gerente/rutas.js';
+import { rutasAntifraude } from './antifraude/rutas.js';
+import { rutasCotizaciones } from './cotizaciones/rutas.js';
 
 /** Cada módulo expone rutas bajo /api/<modulo>. Aquí se montan todos. */
 export function montarModulos(router, deps) {
@@ -17,4 +19,6 @@ export function montarModulos(router, deps) {
   router.use('/terceros', rutasTerceros(deps));
   router.use('/grupo', rutasGrupo(deps));
   router.use('/gerente', rutasGerente(deps));
+  router.use('/antifraude', rutasAntifraude(deps));
+  router.use('/cotizaciones', rutasCotizaciones(deps));
 }

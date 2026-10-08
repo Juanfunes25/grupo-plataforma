@@ -4,31 +4,32 @@ import { requierePermiso, resolverSucursal } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
 import { conflicto, noEncontrado, uuid, validar, dinero } from '../../lib/http.js';
 
-export function rutasTurnos({ db }) {
-  const r = Router();
+/** Cuadre de un turno: ventas por forma de pago, movimientos de caja y efectivo esperado. */
+export async function resumenTurno(q, t) {
+  const [v, p, m, f] = await Promise.all([
+    q.query(`select count(*) filter (where estado = 'pagada')::int as facturas, coalesce(sum(total) filter (where estado = 'pagada'),0)::numeric as total,
+                    count(*) filter (where estado = 'anulada')::int as anuladas, coalesce(sum(total) filter (where estado = 'anulada'),0)::numeric as total_anulado
+               from pos.ventas where turno_id = $1`, [t.id]),
+    q.query(`select f.tipo, f.nombre, coalesce(sum(p.monto),0)::numeric as monto
+               from pos.venta_pagos p join pos.formas_pago f on f.id = p.forma_pago_id join pos.ventas v on v.id = p.venta_id
+              where v.turno_id = $1 and v.estado = 'pagada' group by f.tipo, f.nombre order by f.nombre`, [t.id]),
+    q.query(`select tipo, coalesce(sum(monto),0)::numeric as monto from pos.movimientos_caja where turno_id = $1 group by tipo`, [t.id]),
+    q.query(`select min(numero_factura) as desde, max(numero_factura) as hasta from pos.ventas where turno_id = $1 and estado = 'pagada'`, [t.id]),
+  ]);
+  const sum = (tipo) => Number(p.rows.filter((x) => x.tipo === tipo).reduce((s, x) => s + x.monto, 0));
+  const mov = (tipo) => Number(m.rows.find((x) => x.tipo === tipo)?.monto ?? 0);
+  const efectivo = sum('efectivo');
+  const esperado = Math.round((Number(t.fondo_inicial) + efectivo + mov('ingreso') - mov('salida')) * 100) / 100;
+  return {
+    ...v.rows[0], por_forma: p.rows, efectivo_ventas: efectivo, tarjeta: sum('tarjeta'), transferencia: sum('transferencia'),
+    ingresos: mov('ingreso'), salidas: mov('salida'), efectivo_esperado: esperado,
+    factura_desde: f.rows[0].desde, factura_hasta: f.rows[0].hasta,
+  };
+}
 
-  /** Cuadre de un turno: ventas por forma de pago, movimientos de caja y efectivo esperado. */
-  async function resumen(q, t) {
-    const [v, p, m, f] = await Promise.all([
-      q.query(`select count(*) filter (where estado = 'pagada')::int as facturas, coalesce(sum(total) filter (where estado = 'pagada'),0)::numeric as total,
-                      count(*) filter (where estado = 'anulada')::int as anuladas, coalesce(sum(total) filter (where estado = 'anulada'),0)::numeric as total_anulado
-                 from pos.ventas where turno_id = $1`, [t.id]),
-      q.query(`select f.tipo, f.nombre, coalesce(sum(p.monto),0)::numeric as monto
-                 from pos.venta_pagos p join pos.formas_pago f on f.id = p.forma_pago_id join pos.ventas v on v.id = p.venta_id
-                where v.turno_id = $1 and v.estado = 'pagada' group by f.tipo, f.nombre order by f.nombre`, [t.id]),
-      q.query(`select tipo, coalesce(sum(monto),0)::numeric as monto from pos.movimientos_caja where turno_id = $1 group by tipo`, [t.id]),
-      q.query(`select min(numero_factura) as desde, max(numero_factura) as hasta from pos.ventas where turno_id = $1 and estado = 'pagada'`, [t.id]),
-    ]);
-    const sum = (tipo) => Number(p.rows.filter((x) => x.tipo === tipo).reduce((s, x) => s + x.monto, 0));
-    const mov = (tipo) => Number(m.rows.find((x) => x.tipo === tipo)?.monto ?? 0);
-    const efectivo = sum('efectivo');
-    const esperado = Math.round((Number(t.fondo_inicial) + efectivo + mov('ingreso') - mov('salida')) * 100) / 100;
-    return {
-      ...v.rows[0], por_forma: p.rows, efectivo_ventas: efectivo, tarjeta: sum('tarjeta'), transferencia: sum('transferencia'),
-      ingresos: mov('ingreso'), salidas: mov('salida'), efectivo_esperado: esperado,
-      factura_desde: f.rows[0].desde, factura_hasta: f.rows[0].hasta,
-    };
-  }
+export function rutasTurnos({ db }) {
+  const resumen = resumenTurno;
+  const r = Router();
 
   const miTurno = async (q, ctx, sucursalId) =>
     (await q.query(`select * from pos.turnos where sucursal_id = $1 and cajero_id = $2 and estado = 'abierto'`, [sucursalId, ctx.usuario.id])).rows[0];

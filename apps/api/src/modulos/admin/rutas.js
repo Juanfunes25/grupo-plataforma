@@ -5,11 +5,16 @@ import { hashSecreto } from '../../auth/passwords.js';
 import { hashPin, PIN_RE } from '../../auth/pin.js';
 import { requierePermiso } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
-import { conflicto, malaPeticion, noEncontrado, prohibido, uuid, validar } from '../../lib/http.js';
+import { conflicto, fechaISO, malaPeticion, noEncontrado, prohibido, uuid, validar } from '../../lib/http.js';
+import { estadoPunto } from '../pos/fiscal.js';
 
 const ROLES_DIRECCION = ['dueno', 'admin', 'contador', 'solo_lectura'];   // exigen correo + contraseña
 const ROLES_ALTOS = ['dueno', 'admin'];                                   // solo un dueño los asigna
 const rolEnum = z.enum(Object.keys(ROLES));
+// Misma paleta que Italo Facturación: cada sucursal de una empresa lleva un color propio y no se repite.
+export const PALETA_SUCURSALES = ['#c5603c', '#2e9e8f', '#b08d28', '#6c7fd6', '#d2567a', '#3d9fd6', '#7fa83e', '#a47bd6'];
+const cambiosDe = (antes, despues, campos) => Object.fromEntries(
+  campos.filter((k) => despues[k] !== undefined && String(antes[k] ?? '') !== String(despues[k] ?? '')).map((k) => [k, { antes: antes[k] ?? null, despues: despues[k] ?? null }]));
 const permisoEnum = z.string().refine((p) => p in PERMISOS, 'permiso desconocido');
 
 export function rutasAdmin({ db, config, ctxMgr }) {
@@ -106,7 +111,7 @@ export function rutasAdmin({ db, config, ctxMgr }) {
     const emp = req.ctx.empresa;
     const esYo = id === req.ctx.usuario.id;
     if (esYo && (b.activo === false || (b.rol && b.rol !== req.ctx.rol))) throw prohibido('No puedes desactivarte ni cambiarte el rol a ti mismo');
-    const actual = (await db.query('select a.*, u.es_dueno_grupo from core.accesos a join core.usuarios u on u.id = a.usuario_id where a.usuario_id = $1 and a.empresa_id = $2', [id, emp.id])).rows[0];
+    const actual = (await db.query('select a.*, u.es_dueno_grupo, u.nombre from core.accesos a join core.usuarios u on u.id = a.usuario_id where a.usuario_id = $1 and a.empresa_id = $2', [id, emp.id])).rows[0];
     if (!actual) throw noEncontrado('Ese usuario no tiene acceso a esta empresa');
     if (b.rol) validarRolAsignable(req.ctx, b.rol);
     if (ROLES_ALTOS.includes(actual.rol)) validarRolAsignable(req.ctx, actual.rol);
@@ -122,7 +127,11 @@ export function rutasAdmin({ db, config, ctxMgr }) {
                activo = coalesce($7, activo)
           where usuario_id = $1 and empresa_id = $2`,
         [id, emp.id, b.rol ?? null, b.sucursal_ids ?? null, b.permisos_extra ?? null, b.permisos_quitados ?? null, b.activo ?? null]);
-      await auditar(q, req.ctx, 'usuario_editado', 'usuario', id, b);
+      const cambios = cambiosDe(
+        { nombre: actual.nombre, rol: actual.rol, activo: actual.activo, sucursal_ids: (actual.sucursal_ids ?? []).join(','), permisos_extra: (actual.permisos_extra ?? []).join(','), permisos_quitados: (actual.permisos_quitados ?? []).join(',') },
+        { ...b, sucursal_ids: b.sucursal_ids?.join(','), permisos_extra: b.permisos_extra?.join(','), permisos_quitados: b.permisos_quitados?.join(',') },
+        ['nombre', 'rol', 'activo', 'sucursal_ids', 'permisos_extra', 'permisos_quitados']);
+      await auditar(q, req.ctx, 'usuario_editado', 'usuario', id, { nombre: b.nombre ?? actual.nombre, cambios }, { sucursalId: null });
     });
     ctxMgr.invalidar();
     res.json({ ok: true });
@@ -159,8 +168,18 @@ export function rutasAdmin({ db, config, ctxMgr }) {
   });
 
   // ── Sucursales ───────────────────────────────────────────────────────────
+  // Incluye el estado fiscal de su punto de emisión (borrador / CAI activo / por vencer) para mostrarlo en la lista.
   r.get('/sucursales', requierePermiso('admin:empresa', 'pos:fiscal', 'admin:usuarios'), async (req, res) => {
-    res.json((await db.query('select * from core.sucursales where empresa_id = $1 order by activo desc, orden, nombre', [req.ctx.empresa.id])).rows);
+    const { rows } = await db.query(
+      `select s.*, pe.id as punto_emision_id, pe.es_borrador, pe.cai, pe.correlativo_desde, pe.correlativo_hasta, pe.correlativo_actual, pe.fecha_limite_emision,
+              pe.punto_emision_codigo, pe.punto_venta_codigo, pe.tipo_documento_codigo
+         from core.sucursales s left join pos.puntos_emision pe on pe.sucursal_id = s.id and pe.activo
+        where s.empresa_id = $1 order by s.activo desc, s.orden, s.nombre`, [req.ctx.empresa.id]);
+    res.json(rows.map((s) => {
+      if (!s.punto_emision_id) return { ...s, cai_estado: null };
+      const e = estadoPunto({ es_borrador: s.es_borrador, correlativo_desde: s.correlativo_desde, correlativo_hasta: s.correlativo_hasta, correlativo_actual: s.correlativo_actual, fecha_limite_emision: s.fecha_limite_emision });
+      return { ...s, cai_estado: e.es_borrador ? 'borrador' : e.agotado ? 'agotado' : e.vencido ? 'vencido' : e.alerta ? 'por_vencer' : 'activo' };
+    }));
   });
 
   const esquemaSuc = z.object({
@@ -169,23 +188,36 @@ export function rutasAdmin({ db, config, ctxMgr }) {
     direccion: z.string().trim().max(200).optional().nullable(),
     telefono: z.string().trim().max(40).optional().nullable(),
     tipo: z.enum(['tienda', 'fabrica', 'bodega', 'oficina']).default('tienda'),
-    color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().nullable(),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'color inválido (#rrggbb)').optional().nullable(),
   });
+  /** El color de cada sucursal es único dentro de la empresa: así nadie confunde en cuál está trabajando. */
+  async function validarColor(q, empresaId, color, exceptoId = null) {
+    if (!color) return;
+    const { rows } = await q.query(
+      'select nombre from core.sucursales where empresa_id = $1 and activo and lower(color) = lower($2) and ($3::uuid is null or id <> $3)', [empresaId, color, exceptoId]);
+    if (rows[0]) throw conflicto(`Ese color ya lo usa la sucursal "${rows[0].nombre}"; elige otro`);
+  }
+  async function colorLibre(q, empresaId) {
+    const usados = new Set((await q.query('select lower(color) as c from core.sucursales where empresa_id = $1 and activo and color is not null', [empresaId])).rows.map((x) => x.c));
+    return PALETA_SUCURSALES.find((c) => !usados.has(c)) ?? null;
+  }
   r.post('/sucursales', requierePermiso('admin:empresa'), async (req, res) => {
     const b = validar(esquemaSuc, req.body);
     const emp = req.ctx.empresa;
     const s = await db.tx(async (q) => {
+      await validarColor(q, emp.id, b.color);
+      const color = b.color ?? (await colorLibre(q, emp.id));
       const orden = (await q.query('select coalesce(max(orden),0)+1 as n from core.sucursales where empresa_id = $1', [emp.id])).rows[0].n;
       const s = (await q.query(
         `insert into core.sucursales (empresa_id, nombre, alias, direccion, telefono, tipo, color, orden)
          values ($1,$2,$3,$4,$5,$6,$7,$8) returning *`,
-        [emp.id, b.nombre, b.alias, b.direccion ?? null, b.telefono ?? null, b.tipo, b.color ?? null, orden])).rows[0];
+        [emp.id, b.nombre, b.alias, b.direccion ?? null, b.telefono ?? null, b.tipo, color, orden])).rows[0];
       // Toda sucursal nace con un punto de emisión en borrador: cobra, pero sin validez fiscal hasta cargar el CAI.
-      await q.query(
+      const pe = (await q.query(
         `insert into pos.puntos_emision (empresa_id, sucursal_id, punto_emision_codigo, punto_venta_codigo, correlativo_desde, correlativo_hasta, correlativo_actual, es_borrador)
-         values ($1,$2,$3,'001',1,99999999,1,true)`, [emp.id, s.id, String(orden).padStart(3, '0')]);
-      await auditar(q, req.ctx, 'sucursal_creada', 'sucursal', s.id, { nombre: b.nombre });
-      return s;
+         values ($1,$2,$3,'001',1,99999999,1,true) returning id, punto_emision_codigo, es_borrador`, [emp.id, s.id, String(orden).padStart(3, '0')])).rows[0];
+      await auditar(q, req.ctx, 'sucursal_creada', 'sucursal', s.id, { nombre: b.nombre, alias: b.alias }, { sucursalId: s.id });
+      return { ...s, punto_emision: pe };
     });
     ctxMgr.invalidar();
     res.status(201).json(s);
@@ -193,15 +225,25 @@ export function rutasAdmin({ db, config, ctxMgr }) {
   r.put('/sucursales/:id', requierePermiso('admin:empresa'), async (req, res) => {
     const id = validar(uuid, req.params.id);
     const b = validar(esquemaSuc.partial().extend({ activo: z.boolean().optional() }), req.body);
-    const { rows } = await db.query(
-      `update core.sucursales set nombre = coalesce($3, nombre), alias = coalesce($4, alias), direccion = coalesce($5, direccion),
-              telefono = coalesce($6, telefono), tipo = coalesce($7, tipo), color = coalesce($8, color), activo = coalesce($9, activo)
-        where id = $1 and empresa_id = $2 returning *`,
-      [id, req.ctx.empresa.id, b.nombre ?? null, b.alias ?? null, b.direccion ?? null, b.telefono ?? null, b.tipo ?? null, b.color ?? null, b.activo ?? null]);
-    if (!rows[0]) throw noEncontrado();
-    await auditar(db, req.ctx, 'sucursal_editada', 'sucursal', id, b);
+    const s = await db.tx(async (q) => {
+      const ant = (await q.query('select * from core.sucursales where id = $1 and empresa_id = $2 for update', [id, req.ctx.empresa.id])).rows[0];
+      if (!ant) throw noEncontrado();
+      if (b.activo === false && ant.activo) {
+        const otras = (await q.query('select count(*)::int as n from core.sucursales where empresa_id = $1 and activo and id <> $2', [req.ctx.empresa.id, id])).rows[0].n;
+        if (!otras) throw conflicto('No puedes desactivar la única sucursal activa de la empresa');
+      }
+      if (b.color) await validarColor(q, req.ctx.empresa.id, b.color, id);
+      const { rows } = await q.query(
+        `update core.sucursales set nombre = coalesce($3, nombre), alias = coalesce($4, alias), direccion = coalesce($5, direccion),
+                telefono = coalesce($6, telefono), tipo = coalesce($7, tipo), color = coalesce($8, color), activo = coalesce($9, activo)
+          where id = $1 and empresa_id = $2 returning *`,
+        [id, req.ctx.empresa.id, b.nombre ?? null, b.alias ?? null, b.direccion ?? null, b.telefono ?? null, b.tipo ?? null, b.color ?? null, b.activo ?? null]);
+      await auditar(q, req.ctx, 'sucursal_editada', 'sucursal', id,
+        { nombre: rows[0].nombre, cambios: cambiosDe(ant, b, ['nombre', 'alias', 'direccion', 'telefono', 'tipo', 'color', 'activo']) }, { sucursalId: id });
+      return rows[0];
+    });
     ctxMgr.invalidar();
-    res.json(rows[0]);
+    res.json(s);
   });
 
   // ── Datos de la empresa ──────────────────────────────────────────────────
@@ -238,18 +280,48 @@ export function rutasAdmin({ db, config, ctxMgr }) {
   });
 
   // ── Bitácora inalterable ─────────────────────────────────────────────────
+  // Solo lectura: core.auditoria no admite UPDATE/DELETE y este router no expone cómo escribir en ella.
+  const TZ = 'America/Tegucigalpa';
   r.get('/auditoria', requierePermiso('auditoria:ver'), async (req, res) => {
     const q = validar(z.object({
-      limite: z.coerce.number().int().min(1).max(500).default(100),
-      accion: z.string().max(60).optional(), entidad: z.string().max(60).optional(),
+      limite: z.coerce.number().int().min(1).max(500).default(300),
+      accion: z.string().max(60).optional(),            // prefijo: «venta_» filtra todo lo de ventas
+      entidad: z.string().max(60).optional(),
+      entidad_id: z.string().max(80).optional(),
+      usuario_id: uuid.optional(),
+      sucursal_id: uuid.optional(),
+      desde: fechaISO.optional(), hasta: fechaISO.optional(),
+      q: z.string().trim().max(80).optional(),           // busca en usuario, acción, documento y detalle
+      antes_de: z.coerce.number().int().positive().optional(),   // paginación: ids menores a este
     }), req.query);
+    const like = (t) => `%${t.replace(/[\\%_]/g, '\\$&')}%`;
     const { rows } = await db.query(
-      `select id, created_at, usuario_nombre, accion, entidad, entidad_id, detalle, ip
-         from core.auditoria
-        where empresa_id = $1 and ($2::text is null or accion = $2) and ($3::text is null or entidad = $3)
-        order by id desc limit $4`, [req.ctx.empresa.id, q.accion ?? null, q.entidad ?? null, q.limite]);
+      `select a.id, a.created_at, a.usuario_id, a.usuario_nombre, a.accion, a.entidad, a.entidad_id, a.sucursal_id, s.nombre as sucursal,
+              a.detalle, a.ip, a.hash_anterior, a.hash
+         from core.auditoria a left join core.sucursales s on s.id = a.sucursal_id
+        where a.empresa_id = $1
+          and ($2::text is null or a.accion like $2 || '%')
+          and ($3::text is null or a.entidad = $3)
+          and ($4::text is null or a.entidad_id = $4)
+          and ($5::uuid is null or a.usuario_id = $5)
+          and ($6::uuid is null or a.sucursal_id = $6)
+          and ($7::date is null or a.created_at >= ($7::date)::timestamp at time zone '${TZ}')
+          and ($8::date is null or a.created_at < (($8::date) + 1)::timestamp at time zone '${TZ}')
+          and ($9::text is null or a.usuario_nombre ilike $9 or a.accion ilike $9 or a.entidad_id ilike $9 or a.detalle::text ilike $9)
+          and ($10::bigint is null or a.id < $10)
+        order by a.id desc limit $11`,
+      [req.ctx.empresa.id, q.accion ?? null, q.entidad ?? null, q.entidad_id ?? null, q.usuario_id ?? null, q.sucursal_id ?? null,
+        q.desde ?? null, q.hasta ?? null, q.q ? like(q.q) : null, q.antes_de ?? null, q.limite]);
     res.json(rows);
   });
+  // Quién ha dejado huella en esta empresa (para el filtro por usuario).
+  r.get('/auditoria/usuarios', requierePermiso('auditoria:ver'), async (req, res) => {
+    const { rows } = await db.query(
+      `select usuario_id as id, max(usuario_nombre) as nombre, count(*)::int as registros from core.auditoria
+        where empresa_id = $1 and usuario_id is not null group by usuario_id order by max(usuario_nombre)`, [req.ctx.empresa.id]);
+    res.json(rows);
+  });
+  // Recalcula la cadena completa de hashes: si alguien alteró o borró un registro directo en la base, lo señala.
   r.get('/auditoria/verificar', requierePermiso('auditoria:ver'), async (_req, res) => {
     const { rows } = await db.query('select * from core.verificar_auditoria()');
     res.json(rows[0]);

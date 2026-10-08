@@ -1,5 +1,6 @@
 // Cliente del API. Guarda la sesión en localStorage y manda siempre
 // Authorization + X-Empresa. Si el servidor dice 401, avisa para cerrar sesión.
+import { idDispositivo } from './antifraude/dispositivo.js';
 const CLAVE = 'grupo.sesion.v1';
 
 export const almacen = {
@@ -9,6 +10,7 @@ export const almacen = {
 
 let empresaActiva = null;
 export const fijarEmpresa = (c) => { empresaActiva = c; };
+export const empresaActual = () => empresaActiva;
 
 export class ErrorApi extends Error {
   constructor(mensaje, status, codigo) { super(mensaje); this.status = status; this.codigo = codigo; }
@@ -16,7 +18,7 @@ export class ErrorApi extends Error {
 
 export async function api(ruta, { metodo = 'GET', cuerpo, empresa, sinSesion = false } = {}) {
   const s = almacen.leer();
-  const headers = { 'content-type': 'application/json' };
+  const headers = { 'content-type': 'application/json', 'x-dispositivo': idDispositivo() };   // antifraude: qué equipo es
   if (!sinSesion && s?.token) headers.authorization = `Bearer ${s.token}`;
   const emp = empresa !== undefined ? empresa : empresaActiva;   // null = sin encabezado de empresa
   if (emp && emp !== 'grupo') headers['x-empresa'] = emp;
