@@ -28,7 +28,7 @@ Para desarrollar con recarga en vivo: `npm run dev:api` y, en otra terminal, `np
 ## Pruebas
 
 ```bash
-npm test      # 60 pruebas: motor fiscal, permisos, y el API completo contra un Postgres real embebido
+npm test      # 65 pruebas: motor fiscal, permisos, y el API completo contra un Postgres real embebido
 ```
 
 ## Documentación

@@ -60,12 +60,12 @@ Los cuatro sistemas, por lo que realmente hay en los repositorios:
 ## Paridad con italo-facturacion (lo que aún le falta al POS unificado para reemplazarlo)
 
 Prioridad alta antes de cortar WizPOS/`italo-facturacion`:
-- [ ] Notas de crédito emitidas como documento (hoy solo se anula).
+- [x] Notas de crédito (parciales o totales, con tope y numeración propia; la serie fiscal con CAI de nota de crédito queda para cuando el contador la defina).
 - [ ] Cotizaciones/eventos y su conversión a factura.
-- [ ] Caja chica con arqueo y su reporte.
-- [ ] Antifraude: reglas configurables y alertas (descuentos fuera de rango, huecos de correlativo, reimpresiones).
+- [x] Caja chica: entradas y salidas de efectivo por turno, con reporte (pestaña Ventas → Caja chica).
+- [x] Antifraude: alertas de descuentos, anulaciones, reimpresiones, saltos de numeración, descuadres y ventas fuera de horario, con umbrales por empresa.
 - [ ] Cierre con cuadre por terminal de tarjeta (BAC/Ficohsa) además de por tipo de pago.
-- [ ] Exigir carné/identidad para el descuento de tercera edad (regla configurable).
+- [x] Identidad obligatoria para el descuento de tercera edad (regla configurable por empresa).
 - [ ] Envío de factura por correo y resumen diario al dueño.
 - [ ] Modo sin conexión con cola de ventas.
 
