@@ -2,7 +2,7 @@
 // tiene encendidos cada empresa; el permiso decide quién los ve dentro de ella.
 // `nav` es el grupo del menú lateral (igual que en Italo Facturación):
 // Operación · Negocio · Control · Ajustes.
-export const GRUPOS_NAV = ['Operación', 'Fabricación', 'Negocio', 'Control', 'Ajustes'];
+export const GRUPOS_NAV = ['Operación', 'Reposición', 'Fabricación', 'Negocio', 'Control', 'Ajustes'];
 
 export const MODULOS = {
   // Operación
@@ -11,6 +11,15 @@ export const MODULOS = {
   cierres:      { nav: 'Operación', nombre: 'Cierre de caja',     descripcion: 'Cuadre del día por sucursal',             permiso: 'pos:vender',     ruta: 'cierres',      icono: 'dinero' },
   cotizaciones: { nav: 'Operación', nombre: 'Cotizaciones',       descripcion: 'Cotizaciones y eventos',                  permiso: 'cotizaciones:ver', ruta: 'cotizaciones', icono: 'catalogo' },
   kds:          { nav: 'Operación', nombre: 'Cocina',             descripcion: 'Pantalla de pedidos en preparación',      permiso: 'kds:ver',        ruta: 'cocina',       icono: 'cocina' },
+  // Reposición de gelato (Italo) — empresa con módulo 'reposicion' (viene de italo-reposicion)
+  rep_pesaje:     { nav: 'Reposición', nombre: 'Pesaje de sucursal',     descripcion: 'Pesaje nocturno de gelato por pana y recepción de despachos', permiso: 'rep:pesar',     ruta: 'pesaje',            icono: 'inventario' },
+  rep_despacho:   { nav: 'Reposición', nombre: 'Despacho y recepción',   descripcion: 'Qué enviar a cada sucursal, pedidos de insumos y confirmación', permiso: 'rep:despachar', ruta: 'despacho',          icono: 'pos' },
+  rep_produccion: { nav: 'Reposición', nombre: 'Producción de gelato',   descripcion: 'Tandas, lotes, consumo de insumos y trazabilidad',           permiso: 'rep:producir',  ruta: 'gelato-produccion', icono: 'cocina' },
+  rep_consumo:    { nav: 'Reposición', nombre: 'Consumo y reposición',   descripcion: 'Cuánto gelato se consume, se envía y se vende por sucursal', permiso: 'rep:ver',       ruta: 'consumo',           icono: 'reportes' },
+  rep_costeo:     { nav: 'Reposición', nombre: 'Recetas y costeo',       descripcion: 'Recetas de gelato, insumos y costo por receta',              permiso: 'rep:costeo',    ruta: 'gelato-costeo',     icono: 'catalogo' },
+  rep_inventario: { nav: 'Reposición', nombre: 'Inventario y RFID',      descripcion: 'Insumos por sucursal, lotes, vencimientos y lector RFID',    permiso: 'rep:inventario', ruta: 'gelato-inventario', icono: 'inventario' },
+  rep_incidencias:{ nav: 'Reposición', nombre: 'Incidencias',            descripcion: 'Reportes con foto de las sucursales',                        permiso: 'rep:pesar',     ruta: 'incidencias',       icono: 'alerta' },
+  rep_mantenimiento:{ nav: 'Reposición', nombre: 'Mantenimiento',        descripcion: 'Equipos, mantenimientos y checklist',                        permiso: 'rep:ver',       ruta: 'mantenimiento',     icono: 'escudo' },
   // Fabricación (EcoStone) — empresa con módulo 'fabrica'
   piedra:         { nav: 'Fabricación', nombre: 'Catálogo de piedra',   descripcion: 'Modelo + color, unidad de venta y listas de precio', permiso: 'pos:catalogo',  ruta: 'piedra',            icono: 'catalogo' },
   prod_registrar: { nav: 'Fabricación', nombre: 'Registrar producción', descripcion: 'Registro de producción desde el celular',          permiso: 'fab:registrar', ruta: 'registrar-produccion', icono: 'cocina' },
@@ -42,6 +51,7 @@ export const MODULOS = {
   cai:          { nav: 'Control',   nombre: 'CAI / Emisión',      descripcion: 'CAI y puntos de emisión',                 permiso: 'pos:fiscal',     ruta: 'cai',          icono: 'impresora' },
   usuarios:     { nav: 'Control',   nombre: 'Usuarios',           descripcion: 'Usuarios, roles y accesos',               permiso: 'admin:usuarios', ruta: 'usuarios',     icono: 'usuarios' },
   sucursales:   { nav: 'Control',   nombre: 'Sucursales',         descripcion: 'Sucursales y datos de la empresa',        permiso: 'admin:empresa',  ruta: 'sucursales',   icono: 'sucursales' },
+  documentos:   { nav: 'Control',   nombre: 'Documentos',         descripcion: 'Contratos, permisos ARSA, registros sanitarios y más', permiso: 'doc:ver',       ruta: 'documentos',   icono: 'escudo' },
   // Ajustes
   impresora:    { nav: 'Ajustes',   nombre: 'Impresora',          descripcion: 'Ticket y prueba de impresión',            permiso: 'pos:vender',     ruta: 'impresora',    icono: 'impresora' },
   admin:        { nav: 'Ajustes',   nombre: 'Administración',     descripcion: 'Módulos, fiscal y auditoría',             permiso: 'admin:usuarios', ruta: 'admin',        icono: 'sucursales' },
@@ -64,7 +74,7 @@ export const MODULOS_DERIVADOS = {
 // Empresas de fábrica/distribuidora tienen su propio catálogo e inventario: se ocultan los genéricos.
 export const MODULOS_OCULTOS_POR = { fabrica: ['catalogo', 'inventario', 'caja_chica'], distribuidora: ['catalogo', 'inventario', 'caja_chica'] };
 // Siempre presentes (según permiso) en cualquier empresa.
-export const MODULOS_SIEMPRE = ['admin', 'usuarios', 'sucursales', 'bitacora', 'impresora'];
+export const MODULOS_SIEMPRE = ['admin', 'usuarios', 'sucursales', 'bitacora', 'impresora', 'documentos'];
 
 /** Módulos visibles para un usuario en una empresa. */
 export function modulosVisibles(modulosEmpresa, permisos) {

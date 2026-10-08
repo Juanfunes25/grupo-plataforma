@@ -40,13 +40,24 @@ const ReporteProduccion = lazy(() => import('./pantallas/ReporteProduccion.jsx')
 const Salidas = lazy(() => import('./pantallas/Salidas.jsx'));
 const ProductosDis = lazy(() => import('./pantallas/ProductosDis.jsx'));
 const InventarioDis = lazy(() => import('./pantallas/InventarioDis.jsx'));
+const PesajeGelato = lazy(() => import('./pantallas/PesajeGelato.jsx'));
+const DespachoGelato = lazy(() => import('./pantallas/DespachoGelato.jsx'));
+const ProduccionGelato = lazy(() => import('./pantallas/ProduccionGelato.jsx'));
+const ConsumoGelato = lazy(() => import('./pantallas/ConsumoGelato.jsx'));
+const CosteoGelato = lazy(() => import('./pantallas/CosteoGelato.jsx'));
+const InventarioGelato = lazy(() => import('./pantallas/InventarioGelato.jsx'));
+const Incidencias = lazy(() => import('./pantallas/Incidencias.jsx'));
+const Mantenimiento = lazy(() => import('./pantallas/Mantenimiento.jsx'));
+const Documentos = lazy(() => import('./pantallas/Documentos.jsx'));
 const Impresora = lazy(() => import('./pantallas/Impresora.jsx'));
 
 const PANTALLAS = { pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, terceros: Terceros, admin: Admin, gerente: Gerente,
   facturas: Facturas, cierres: Cierres, 'caja-chica': CajaChica, reportes: Reportes, dashboard: Dashboard, antifraude: Antifraude, bitacora: Bitacora,
   cai: Cai, usuarios: Usuarios, sucursales: Sucursales, cotizaciones: Cotizaciones, impresora: Impresora,
   piedra: Piedra, 'registrar-produccion': RegistrarProduccion, produccion: Fabricacion, recetas: Recetas, insumos: Insumos, 'inventario-piedra': InventarioPiedra,
-  trazabilidad: Trazabilidad, 'reporte-produccion': ReporteProduccion, salidas: Salidas, productos: ProductosDis, 'inventario-d': InventarioDis };
+  trazabilidad: Trazabilidad, 'reporte-produccion': ReporteProduccion, salidas: Salidas, productos: ProductosDis, 'inventario-d': InventarioDis,
+  pesaje: PesajeGelato, despacho: DespachoGelato, 'gelato-produccion': ProduccionGelato, consumo: ConsumoGelato, 'gelato-costeo': CosteoGelato,
+  'gelato-inventario': InventarioGelato, incidencias: Incidencias, mantenimiento: Mantenimiento, documentos: Documentos };
 
 function Protegida({ children }) {
   const s = useSesion();

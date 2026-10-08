@@ -28,6 +28,14 @@ export const PERMISOS = {
   'grupo:ver':        'Ver el consolidado del grupo',
   'gerente:ver':      'Ver el gerente digital (análisis de la empresa)',
   'antifraude:ver':   'Ver y gestionar el antifraude (alertas, arqueos)',
+  'rep:pesar':        'Pesar gelato y recibir despachos en la sucursal',
+  'rep:despachar':    'Armar despachos y pedidos hacia las sucursales',
+  'rep:producir':     'Registrar producción de gelato (tandas y lotes)',
+  'rep:ver':          'Ver consumo, reposición y mantenimiento',
+  'rep:costeo':       'Ver y editar recetas y costeo de gelato',
+  'rep:inventario':   'Ver y mover el inventario de insumos por sucursal',
+  'doc:ver':          'Ver documentos de la empresa (contratos, permisos, registros)',
+  'doc:editar':       'Subir, editar y borrar documentos de la empresa',
   'fab:registrar':    'Registrar producción de fábrica',
   'fab:ver':          'Ver órdenes, trazabilidad y reportes de producción',
   'fab:editar':       'Editar recetas, costos y órdenes de producción',
@@ -49,20 +57,20 @@ export const ROLES = {
   gerente: {
     nombre: 'Manager',
     permisos: ['gerente:ver', 'pos:vender', 'pos:caja', 'pos:anular', 'pos:descuento', 'pos:reimprimir', 'pos:catalogo', 'pos:reportes',
-      'kds:ver', 'inv:ver', 'inv:mover', 'inv:recetas', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos', 'fab:ver', 'fab:editar', 'fab:registrar', 'dis:salidas',
+      'kds:ver', 'inv:ver', 'inv:mover', 'inv:recetas', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos', 'fab:ver', 'fab:editar', 'fab:registrar', 'dis:salidas', 'rep:pesar', 'rep:despachar', 'rep:producir', 'rep:ver', 'rep:costeo', 'rep:inventario', 'doc:ver',
       'clientes:ver', 'clientes:editar', 'cotizaciones:ver'],
   },
   cajero: {
     nombre: 'Cajero',
-    permisos: ['pos:vender', 'pos:caja', 'pos:descuento', 'pos:reimprimir', 'kds:ver', 'clientes:ver', 'clientes:editar', 'rrhh:asistencia'],
+    permisos: ['pos:vender', 'pos:caja', 'pos:descuento', 'pos:reimprimir', 'kds:ver', 'clientes:ver', 'clientes:editar', 'rrhh:asistencia', 'rep:pesar'],
   },
   produccion: {
     nombre: 'Producción / cocina',
-    permisos: ['kds:ver', 'inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:registrar', 'fab:ver'],
+    permisos: ['kds:ver', 'inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:registrar', 'fab:ver', 'rep:producir', 'rep:ver'],
   },
   bodega: {
     nombre: 'Bodega',
-    permisos: ['inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:ver', 'dis:salidas'],
+    permisos: ['inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:ver', 'dis:salidas', 'rep:despachar', 'rep:inventario', 'rep:pesar'],
   },
   gestor: {
     nombre: 'Gestor de proyectos',
@@ -74,7 +82,7 @@ export const ROLES = {
   },
   contador: {
     nombre: 'Contador',
-    permisos: ['gerente:ver', 'pos:reportes', 'fin:ver', 'fin:gastos', 'inv:ver', 'clientes:ver', 'auditoria:ver', 'grupo:ver'],
+    permisos: ['gerente:ver', 'pos:reportes', 'fin:ver', 'fin:gastos', 'inv:ver', 'clientes:ver', 'auditoria:ver', 'grupo:ver', 'doc:ver'],
   },
   solo_lectura: {
     nombre: 'Solo lectura',
