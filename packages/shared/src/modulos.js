@@ -72,7 +72,7 @@ export const MODULOS_DERIVADOS = {
   cotizaciones: ['cotizaciones'],
 };
 // Empresas de fábrica/distribuidora tienen su propio catálogo e inventario: se ocultan los genéricos.
-export const MODULOS_OCULTOS_POR = { fabrica: ['catalogo', 'inventario', 'caja_chica'], distribuidora: ['catalogo', 'inventario', 'caja_chica'] };
+export const MODULOS_OCULTOS_POR = { reposicion: ['inventario'], fabrica: ['catalogo', 'inventario', 'caja_chica'], distribuidora: ['catalogo', 'inventario', 'caja_chica'] };
 // Siempre presentes (según permiso) en cualquier empresa.
 export const MODULOS_SIEMPRE = ['admin', 'usuarios', 'sucursales', 'bitacora', 'impresora', 'documentos'];
 
