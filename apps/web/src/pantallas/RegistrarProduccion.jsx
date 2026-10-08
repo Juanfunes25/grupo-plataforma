@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { get, post } from '../api.js';
 import { useSesion } from '../sesion.jsx';
-import { ErrorCaja, useDatos } from '../ui/kit.jsx';
+import { ErrorCaja, useDatos, vibrar } from '../ui/kit.jsx';
 import { diaCorto, horaCorta, n, ChipEstado } from '../fab/comun.jsx';
 import { imprimirEtiqueta } from '../fab/etiqueta.js';
 
@@ -32,7 +32,7 @@ export default function RegistrarProduccion() {
   const tienePlana = variantes.some((p) => !p.esquina);
   const producto = variantes.find((p) => (tipo === 'esquina') === p.esquina) ?? (variantes.length === 1 ? variantes[0] : null);
   const valida = producto && cantidad > 0;
-  const sumar = (k) => setCantidad((c) => Math.max(0, Math.min(9999, c + k)));
+  const sumar = (k) => { vibrar(8); setCantidad((c) => Math.max(0, Math.min(9999, c + k))); };
 
   const elegirModelo = (m) => { setModelo(m); setColor(''); setTipo('plana'); setResultado(null); setError(''); };
   const elegirColor = (c) => { setColor(c); setResultado(null); setError(''); setTipo(catalogo.some((p) => p.modelo === modelo && p.color === c && !p.esquina) ? 'plana' : 'esquina'); };
@@ -42,7 +42,7 @@ export default function RegistrarProduccion() {
     try {
       const r = await post('/fab/registro', { producto_id: producto.id, cantidad });
       setResultado({ ...r, producto_id: producto.id });
-      setCantidad(0); setConfirmando(false); setModelo(''); setColor('');
+      setCantidad(0); setConfirmando(false); setModelo(''); setColor(''); vibrar([40, 30, 40]);
       recientesD.recargar();
     } catch (e) { setError(e.message); setConfirmando(false); } finally { setEnviando(false); }
   }

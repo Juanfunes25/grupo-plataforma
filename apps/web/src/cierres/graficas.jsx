@@ -16,9 +16,9 @@ export function BarraH({ datos, formato = (v) => v, color = 'var(--serie-1)', va
   const max = Math.max(1, ...datos.map((d) => Number(d.valor)));
   if (!datos.length) return <div className="vacio">{vacio}</div>;
   return (
-    <div className="barras">
+    <div className="barras" role="list">
       {datos.map((d) => (
-        <div className="barra-fila" key={d.nombre}>
+        <div className="barra-fila" key={d.nombre} role="listitem">
           <span title={d.nombre} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.nombre}</span>
           <div className="pista"><i style={{ width: `${(Number(d.valor) / max) * 100}%`, background: d.color ?? color }} /></div>
           <b className="num">{formato(Number(d.valor))}</b>
@@ -34,7 +34,7 @@ export function BarrasV({ datos, formato = (v) => v, color = 'var(--serie-1)', a
   if (!datos.length) return <div className="vacio">{vacio}</div>;
   const muchas = datos.length > 16;
   return (
-    <div className="barras-v" style={{ height: alto + 34 }}>
+    <div className="barras-v" style={{ height: alto + 34 }} role="img" aria-label={datos.map((d) => `${d.etiqueta}: ${formato(Number(d.valor))}`).join('; ')}>
       {datos.map((d, i) => (
         <div className="barra-v" key={`${d.etiqueta}-${i}`} title={d.titulo ?? `${d.etiqueta}: ${formato(Number(d.valor))}`}>
           {!muchas && <span className="barra-v-valor">{formato(Number(d.valor))}</span>}

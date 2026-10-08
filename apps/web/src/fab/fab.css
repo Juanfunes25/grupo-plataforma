@@ -11,13 +11,16 @@
 .fab-nota { background: var(--panel-3); border-radius: var(--radio-s); padding: 10px 14px; margin-top: 12px; font-size: .92rem; }
 
 /* Registrar producción: celular, botones grandes */
-.reg { max-width: 560px; margin: 0 auto; padding-bottom: 120px; }
-.reg h3 { margin: 20px 0 8px; font-size: 1.05rem; color: var(--tenue); text-transform: uppercase; letter-spacing: 1px; }
+.reg { max-width: 560px; margin: 0 auto; padding: 14px 14px 130px; }
+.reg h3 { margin: 22px 0 10px; font-size: 1.1rem; color: var(--tenue); text-transform: uppercase; letter-spacing: 1px; }
 .reg-rejilla { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .reg-btn { min-height: 64px; padding: 10px 12px; border-radius: 16px; font-size: 1.1rem; font-weight: 700; width: 100%; border: 3px solid var(--borde); background: var(--panel); color: var(--texto); cursor: pointer; touch-action: manipulation; }
 .reg-btn.on { border-color: var(--acento); background: var(--acento); color: var(--acento-texto); }
 .reg-btn.ok { border-color: var(--ok); background: var(--ok); color: #04170d; }
 .reg-btn:disabled { opacity: .45; }
+.reg-btn { transition: transform .06s, background .1s, border-color .1s; user-select: none; -webkit-user-select: none; }
+.reg-btn:active:not(:disabled) { transform: scale(.96); }
+.reg-btn:focus-visible { outline: 3px solid var(--foco); outline-offset: 2px; }
 .reg-cant { display: grid; grid-template-columns: 84px 1fr 84px; gap: 10px; align-items: center; }
 .reg-cant .reg-btn { min-height: 84px; font-size: 2.4rem; }
 .reg-cant input { width: 100%; min-height: 84px; font-size: 2.6rem; text-align: center; font-weight: 800; border-radius: 16px; }

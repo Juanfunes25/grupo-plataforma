@@ -4,7 +4,7 @@ import AvisoSinStock from '../eco/AvisoSinStock.jsx';
 import { MOTIVOS_DESCARTE, MOTIVOS_REIMPRESION, OPCIONES_DESCUENTO, UMBRAL_RTN_OBLIGATORIO, calcularTotales, identidadValida, lempiras, nombreCortoSucursal, requiereRtn as faltaRtn } from '@grupo/shared';
 import { get, patch, post, put, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
-import { Cargando, ErrorCaja, Modal, useAccion, useAviso } from '../ui/kit.jsx';
+import { Cargando, ErrorCaja, Modal, useAccion, useAviso, vibrar } from '../ui/kit.jsx';
 import Icono from '../ui/Icono.jsx';
 import { colorSucursal } from '../lib/coloresSucursal.js';
 import { imprimirTicket, leerConfigImpresora, verPdf } from '../lib/documentos.js';
@@ -218,6 +218,7 @@ export default function Pos() {
     mostrarToast(`+ ${p.nombre}`);
   }, []);
   const tocar = (p) => {
+    vibrar(10);
     if (agotados) {
       ejecutar(async () => { await patch(`/pos/catalogo/productos/${p.id}/disponible`, { disponible: !p.disponible }); await cargarCatalogo(); }, p.disponible ? `${p.nombre}: marcado como agotado` : `${p.nombre}: disponible de nuevo`);
       return;

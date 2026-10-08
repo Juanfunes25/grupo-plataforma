@@ -32,6 +32,15 @@ function CambiarClave({ onCerrar, onListo }) {
 }
 
 const CLAVE_PLEGADOS = 'grupo.nav.plegados';
+const CLAVE_COMPACTO = 'grupo.nav.compacto';
+const leerCompacto = () => { try { const v = localStorage.getItem(CLAVE_COMPACTO); return v === null ? null : v === '1'; } catch { return null; } };
+// Pantalla de tablet/laptop pequeña (menú fijo a la izquierda): ahí el POS gana espacio con el menú en columna de íconos.
+function useRangoTablet() {
+  const q = '(min-width: 901px) and (max-width: 1400px)';
+  const [v, setV] = useState(() => window.matchMedia(q).matches);
+  useEffect(() => { const m = window.matchMedia(q); const f = () => setV(m.matches); m.addEventListener('change', f); return () => m.removeEventListener('change', f); }, []);
+  return v;
+}
 const leerPlegados = () => { try { return JSON.parse(localStorage.getItem(CLAVE_PLEGADOS) || '[]'); } catch { return []; } };
 
 function BotonTema({ clase = 'btn chico fantasma', conTexto = false }) {
@@ -48,6 +57,8 @@ export default function Layout({ children, esGrupo = false }) {
   const [menu, setMenu] = useState(false);
   const [paleta, setPaleta] = useState(false);
   const [plegados, setPlegados] = useState(leerPlegados);
+  const [compactoPref, setCompactoPref] = useState(leerCompacto);
+  const enTablet = useRangoTablet();
   const location = useLocation();
   const { empresa: param } = useParams();
 
@@ -138,9 +149,11 @@ export default function Layout({ children, esGrupo = false }) {
   // Empresa: menú lateral por grupos plegables (Operación · Negocio · Control · Ajustes).
   const activo = items.find((m) => location.pathname.startsWith(`${base}/${m.ruta}`));
   const sinCabecera = activo?.id === 'pos'; // el POS usa toda la altura
+  const compacto = compactoPref ?? (activo?.id === 'pos' && enTablet);
+  const alternarCompacto = () => { const n = !compacto; setCompactoPref(n); try { localStorage.setItem(CLAVE_COMPACTO, n ? '1' : '0'); } catch { /* sin almacenamiento */ } };
   const sucActual = s.sucursales.find((x) => x.id === s.sucursalId) ?? s.sucursales[0];
   return (
-    <div className={`app-shell no-print-shell${menu ? ' menu-abierto' : ''}`}>
+    <div className={`app-shell no-print-shell${menu ? ' menu-abierto' : ''}${compacto ? ' compacto' : ''}`}>
       <a className="saltar no-print" href="#contenido">Saltar al contenido</a>
       <header className="barra-movil no-print">
         <button className="btn fantasma" onClick={() => setMenu(true)} aria-label="Abrir menú" aria-expanded={menu} aria-controls="menu-lateral"><Icono n="menu" tam={22} /></button>
@@ -157,6 +170,7 @@ export default function Layout({ children, esGrupo = false }) {
             <span className="sidebar-marca-texto"><b className="titulo">{ctx.empresa.nombre}</b><small>{ctx.empresa.razon_social}</small></span>
           </Link>
           <button className="btn fantasma sidebar-cerrar" onClick={() => setMenu(false)} aria-label="Cerrar menú"><Icono n="x" /></button>
+          <button className="btn fantasma chico sidebar-compactar" onClick={alternarCompacto} aria-label={compacto ? 'Expandir menú' : 'Contraer menú'} aria-pressed={compacto} title={compacto ? 'Expandir menú' : 'Contraer menú'}><Icono n={compacto ? 'derecha' : 'atras'} tam={18} /></button>
         </div>
         {s.sucursales.length > 1 && (
           <div className="sidebar-sucursal">
@@ -183,7 +197,7 @@ export default function Layout({ children, esGrupo = false }) {
                 </button>
                 <div className="sidebar-grupo-lista" id={`grupo-${g}`}>
                   {lista.map((m) => (
-                    <NavLink key={m.id} to={`${base}/${m.ruta}`} className={({ isActive }) => `sidebar-item${isActive ? ' activo' : ''}`} onClick={() => setMenu(false)}>
+                    <NavLink key={m.id} to={`${base}/${m.ruta}`} title={m.nombre} className={({ isActive }) => `sidebar-item${isActive ? ' activo' : ''}`} onClick={() => setMenu(false)}>
                       <Icono n={m.icono} tam={20} /><span>{m.nombre}</span>{m.id === 'antifraude' && <ContadorAlertas />}
                     </NavLink>
                   ))}
@@ -193,7 +207,7 @@ export default function Layout({ children, esGrupo = false }) {
           })}
         </nav>
         <div className="sidebar-pie">
-          {puedeCambiar && <button className="sidebar-item" onClick={() => nav('/')}><Icono n="sucursales" tam={20} /><span>Cambiar de empresa</span></button>}
+          {puedeCambiar && <button className="sidebar-item" title="Cambiar de empresa" onClick={() => nav('/')}><Icono n="sucursales" tam={20} /><span>Cambiar de empresa</span></button>}
           <div className="sidebar-usuario">
             <span className="sidebar-avatar" aria-hidden="true">{(s.usuario?.nombre ?? '?').trim().slice(0, 1).toUpperCase()}</span>
             <span className="sidebar-usuario-texto"><strong>{s.usuario?.nombre}</strong><small>{s.usuario?.es_dueno_grupo ? 'Administrador general' : ctx.rol}</small></span>
@@ -209,6 +223,7 @@ export default function Layout({ children, esGrupo = false }) {
             <nav className="migas" aria-label="Ubicación">
               <Link to={base}>{ctx.empresa.nombre}</Link>
               {activo && <><Icono n="derecha" tam={14} /><span>{activo.nav}</span><Icono n="derecha" tam={14} /><b aria-current="page">{activo.nombre}</b></>}
+              {activo?.descripcion && <small className="migas-desc">{activo.descripcion}</small>}
             </nav>
             <button className="btn chico fantasma" onClick={() => setPaleta(true)} aria-label="Buscar módulo (Control K)"><Icono n="lupa" tam={18} /> Buscar</button>
           </div>

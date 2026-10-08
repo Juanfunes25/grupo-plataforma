@@ -21,7 +21,7 @@
 .pos-tercera-edad .tit { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--ok); }
 .pos-botones-cobro { display: flex; align-items: stretch; justify-content: space-between; gap: 0; }
 .boton-cobro { flex: 0 0 44%; min-height: 76px; border-radius: 16px; border: 0; font-weight: 800; letter-spacing: .08em; font-size: 1.05rem; display: grid; place-items: center; align-content: center; gap: 2px; color: #fff; }
-.boton-cobro.efectivo { background: #2f9a68; } .boton-cobro.tarjeta { background: #3f6fd1; }
+.boton-cobro.efectivo { background: #217a52; } .boton-cobro.tarjeta { background: #3560c0; }
 .boton-cobro:disabled { opacity: .35; cursor: not-allowed; }
 .boton-cobro:not(:disabled):active { transform: scale(.97); }
 .pos-cobro-separador { flex: 1 1 12%; }
@@ -52,7 +52,7 @@
 /* Facturas */
 .fac-punto { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: middle; }
 .chip-pago { display: inline-flex; padding: 2px 9px; border-radius: 999px; font-size: .74rem; font-weight: 700; margin-right: 4px; background: var(--panel-3); color: var(--tenue); white-space: nowrap; }
-.chip-pago.efectivo { background: rgba(63,182,122,.16); color: #5fd49b; } .chip-pago.tarjeta { background: rgba(91,155,239,.16); color: #8fbaf5; } .chip-pago.transferencia { background: rgba(201,162,39,.16); color: #e1c25c; }
+.chip-pago.efectivo { background: rgba(63,182,122,.16); color: var(--ok-texto); } .chip-pago.tarjeta { background: rgba(91,155,239,.16); color: var(--info-texto); } .chip-pago.transferencia { background: rgba(201,162,39,.16); color: var(--aviso-texto); }
 tr.fac-anulada td { opacity: .5; text-decoration: line-through; }
 .fac-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; align-items: end; }
 .pasos { padding-left: 20px; display: grid; gap: 12px; }
@@ -67,12 +67,12 @@ tr.fac-anulada td { opacity: .5; text-decoration: line-through; }
 /* ── Estilo WizPOS: categorías a la izquierda (naranja), productos a la derecha (azul), orden como tabla ── */
 .pos-cuerpo { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px; align-items: start; }
 .pos-cuerpo .pos-cats { display: flex; flex-direction: column; flex-wrap: nowrap; overflow: visible; gap: 6px; align-items: stretch; position: sticky; top: 8px; max-height: calc(100vh - 150px); overflow-y: auto; margin: 0; padding: 0; }
-.pos-cuerpo .pos-cats button { --cc: #e8a24a; border: 0; border-radius: 6px; background: #eda94f; color: #fff; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; text-align: center; white-space: normal; min-height: 64px; padding: 10px 8px; font-size: .95rem; line-height: 1.15; box-shadow: inset 0 -3px 0 rgba(0,0,0,.18); }
+.pos-cuerpo .pos-cats button { --cc: #e8a24a; border: 0; border-radius: 6px; background: #eda94f; color: #2b1800; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; text-align: center; white-space: normal; min-height: 64px; padding: 10px 8px; font-size: .95rem; line-height: 1.15; box-shadow: inset 0 -3px 0 rgba(0,0,0,.18); }
 .pos-cuerpo .pos-cats button:not(.on) { opacity: .9; }
-.pos-cuerpo .pos-cats button.on { background: #d98a1f; opacity: 1; outline: 3px solid #fff; outline-offset: -3px; }
+.pos-cuerpo .pos-cats button.on { background: #d98a1f; color: #1f1100; opacity: 1; outline: 3px solid #fff; outline-offset: -3px; }
 .pos-cuerpo .pos-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
-.pos-cuerpo .pos-prod { border: 0; border-left: 0; border-radius: 6px; background: linear-gradient(#4ab8e0, #2f9fcb); color: #fff; align-items: center; justify-content: center; text-align: center; min-height: 112px; gap: 10px; padding: 10px; }
-.pos-cuerpo .pos-prod:hover { background: linear-gradient(#5cc4ea, #38a9d5); }
+.pos-cuerpo .pos-prod { border: 0; border-left: 0; border-radius: 6px; background: linear-gradient(#2680a5, #1b6688); color: #fff; align-items: center; justify-content: center; text-align: center; min-height: 112px; gap: 10px; padding: 10px; }
+.pos-cuerpo .pos-prod:hover { background: linear-gradient(#2d8db4, #217396); }
 .pos-cuerpo .pos-prod .pn { font-weight: 800; text-transform: uppercase; font-size: .95rem; }
 .pos-cuerpo .pos-prod .pp { background: #5b5f66; color: #fff; border-radius: 4px; padding: 4px 14px; font-family: 'Inter', sans-serif; font-size: .95rem; font-weight: 800; }
 .pos-cuerpo .pos-prod .pm { color: #e9f7ff; }
@@ -94,7 +94,7 @@ tr.fac-anulada td { opacity: .5; text-decoration: line-through; }
 .pos-wz-cant { display: flex; align-items: center; gap: 4px; }
 .pos-wz-cant button { width: 28px; height: 32px; border: 1px solid var(--borde); background: var(--panel-3); border-radius: 6px; font-weight: 800; }
 .pos-wz-cant input { width: 40px; text-align: center; padding: 4px 2px; min-height: 32px; font-weight: 700; }
-.pos-wz-opc { background: #2b6fb3; color: #fff; border: 0; border-radius: 4px; padding: 7px 8px; font-size: .78rem; display: inline-flex; align-items: center; gap: 5px; justify-content: center; }
+.pos-wz-opc { background: #245f9c; color: #fff; border: 0; border-radius: 4px; padding: 7px 8px; font-size: .78rem; display: inline-flex; align-items: center; gap: 5px; justify-content: center; }
 .pos-wz-tot { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .pos-wz-tot > div { display: grid; text-align: center; gap: 2px; padding: 6px 4px; border: 1px solid var(--borde); border-radius: 6px; background: var(--panel-2); }
 .pos-wz-tot span { font-weight: 800; font-size: .8rem; color: #4aa8e6; }
@@ -114,3 +114,29 @@ tr.fac-anulada td { opacity: .5; text-decoration: line-through; }
 
 .pos-acciones-fila { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); }
 .boton-cobro { min-height: 64px; }
+
+
+/* ── Pulido táctil y de legibilidad (tiendas con poca luz, manos ocupadas) ── */
+.pos-prod, .pos-cuerpo .pos-cats button, .boton-cobro, .pos-wz-cant button, .pos-acciones-fila .btn { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+.pos-cuerpo .pos-prod { transition: transform .08s, filter .1s, box-shadow .1s; box-shadow: 0 2px 0 rgba(0, 0, 0, .35); }
+.pos-cuerpo .pos-prod:active { transform: scale(.95); filter: brightness(1.18); box-shadow: none; }
+.pos-cuerpo .pos-cats button:active { transform: scale(.97); }
+.pos-cuerpo .pos-prod .pn { text-shadow: 0 1px 1px rgba(0, 0, 0, .35); }
+.pos-cuerpo .pos-prod:focus-visible, .pos-cuerpo .pos-cats button:focus-visible { outline: 3px solid #fff; outline-offset: -4px; }
+.pos-cuerpo .pos-prod.agotado { filter: grayscale(.9); }
+.pos-cuerpo .pos-prod.agotado::after { content: 'AGOTADO'; position: absolute; top: 6px; right: 6px; font-size: .62rem; font-weight: 800; letter-spacing: .06em; background: rgba(0, 0, 0, .55); color: #fff; padding: 2px 6px; border-radius: 4px; }
+.pos-wz-tr { transition: background .15s; }
+.pos-wz-tr:active { background: var(--panel-2); }
+.boton-cobro { box-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
+.boton-cobro:not(:disabled):active { box-shadow: none; transform: translateY(2px) scale(.99); }
+.pos-wz-tot .gran { border-color: color-mix(in srgb, #ef7070 55%, var(--borde)); }
+.pos-toast { font-weight: 600; }
+@media (pointer: coarse) {
+  .pos-wz-cant button { width: 40px; height: 44px; font-size: 1.1rem; }
+  .pos-wz-cant input { min-height: 44px; width: 48px; }
+  .pos-wz-th, .pos-wz-tr { grid-template-columns: minmax(0, 1fr) 144px 74px 82px 96px; }
+  .pos-chip-desc, .pos-wz-opc { min-height: 44px; }
+  .pos-acciones-fila .btn { min-height: 48px; }
+  .pos-cuerpo .pos-cats button { min-height: 60px; }
+}
+@media (pointer: coarse) and (max-width: 960px) { .pos-wz-th, .pos-wz-tr { grid-template-columns: minmax(0, 1fr) 138px 66px 74px; } }

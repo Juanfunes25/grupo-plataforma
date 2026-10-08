@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { get, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
-import { Estado, Kpi, descargarCsv, useDatos } from '../ui/kit.jsx';
+import { EncabezadoPagina, Estado, Kpi, descargarCsv, useDatos } from '../ui/kit.jsx';
 import { BarraH, BarrasV, COLOR_FORMA, Leyenda, Variacion, colorSerie } from '../cierres/graficas.jsx';
 import { L, entero, fechaCorta, hora12, hoyHn, primerDiaMes, ATAJOS } from '../cierres/formato.js';
 import '../cierres/cierres.css';
@@ -20,28 +20,26 @@ export default function Dashboard() {
 
   return (
     <div className="pagina">
-      <div className="encabezado-pagina"><h1>Dashboard</h1></div>
-      <div className="tarjeta" style={{ display: 'grid', gap: 10 }}>
+      <EncabezadoPagina titulo="Dashboard" descripcion={`Ventas y números · ${aplicado.desde} al ${aplicado.hasta}`}
+        acciones={<button className="btn chico" onClick={() => d.recargar()} disabled={d.cargando} aria-label="Actualizar datos">{d.cargando ? 'Actualizando…' : 'Actualizar'}</button>} />
+      <div className="tarjeta" style={{ display: 'grid', gap: 12 }}>
+        <div className="atajos" role="group" aria-label="Periodos rápidos">{ATAJOS_DASH.map((a) => { const r = a.calcular(); const on = r.desde === aplicado.desde && r.hasta === aplicado.hasta; return <button key={a.etiqueta} className={`btn chico${on ? ' primario' : ''}`} aria-pressed={on} onClick={() => consultar({ ...f, ...r })}>{a.etiqueta}</button>; })}</div>
         <div className="filtros">
           {sucursales.length > 1 && <label>Sucursal<select value={f.sucursal_id} onChange={(e) => setF({ ...f, sucursal_id: e.target.value })}><option value="">Todas las sucursales</option>{sucursales.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}</select></label>}
           <label>Desde<input type="date" value={f.desde} max={f.hasta} onChange={(e) => setF({ ...f, desde: e.target.value })} /></label>
           <label>Hasta<input type="date" value={f.hasta} min={f.desde} max={hoyHn()} onChange={(e) => setF({ ...f, hasta: e.target.value })} /></label>
-          <button className="btn primario" disabled={d.cargando} onClick={() => consultar()}>{d.cargando ? 'Consultando…' : 'Consultar'}</button>
+          <button className={`btn primario${d.cargando ? ' cargando' : ''}`} disabled={d.cargando} onClick={() => consultar()}>Consultar</button>
         </div>
-        <div className="atajos">{ATAJOS_DASH.map((a) => <button key={a.etiqueta} className="btn chico" onClick={() => consultar({ ...f, ...a.calcular() })}>{a.etiqueta}</button>)}</div>
       </div>
 
       <Estado d={d}>{(x) => (
         <>
-          <div className="rejilla cols-4">
-            <Kpi acento etiqueta="Total ventas" valor={L(x.total)} sub={<span className="fila" style={{ gap: 6 }}><Variacion actual={x.total} anterior={x.anterior.ventas} /><span>vs. periodo anterior</span></span>} />
-            <Kpi etiqueta="Facturas" valor={entero(x.cantidad_facturas)} sub={<span className="fila" style={{ gap: 6 }}><Variacion actual={x.cantidad_facturas} anterior={x.anterior.facturas} />{x.anuladas.n > 0 && <span>{x.anuladas.n} anulada(s)</span>}</span>} />
-            <Kpi etiqueta="Ticket promedio" valor={L(x.ticket_promedio)} sub={<Variacion actual={x.ticket_promedio} anterior={x.anterior.ticket_promedio} />} />
-            <Kpi etiqueta="ISV" valor={L(x.isv_total)} sub={x.descuentos > 0 ? `Descuentos: ${L(x.descuentos)}` : undefined} />
-          </div>
-          <div className="rejilla cols-2">
-            <Kpi etiqueta={`Hoy · ${fechaCorta(x.hoy.fecha)}`} valor={L(x.hoy.total)} sub={`${x.hoy.facturas} facturas`} />
-            <Kpi etiqueta="Periodo" valor={`${x.desde} → ${x.hasta}`} sub={`${x.dias} día(s) · anterior: ${x.anterior.desde} → ${x.anterior.hasta}`} />
+          <div className="rejilla cols-5">
+            <Kpi acento icono="dinero" etiqueta="Total ventas" valor={L(x.total)} sub={<span className="fila" style={{ gap: 6 }}><Variacion actual={x.total} anterior={x.anterior.ventas} /><span>vs. periodo anterior</span></span>} />
+            <Kpi icono="reloj" etiqueta={`Hoy · ${fechaCorta(x.hoy.fecha)}`} valor={L(x.hoy.total)} sub={`${x.hoy.facturas} facturas`} />
+            <Kpi icono="reportes" etiqueta="Facturas" valor={entero(x.cantidad_facturas)} sub={<span className="fila" style={{ gap: 6 }}><Variacion actual={x.cantidad_facturas} anterior={x.anterior.facturas} />{x.anuladas.n > 0 && <span className="chip mal">{x.anuladas.n} anulada(s)</span>}</span>} />
+            <Kpi icono="pos" etiqueta="Ticket promedio" valor={L(x.ticket_promedio)} sub={<Variacion actual={x.ticket_promedio} anterior={x.anterior.ticket_promedio} />} />
+            <Kpi etiqueta="ISV" valor={L(x.isv_total)} sub={x.descuentos > 0 ? `Descuentos: ${L(x.descuentos)}` : `${x.dias} día(s) en el periodo`} />
           </div>
 
           <div className="tarjeta">
