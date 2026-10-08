@@ -3,7 +3,7 @@ import { lempiras } from '@grupo/shared';
 import { Estado, useDatos } from '../ui/kit.jsx';
 import { rget, qs } from './api.js';
 import { SIN_CATEGORIA, Chip, cantidad as fmt, conUnidad, cuando, descargarCsvFilas, fechaCorta, hoyIso, lps0 } from './comun.jsx';
-import { Vencimientos, FiltroCategorias } from './Insumos.jsx';
+import { Vencimientos } from './Insumos.jsx';
 
 const sumarDias = (f, d) => new Date(Date.parse(`${f}T00:00:00Z`) + d * 86400000).toISOString().slice(0, 10);
 const rangos = () => { const h = hoyIso(); const mes = `${h.slice(0, 8)}01`; const ult = sumarDias(mes, -1); return { Hoy: [h, h], '7 días': [sumarDias(h, -6), h], 'Este mes': [mes, h], 'Mes pasado': [`${ult.slice(0, 8)}01`, ult] }; };
@@ -136,7 +136,6 @@ export function Calidad() {
           {x.incidencias.length > 0 && <div className="tarjeta rejilla"><h3>Incidencias de este lote</h3>{x.incidencias.map((i) => <div key={i.id}><Chip tono={i.gravedad === 'alta' ? 'mal' : 'aviso'}>{i.estado}</Chip> {i.descripcion}</div>)}</div>}
         </div>
       )}</Estado>}
-      <FiltroCategorias items={[]} categoria="" setCategoria={() => {}} />
     </div>
   );
 }

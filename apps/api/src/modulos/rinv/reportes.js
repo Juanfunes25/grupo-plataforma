@@ -132,11 +132,16 @@ export function rutasReportes({ db }) {
     res.json({ meses: etiquetas, fabrica: serie('fabrica'), sucursales: serie('sucursal') });
   });
 
-  /** Cuánto dinero hay parado en bodega. Expone precios: solo quien ve costos. */
+  /** Cuánto dinero hay parado en bodega. Precio = el más reciente entre la lista de costeo de Producción (prod.costeo_precios, por nombre) y los precios propios. Expone precios: solo quien ve costos. */
   r.get('/valor', requierePermiso('rep:costeo'), async (req, res) => {
     const { rows } = await db.query(
       `select i.id, i.nombre, i.descripcion, i.tipo, i.categoria, i.unidad, i.stock_actual, i.es_equipo, i.peso_unitario,
-              (select p.lps_kg from rinv.precios_fab p where p.insumo_id = i.id order by p.fecha_vigencia desc, p.n desc limit 1) as precio
+              (select x.lps_kg from (
+                 select p.lps_kg, p.fecha_vigencia, 1 as origen, p.id::bigint as orden from prod.costeo_precios p join prod.costeo_insumos ci on ci.id = p.insumo_id
+                  where ci.empresa_id = i.empresa_id and upper(ci.nombre) = upper(i.nombre)
+                 union all
+                 select q.lps_kg, q.fecha_vigencia, 0, q.n from rinv.precios_fab q where q.insumo_id = i.id) x
+                order by x.fecha_vigencia desc, x.origen desc, x.orden desc limit 1) as precio
          from rinv.insumos_fab i where i.empresa_id = $1 and i.activo order by i.nombre`, [empresaDe(req)]);
     res.json(valorInventarioFabrica(rows));
   });
