@@ -8,6 +8,7 @@ import { armarRecomendacion } from './lib/recomendacionDespacho.js';
 import { sumarDias } from './lib/gerente/nucleo.js';
 import { ESTADOS_ENTREGADOS } from './lib/rotacion.js';
 import { armarBase } from './lib/gerente/simulador.js';
+import { armarConsumo } from './lib/consumo.js';
 import { cargarPrecios, cargarRecetas, costoKgReceta, indiceRecetaPorSabor } from '../prod/costeo.js';
 
 /** Ejecuta una lectura opcional: [] si la tabla de otro módulo todavía no existe o no coincide. */
@@ -239,4 +240,24 @@ export async function baseSimulador(q, empresaId, { hoy, dias = 90 }) {
   const base = armarBase({ recomendacion, costosPorSabor: costos, realSemanalKg });
   base.tiendas = base.tiendas.filter((t) => !an.cerradas.includes(t.sucursal_id) && !an.fuera.includes(t.sucursal_id));
   return base;
+}
+
+/** Consumo medido en vitrina por sucursal/sabor/día, cruzado con la venta del POS (solo lectura). `x` = { desde, hasta }. */
+export async function consumoDeRango(q, empresaId, x) {
+  const holgura = sumarDias(x.desde, -1);
+  const [sucursales, sabores, pesajes, despachos, ventas] = await Promise.all([
+    q.query(`select s.id, s.nombre, coalesce(c.fuera_de_analisis,false) as fuera_de_analisis from core.sucursales s left join rep.sucursal_config c on c.sucursal_id = s.id
+              where s.empresa_id = $1 and s.activo and not coalesce(c.cerrada,false)`, [empresaId]).then((r) => r.rows),
+    q.query('select id, nombre from rep.sabores where empresa_id = $1', [empresaId]).then((r) => r.rows),
+    // el último pesaje de cada noche
+    q.query(`select distinct on (sucursal_id, sabor_id, fecha) sucursal_id, sabor_id, fecha::text as fecha, gramos::float8 as gramos
+               from rep.pesajes where empresa_id = $1 and fecha between $2 and $3 order by sucursal_id, sabor_id, fecha, created_at desc`, [empresaId, holgura, x.hasta]).then((r) => r.rows),
+    q.query(`select sucursal_id, sabor_id, fecha::text as fecha, enviado_en::text as enviado_en, gramos_enviados, estado from rep.despachos
+              where empresa_id = $1 and fecha between $2 and $3 and estado in ('enviado','recibido')`, [empresaId, sumarDias(holgura, -1), x.hasta]).then((r) => r.rows),
+    // Venta del POS de Italo por tienda y día (hora de Honduras). Solo lectura; nada se escribe en pos.
+    opcional(q, `select v.sucursal_id, ((v.fecha_emision at time zone 'America/Tegucigalpa')::date)::text as fecha, sum(v.total)::float8 as total, count(*)::int as n
+                   from pos.ventas v where v.empresa_id = $1 and v.estado = 'pagada' and v.fecha_emision is not null
+                    and (v.fecha_emision at time zone 'America/Tegucigalpa')::date between $2 and $3 group by 1, 2`, [empresaId, x.desde, x.hasta]),
+  ]);
+  return { ...armarConsumo({ desde: x.desde, hasta: x.hasta, pesajes, despachos, ventas, sucursales, sabores }), hayVentas: ventas.length > 0 };
 }

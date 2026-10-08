@@ -4,7 +4,7 @@ import compression from 'compression';
 import fs from 'node:fs';
 import path from 'node:path';
 import { crearContexto } from './lib/contexto.js';
-import { manejadorErrores } from './lib/http.js';
+import { ErrorHttp, manejadorErrores } from './lib/http.js';
 import { rutasPublicas, rutasAuth } from './modulos/auth/rutas.js';
 import { montarModulos } from './modulos/indice.js';
 
@@ -19,11 +19,21 @@ export function crearApp({ db, config, log = console.error }) {
   app.disable('x-powered-by');
   app.use(compression());
 
+  // Encabezados de seguridad básicos (sin CSP: la app usa estilos en línea). HSTS solo en producción (detrás de HTTPS).
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Referrer-Policy', 'same-origin');
+    res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(self), microphone=()');
+    if (config.produccion) res.setHeader('Strict-Transport-Security', 'max-age=15552000');
+    next();
+  });
+
   app.use('/api', cors((req, cb) => {
     const origen = req.header('Origin');
     const mismoHost = origen && req.headers.host && origen.endsWith(`://${req.headers.host}`);
     if (!origen || mismoHost || config.origenesPermitidos.includes(origen)) return cb(null, { origin: true });
-    cb(new Error('Origen no permitido'));
+    cb(new ErrorHttp(403, 'Origen no permitido', 'origen'));
   }));
   app.use(express.json({ limit: '2mb' }));
   app.use('/api', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });

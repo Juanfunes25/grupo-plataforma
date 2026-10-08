@@ -24,6 +24,7 @@ async function abrirPg({ databaseUrl }) {
     connectionString: databaseUrl,
     max: 10,
     idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 15_000,   // sin esto, si la base no responde la petición se queda colgada para siempre
     ssl: local ? false : { rejectUnauthorized: false }, // Supabase pooler
   });
   pool.on('error', (e) => console.error('[db] error en conexión inactiva:', e.message));

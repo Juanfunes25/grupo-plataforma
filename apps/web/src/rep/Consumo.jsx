@@ -2,6 +2,7 @@
 // catálogo de sabores y sucursales, reportes de peso, gerente digital y resumen diario.
 // Calco de AdminDueno.jsx del original (las partes de Reposición).
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, get, patch, post, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Estado, Kpi, Modal, Tabs, descargarCsv, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
@@ -25,7 +26,8 @@ export default function Consumo() {
   const { puede } = useSesion();
   const verGerente = puede('gerente:ver');
   const admin = puede('rep:costeo');
-  const [tab, setTab] = useState('panorama');
+  const [params] = useSearchParams();
+  const [tab, setTab] = useState(params.get('tab') || 'panorama');   // el tablero enlaza directo a una pestaña (?tab=rotacion)
   const tabs = [['panorama', 'Panorama'], ['consumo', 'Consumo y ventas'], ['rotacion', 'Rotación'], ['sugerido', 'Qué mandar'], ['pedidos', 'Pedidos'], ['reportes', 'Reportes de peso'], ...(admin ? [['sabores', 'Sabores'], ['sucursales', 'Sucursales']] : []), ...(verGerente ? [['gerente', 'Gerente digital']] : []), ...(admin ? [['resumen', 'Resumen diario']] : [])];
   return (
     <div className="rep ancha">

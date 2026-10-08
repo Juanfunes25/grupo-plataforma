@@ -1,6 +1,7 @@
 // Despacho y recepción: qué enviar a cada sucursal, tandas, pedidos de insumos y estados.
 // Calco de Despacho.jsx + DetalleTienda.jsx del original, en el kit oscuro y táctil.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { nocheDeTrabajo } from '@grupo/shared';
 import { api, get, patch } from '../api.js';
 import { useAviso } from '../ui/kit.jsx';
 import { BotonesPanas, Esqueleto, LotePanasConExcepciones, Pill, useAvisoDeshacer } from './comun.jsx';
@@ -8,6 +9,8 @@ import { ESTADOS_HECHOS, ESTADOS_RESUELTOS, ORDEN_ESTADO, cuandoTexto, diaAnteri
 
 const PROTECCION_MS = 6000;   // un cambio recién tocado no lo pisa el refresco automático
 const saludo = () => { const h = new Date().getHours(); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; };
+// Las tiendas pesan de noche y aquí se despacha a la mañana siguiente: antes del mediodía el reporte que importa es el de ANOCHE.
+const nocheInicial = () => nocheDeTrabajo().fecha;
 const textoDia = (f) => (f === hoyIso() ? `${fechaCorta(f)} · hoy` : f === diaAnterior(hoyIso()) ? `${fechaCorta(f)} · anoche` : fechaCorta(f));
 
 function mezclar(actual, nuevo, ids) {
@@ -37,7 +40,7 @@ export default function Despacho() {
   const [actualizando, setActualizando] = useState(false);
   const [datoDesde, setDatoDesde] = useState(null);
   const [error, setError] = useState('');
-  const [fecha, setFecha] = useState(hoyIso());
+  const [fecha, setFecha] = useState(nocheInicial);
   const yaCargo = useRef(false);
   const cambios = useRef(new Map());
 
@@ -272,10 +275,12 @@ export default function Despacho() {
         <button className="btn" onClick={recargar} disabled={actualizando} title="Actualizar ahora">{actualizando ? 'Actualizando…' : `⟳ ${datoDesde ? haceCuanto(datoDesde) : ''}`}</button>
       </div>
       <div className="tarjeta fila">
-        <label style={{ flex: 1, minWidth: 170 }}>Día del reporte<input type="date" value={fecha} max={hoyIso()} onChange={(e) => e.target.value && setFecha(e.target.value)} /></label>
-        {fecha === hoyIso() ? <button className="btn" onClick={() => setFecha(diaAnterior(fecha))}>Ver anoche</button> : <button className="btn" onClick={() => setFecha(hoyIso())}>Volver a hoy</button>}
+        <label style={{ flex: 1, minWidth: 170 }}>Noche del reporte<input type="date" value={fecha} max={hoyIso()} onChange={(e) => e.target.value && setFecha(e.target.value)} /></label>
+        {fecha === hoyIso() ? <button className="btn" onClick={() => setFecha(diaAnterior(fecha))}>Ver anoche</button>
+          : fecha === diaAnterior(hoyIso()) ? <button className="btn" onClick={() => setFecha(hoyIso())}>Ver la de hoy</button>
+            : <button className="btn" onClick={() => setFecha(nocheInicial())}>Ir a la más reciente</button>}
       </div>
-      {fecha !== hoyIso() && <div className="aviso-caja">Estás viendo el reporte del <b>{fechaCorta(fecha)}</b>, no el de hoy. Lo que marques se guarda en ese día.</div>}
+      {fecha !== nocheInicial() && <div className="aviso-caja">Estás viendo el reporte del <b>{fechaCorta(fecha)}</b>, no el de la noche vigente. Lo que marques se guarda en ese día.</div>}
       <div><h2>{saludo()}</h2><div className="rep-sub">{nada ? 'Todavía nadie ha enviado su reporte.' : 'Toca una tienda para armarla.'}</div></div>
       {!nada && (
         <div className="rejilla cols-3">

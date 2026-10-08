@@ -61,10 +61,26 @@ export function rutasAdmin({ db, config, ctxMgr }) {
   function validarRolAsignable(ctx, rol) {
     if (ROLES_ALTOS.includes(rol) && ctx.rol !== 'dueno') throw prohibido('Solo un dueño puede asignar los roles Dueño y Administrador');
   }
+  // El acceso a Dirección (consolidado del grupo) lo concede solo un dueño: un administrador no puede darse ni dar `grupo:ver` a escondidas.
+  function validarPermisosExtra(ctx, extra) {
+    if ((extra ?? []).includes('grupo:ver') && ctx.rol !== 'dueno') throw prohibido('Solo un dueño puede dar acceso a la Dirección del Grupo');
+  }
+  /**
+   * Una persona puede trabajar en varias empresas. Quien administra UNA empresa no puede tocar la clave ni el nombre de alguien
+   * que es administrador general o dueño/administrador en otra empresa: sería tomar su cuenta (incluida la del dueño del grupo).
+   */
+  async function validarUsuarioNoProtegido(q, ctx, usuarioId) {
+    if (ctx.usuario.es_dueno_grupo) return;
+    const { rows } = await q.query(
+      `select u.es_dueno_grupo, exists (select 1 from core.accesos a where a.usuario_id = u.id and a.empresa_id <> $2 and a.rol = any($3::text[])) as alto_en_otra
+         from core.usuarios u where u.id = $1`, [usuarioId, ctx.empresa.id, ROLES_ALTOS]);
+    if (rows[0]?.es_dueno_grupo || rows[0]?.alto_en_otra) throw prohibido('Esa persona tiene un cargo de dirección en otra empresa; su clave la cambia solo un dueño del grupo');
+  }
 
   r.post('/usuarios', requierePermiso('admin:usuarios'), async (req, res) => {
     const b = validar(esquemaNuevo, req.body);
     validarRolAsignable(req.ctx, b.rol);
+    validarPermisosExtra(req.ctx, b.permisos_extra);
     if (ROLES_DIRECCION.includes(b.rol) && (!b.email)) throw malaPeticion('Ese rol entra con correo y contraseña: falta el correo');
     if (b.pin && !ROLES_CON_PIN.includes(b.rol)) throw malaPeticion('Ese rol no puede entrar con PIN');
     if (!b.email && !b.pin) throw malaPeticion('Indica un correo o un PIN para que pueda entrar');
@@ -77,9 +93,9 @@ export function rutasAdmin({ db, config, ctxMgr }) {
         u = (await q.query(
           `insert into core.usuarios (nombre, email, password_hash) values ($1,$2,$3) returning *`,
           [b.nombre, b.email ?? null, b.password ? hashSecreto(b.password) : null])).rows[0];
-      } else if (b.password && !u.auth_user_id) {
-        await q.query('update core.usuarios set password_hash = $1 where id = $2', [hashSecreto(b.password), u.id]);
       }
+      // Si el correo ya existe (la persona trabaja en otra empresa) NO se toca su contraseña: entra con la que ya tiene.
+      // Cambiarla desde aquí permitiría a cualquier administrador tomar la cuenta de otro usuario (incluido el dueño del grupo).
       try {
         await q.query(
           `insert into core.accesos (usuario_id, empresa_id, rol, sucursal_ids, permisos_extra, permisos_quitados, pin_hash, pin_cambiado_at)
@@ -115,6 +131,8 @@ export function rutasAdmin({ db, config, ctxMgr }) {
     if (!actual) throw noEncontrado('Ese usuario no tiene acceso a esta empresa');
     if (b.rol) validarRolAsignable(req.ctx, b.rol);
     if (ROLES_ALTOS.includes(actual.rol)) validarRolAsignable(req.ctx, actual.rol);
+    validarPermisosExtra(req.ctx, (b.permisos_extra ?? []).filter((p) => !(actual.permisos_extra ?? []).includes(p)));
+    if (b.nombre && b.nombre !== actual.nombre) await validarUsuarioNoProtegido(db, req.ctx, id);
     if (b.rol && b.rol !== actual.rol && !ROLES_CON_PIN.includes(b.rol) && actual.pin_hash) {
       await db.query('update core.accesos set pin_hash = null where id = $1', [actual.id]);
     }
@@ -161,6 +179,7 @@ export function rutasAdmin({ db, config, ctxMgr }) {
     const a = (await db.query('select rol from core.accesos where usuario_id = $1 and empresa_id = $2', [id, req.ctx.empresa.id])).rows[0];
     if (!a) throw noEncontrado();
     if (ROLES_ALTOS.includes(a.rol)) validarRolAsignable(req.ctx, a.rol);
+    await validarUsuarioNoProtegido(db, req.ctx, id);
     await db.query('update core.usuarios set password_hash = $1, token_version = token_version + 1 where id = $2 and auth_user_id is null', [hashSecreto(password), id]);
     await auditar(db, req.ctx, 'password_restablecida', 'usuario', id);
     ctxMgr.invalidar();

@@ -9,9 +9,20 @@ import { hashPin } from '../src/auth/pin.js';
 /** Levanta el API completo sobre un Postgres embebido en memoria. */
 export async function iniciar() {
   const config = { ...leerConfig({ NODE_ENV: 'test' }), driver: 'pglite', dataDir: ':memory:', webDist: '/no-existe' };
+  // TEST_PG_ADMIN_URL=postgres://usuario:clave@host:puerto → corre las pruebas contra un Postgres REAL
+  // (una base nueva por llamada): detecta lo que PGlite pasa por alto (concurrencia real, permisos).
+  let borrarBase = null;
+  if (process.env.TEST_PG_ADMIN_URL) {
+    const pg = (await import('pg')).default;
+    const nombre = `qa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const admin = new pg.Client({ connectionString: process.env.TEST_PG_ADMIN_URL + '/postgres' });
+    await admin.connect(); await admin.query(`create database ${nombre}`); await admin.end();
+    config.driver = 'pg'; config.databaseUrl = `${process.env.TEST_PG_ADMIN_URL}/${nombre}`;
+    borrarBase = async () => { const a = new pg.Client({ connectionString: process.env.TEST_PG_ADMIN_URL + '/postgres' }); a.on('error', () => {}); try { await a.connect(); await a.query(`drop database if exists ${nombre}`); } catch {} finally { await a.end().catch(() => {}); } };
+  }
   const db = await abrirDb(config);
   await migrar(db, config.migraciones, () => {});
-  const app = crearApp({ db, config, log: () => {} });
+  const app = crearApp({ db, config, log: process.env.QA_LOG ? console.error : () => {} });
   const server = app.listen(0);
   await once(server, 'listening');
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -62,6 +73,6 @@ export async function iniciar() {
 
   return {
     db, config, app, base, cli, usuario, login, loginPin, empresaId, sucursalId,
-    cerrar: async () => { server.close(); await db.close(); },
+    cerrar: async () => { server.close(); await db.close(); if (borrarBase) await borrarBase(); },
   };
 }

@@ -10,6 +10,7 @@ import { Campo, Cargando, Modal, useAccion, useAviso } from '../ui/kit.jsx';
 import { post } from '../api.js';
 import Vigilancia from '../antifraude/Vigilancia.jsx';
 import ContadorAlertas from '../antifraude/ContadorAlertas.jsx';
+import LimiteError from '../ui/LimiteError.jsx';
 
 // Cambio de contraseña propio (solo sesiones de correo; el PIN lo administra Administración).
 function CambiarClave({ onCerrar, onListo }) {
@@ -152,7 +153,7 @@ export default function Layout({ children, esGrupo = false }) {
           <BotonTema />
           {usuarioChip}
         </header>
-        <div key="grupo" id="contenido" tabIndex={-1}>{children}</div>
+        <div key="grupo" id="contenido" tabIndex={-1}><LimiteError reinicio={location.pathname}>{children}</LimiteError></div>
         {cambiando && <CambiarClave onCerrar={() => setCambiando(false)} onListo={() => { setCambiando(false); salir(); }} />}
       </>
     );
@@ -243,7 +244,7 @@ export default function Layout({ children, esGrupo = false }) {
             <button className="btn chico fantasma" onClick={() => setPaleta(true)} aria-label="Buscar módulo (Control K)"><Icono n="lupa" tam={18} /> Buscar</button>
           </div>
         )}
-        <main className="contenido" id="contenido" tabIndex={-1}>{children}</main>
+        <main className="contenido" id="contenido" tabIndex={-1}><LimiteError reinicio={location.pathname}>{children}</LimiteError></main>
       </div>
       <Vigilancia base={base} />
       {paleta && <Paleta opciones={opcionesPaleta} onCerrar={() => setPaleta(false)} />}

@@ -17,7 +17,7 @@ const item = z.object({
   notas: z.string().trim().max(200).optional().nullable(),
   descuento_porcentaje: z.coerce.number().default(0),
 });
-const pago = z.object({ forma_pago_id: uuid, monto: z.coerce.number().positive(), referencia: z.string().trim().max(60).optional().nullable() });
+const pago = z.object({ forma_pago_id: uuid, monto: z.coerce.number().positive().max(999_999_999, 'El monto es demasiado grande'), referencia: z.string().trim().max(60).optional().nullable() });
 const cuerpoVenta = z.object({
   sucursal_id: uuid.optional(),
   canal: z.enum(['mostrador', 'recoger', 'delivery', 'evento', 'mayoreo']).default('mostrador'),
@@ -27,7 +27,7 @@ const cuerpoVenta = z.object({
   cliente_id: uuid.optional().nullable(),
   items: z.array(item).min(1, 'La orden no tiene productos').max(100),
   tercera_edad: z.object({ nombre: z.string().trim().min(3).max(120), identidad: z.string().trim().max(30).refine(identidadValida, 'Escribe el número de identidad o carné (mínimo 5 caracteres)') }).optional().nullable(),
-  cobrar: z.object({ pagos: z.array(pago).min(1) }).optional(),
+  cobrar: z.object({ pagos: z.array(pago).min(1).max(10) }).optional(),
   confirmar_sin_stock: z.boolean().optional(),
 });
 

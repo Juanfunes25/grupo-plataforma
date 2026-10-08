@@ -40,6 +40,7 @@ const ReporteProduccion = lazy(() => import('./pantallas/ReporteProduccion.jsx')
 const Salidas = lazy(() => import('./pantallas/Salidas.jsx'));
 const ProductosDis = lazy(() => import('./pantallas/ProductosDis.jsx'));
 const InventarioDis = lazy(() => import('./pantallas/InventarioDis.jsx'));
+const TableroGelato = lazy(() => import('./pantallas/TableroGelato.jsx'));
 const PesajeGelato = lazy(() => import('./pantallas/PesajeGelato.jsx'));
 const DespachoGelato = lazy(() => import('./pantallas/DespachoGelato.jsx'));
 const ProduccionGelato = lazy(() => import('./pantallas/ProduccionGelato.jsx'));
@@ -56,7 +57,7 @@ const PANTALLAS = { pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo
   cai: Cai, usuarios: Usuarios, sucursales: Sucursales, cotizaciones: Cotizaciones, impresora: Impresora,
   piedra: Piedra, 'registrar-produccion': RegistrarProduccion, produccion: Fabricacion, recetas: Recetas, insumos: Insumos, 'inventario-piedra': InventarioPiedra,
   trazabilidad: Trazabilidad, 'reporte-produccion': ReporteProduccion, salidas: Salidas, productos: ProductosDis, 'inventario-d': InventarioDis,
-  pesaje: PesajeGelato, despacho: DespachoGelato, 'gelato-produccion': ProduccionGelato, consumo: ConsumoGelato, 'gelato-costeo': CosteoGelato,
+  gelato: TableroGelato, pesaje: PesajeGelato, despacho: DespachoGelato, 'gelato-produccion': ProduccionGelato, consumo: ConsumoGelato, 'gelato-costeo': CosteoGelato,
   'gelato-inventario': InventarioGelato, incidencias: Incidencias, mantenimiento: Mantenimiento, documentos: Documentos };
 
 function Protegida({ children }) {

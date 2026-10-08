@@ -42,9 +42,16 @@ export function rutasPedidos({ db }) {
   }
 
   r.post('/', requierePermiso('rep:pesar'), async (req, res) => {
-    const b = validar(z.object({ sucursal_id: uuid, fecha: fechaISO, notas: z.string().trim().max(500).optional().nullable().transform((v) => v || ''), items: z.array(item).min(1, 'Faltan campos requeridos (al menos un item)').max(80) }), req.body);
+    const b = validar(z.object({ sucursal_id: uuid, fecha: fechaISO, cliente_id: z.string().trim().max(80).optional().nullable(), notas: z.string().trim().max(500).optional().nullable().transform((v) => v || ''), items: z.array(item).min(1, 'Faltan campos requeridos (al menos un item)').max(80) }), req.body);
     const suc = await sucursalDe(db, req, b.sucursal_id);
     const out = await db.tx(async (q) => {
+      // Idempotente por cliente_id (cola sin señal / doble toque): un reintento del MISMO envío no vuelve a sumar los artículos.
+      if (b.cliente_id) {
+        await q.query('select pg_advisory_xact_lock(hashtext($1))', [`pedido:${emp(req)}:${b.cliente_id}`]);
+        const previo = (await q.query(
+          `select entidad_id from core.auditoria where empresa_id = $1 and accion in ('pedido.crear','pedido.agregar') and detalle->>'cliente_id' = $2 order by id desc limit 1`, [emp(req), b.cliente_id])).rows[0];
+        if (previo) return { status: 200, body: { ok: true, id: previo.entidad_id, duplicado: true } };
+      }
       // Si esa tienda ya tiene un pedido abierto de hoy, los artículos se SUMAN a ese en vez de abrir otro (causa del pedido doble).
       const abierto = (await q.query(
         `select p.id from rep.pedidos_insumos p where p.empresa_id = $1 and p.sucursal_id = $2 and p.fecha = $3 and p.estado = 'pedido'
@@ -52,12 +59,12 @@ export function rutasPedidos({ db }) {
       if (abierto) {
         await insertarItems(q, req, abierto.id, b.items);
         if (b.notas) await q.query(`update rep.pedidos_insumos set notas = trim(coalesce(notas,'') || ' ' || $2) where id = $1`, [abierto.id, b.notas]);
-        await auditar(q, req.ctx, 'pedido.agregar', 'pedido', abierto.id, { sucursal: suc.nombre, agregados: b.items.length }, { sucursalId: suc.id });
+        await auditar(q, req.ctx, 'pedido.agregar', 'pedido', abierto.id, { sucursal: suc.nombre, agregados: b.items.length, cliente_id: b.cliente_id ?? undefined }, { sucursalId: suc.id });
         return { status: 200, body: { ok: true, id: abierto.id, agregado: true, items: b.items.length } };
       }
       const p = (await q.query('insert into rep.pedidos_insumos (empresa_id, sucursal_id, fecha, notas, creado_por) values ($1,$2,$3,$4,$5) returning id', [emp(req), suc.id, b.fecha, b.notas, req.ctx.usuario.id])).rows[0];
       await insertarItems(q, req, p.id, b.items);
-      await auditar(q, req.ctx, 'pedido.crear', 'pedido', p.id, { sucursal: suc.nombre, fecha: b.fecha, items: b.items.map((i) => i.insumo_texto) }, { sucursalId: suc.id });
+      await auditar(q, req.ctx, 'pedido.crear', 'pedido', p.id, { sucursal: suc.nombre, fecha: b.fecha, items: b.items.map((i) => i.insumo_texto), cliente_id: b.cliente_id ?? undefined }, { sucursalId: suc.id });
       return { status: 201, body: { ok: true, id: p.id, agregado: false } };
     });
     res.status(out.status).json(out.body);

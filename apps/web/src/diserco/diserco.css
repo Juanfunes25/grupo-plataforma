@@ -1,5 +1,6 @@
 /* DISERCO: cotizaciones, salidas, productos e inventario (mismo kit oscuro de la plataforma). */
 .dis-tabla-ancha { min-width: 720px; }
+@media (max-width: 640px) { .dis-tabla-ancha { min-width: 0 !important; } }   /* en celular las tablas pasan a tarjetas: sin ancho mínimo, o el celular se desplaza de lado */
 .dis-barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
 .dis-barra > * { flex: 0 1 auto; } .dis-barra input[type=search], .dis-barra input.busca { flex: 1 1 240px; min-width: 200px; }
 .dis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items: start; }
@@ -15,7 +16,7 @@
 .dis-fila-prod.sel { background: color-mix(in srgb, var(--acento) 12%, transparent); }
 .dis-fila-prod .nom { flex: 1; min-width: 0; line-height: 1.2; }
 .dis-cant { width: 70px !important; text-align: center; font-size: 1.1rem; font-weight: 700; padding: 8px 4px; }
-.dis-grande { width: 100%; padding: 20px 16px; font-size: 1.25rem; font-weight: 800; min-height: 64px; }
+.dis-grande { white-space: normal; text-align: center; width: 100%; padding: 20px 16px; font-size: 1.25rem; font-weight: 800; min-height: 64px; }
 .dis-existencia { font-size: 1.7rem; font-weight: 800; font-family: 'Barlow Condensed', sans-serif; }
 .dis-lista-proy { display: grid; gap: 10px; }
 .dis-lista-proy button { text-align: left; padding: 14px; display: block; width: 100%; }

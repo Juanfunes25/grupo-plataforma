@@ -1,6 +1,8 @@
 // Pesaje de sucursal: pesaje nocturno por pana, pedido de insumos, recepción de despachos y catálogo.
 // Calco de PesajeSucursal.jsx del original, en el kit oscuro y pensado para tablet/celular en tienda.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { horaDeHN } from '@grupo/shared';
 import { api, get, patch, post, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Tabs, useAviso } from '../ui/kit.jsx';
@@ -13,7 +15,7 @@ const BORRADOR = (suc, fecha) => `rep.borrador.${suc}.${fecha}`;
 const leerBorrador = (k) => { try { return JSON.parse(localStorage.getItem(k) || '{}'); } catch { return {}; } };
 
 export default function Pesaje() {
-  const { puede } = useSesion();
+  const { puede, contexto, modulos } = useSesion();
   const avisar = useAviso();
   const { lista, cargando: cargandoSuc, sucursal, setId } = useSucursalesRep();
   const sid = sucursal?.id;
@@ -49,6 +51,8 @@ export default function Pesaje() {
   const [fechaRecep, setFechaRecep] = useState(hoy);
   const [despachos, setDespachos] = useState([]);
   const [ocupadoRecep, setOcupadoRecep] = useState(null);
+  const [porConfirmar, setPorConfirmar] = useState(null);   // sabores que fábrica envió (hoy o ayer) y nadie ha confirmado; null = aún no se sabe
+  const tabElegida = useRef(false);
 
   // ── Carga ──
   const aplicarSabores = useCallback((datos) => {
@@ -73,6 +77,16 @@ export default function Pesaje() {
     if (!sid) return;
     try { const d = await get(`/rep/despachos/${fechaRecep}`); setDespachos(d[sid] || []); } catch { /* sin señal */ }
   }, [sid, fechaRecep]);
+  // Lo que fábrica ya mandó (hoy o ayer) y falta confirmar: es lo PRIMERO que la tienda necesita saber al abrir de mañana.
+  const cargarPorConfirmar = useCallback(async () => {
+    if (!sid) return;
+    try {
+      const [a, b] = await Promise.all([get(`/rep/despachos/${hoy}`), get(`/rep/despachos/${sumarDias(hoy, -1)}`)]);
+      const vistos = new Set(); const lista = [];
+      for (const d of [...(a[sid] || []), ...(b[sid] || [])]) if (!vistos.has(d.id)) { vistos.add(d.id); if (d.estado === 'enviado') lista.push(d); }
+      setPorConfirmar(lista);
+    } catch { /* sin señal: no se muestra el aviso */ }
+  }, [sid, hoy]);
   const contar = useCallback(async () => setSinSenal(await contarPendientes()), []);
   const sincronizarTodo = useCallback(async () => { const quedan = await sincronizar(); setSinSenal(quedan); if (!quedan) { cargarPedidos(); cargarSabores(); } }, [cargarPedidos, cargarSabores]);
 
@@ -83,13 +97,19 @@ export default function Pesaje() {
     const cs = leerCache(`sabores.${sid}`); if (cs?.datos?.length) { aplicarSabores(cs.datos); setCargandoSab(false); } else { setSabores([]); setCargandoSab(true); }
     const ci = leerCache(`insumos.${sid}`); if (ci?.datos) setCatalogoIns(ci.datos);
     setValores(leerBorrador(BORRADOR(sid, hoy)).valores || {}); clientes.current = leerBorrador(BORRADOR(sid, hoy)).clientes || {};
-    cargarSabores(); cargarPedidos(); cargarCatalogoIns();
+    cargarSabores(); cargarPedidos(); cargarCatalogoIns(); cargarPorConfirmar();
     get('/rep/pedidos/ultimo?sucursal_id=' + sid).then(setUltimo).catch(() => {});
     api('/rep/extraccion/estado').then((r) => setFotoOk(Boolean(r.disponible))).catch(() => setFotoOk(false));
     contar(); sincronizarTodo();
     return alVolverLaSenal(sincronizarTodo);
   }, [sid]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { cargarDespachos(); }, [cargarDespachos]);
+  // De mañana o a mediodía, lo que importa es recibir lo que llegó; de tarde-noche, pesar. Solo se decide la primera vez.
+  useEffect(() => {
+    if (tabElegida.current || porConfirmar === null) return;
+    tabElegida.current = true;
+    if (porConfirmar.length > 0 && horaDeHN() < 17) setTab('recepcion');
+  }, [porConfirmar]);
 
   // El borrador de lo escrito sobrevive a un cierre o recarga (operación sin buena conexión).
   useEffect(() => {
@@ -180,6 +200,7 @@ export default function Pesaje() {
     setDespachos((l) => l.map((x) => (x.id === d.id ? { ...x, estado: 'recibido', panas_recibidas: n, discrepancia: dif ? 1 : 0 } : x)));
     try {
       await patch(`/rep/despachos/${d.id}/recepcion`, { panas_recibidas: n });
+      cargarPorConfirmar();
       vibrar(20);
       avisar(dif ? `Anotado: llegaron ${n} de ${d.panas}. El dueño lo va a ver.` : 'Recepción confirmada');
     } catch (e) { setDespachos(antes); avisar(`No se pudo confirmar: ${e.message}`, 'mal'); }
@@ -188,22 +209,35 @@ export default function Pesaje() {
   async function corregirRecep(d) {
     setOcupadoRecep(d.id); const antes = despachos;
     setDespachos((l) => l.map((x) => (x.id === d.id ? { ...x, estado: 'enviado', panas_recibidas: null, discrepancia: 0 } : x)));
-    try { await patch(`/rep/despachos/${d.id}/corregir-recepcion`); } catch (e) { setDespachos(antes); avisar(`No se pudo deshacer: ${e.message}`, 'mal'); }
+    try { await patch(`/rep/despachos/${d.id}/corregir-recepcion`); cargarPorConfirmar(); } catch (e) { setDespachos(antes); avisar(`No se pudo deshacer: ${e.message}`, 'mal'); }
     finally { setOcupadoRecep(null); }
   }
 
   if (cargandoSuc && !sucursal) return <div className="rep"><Esqueleto alto={160} /></div>;
   if (!sucursal) return <div className="rep"><div className="aviso-caja">No hay sucursales de reposición disponibles para tu usuario.</div></div>;
 
-  const tabs = [['sabores', `Sabores${totalGuardados ? ` (${totalGuardados})` : ''}`], ['insumos', `Insumos${carrito.length ? ` (${carrito.length})` : ''}`], ['recepcion', `Recepción${despachos.length ? ` (${despachos.length})` : ''}`], ['catalogo', 'Catálogo'], ...(puede('rep:ver') ? [['historial', 'Reportes']] : [])];
+  const tabs = [['sabores', 'Pesar gelato'], ['insumos', `Pedir insumos${carrito.length ? ` (${carrito.length})` : ''}`], ['recepcion', `Recibir${porConfirmar?.length ? ` (${porConfirmar.length})` : ''}`], ['catalogo', 'Mis sabores'], ...(puede('rep:ver') ? [['historial', 'Reportes']] : [])];
+
+  const totalSabores = sabores.length;
+  const faltanPesar = Math.max(0, totalSabores - totalGuardados - pendientesPesaje.length);
+  const progreso = totalSabores ? Math.round((totalGuardados / totalSabores) * 100) : 0;
+  const irAFaltantes = () => { setSoloFaltan(true); setTab('sabores'); };
 
   return (
     <div className="rep">
       <div className="encabezado-pagina">
-        <div><h1>Pesaje de {sucursal.nombre}</h1><div className="rep-sub">Pesaje nocturno · {fechaCorta(hoy)}</div></div>
+        <div><h1>Pesaje de {sucursal.nombre}</h1><div className="rep-sub">Pesaje de la noche · {fechaCorta(hoy)}</div></div>
+        {modulos.some((m) => m.id === 'pos') && puede('pos:vender') && <Link className="btn" to={`/${contexto.empresa.codigo}/pos`}>Ir a la caja</Link>}
       </div>
       <SelectorSucursal lista={lista} valor={sucursal.id} onCambio={setId} />
       <FajaConexion pendientes={sinSenal} />
+
+      {porConfirmar?.length > 0 && tab !== 'recepcion' && (
+        <div className="rep-hero aviso fila espacio">
+          <div><b>Te enviaron {porConfirmar.length} sabor{porConfirmar.length === 1 ? '' : 'es'}</b><div className="rep-sub">Cuenta las panas que llegaron y confírmalo.</div></div>
+          <button className="btn primario" onClick={() => setTab('recepcion')}>Confirmar recepción</button>
+        </div>
+      )}
 
       {hayPendientes ? (
         <div className="rep-hero aviso">
@@ -212,13 +246,26 @@ export default function Pesaje() {
             {pendientesPesaje.length > 0 && carrito.length > 0 && ' · '}
             {carrito.length > 0 && `${carrito.length} insumo${carrito.length === 1 ? '' : 's'} en el pedido`}
           </b>
-          <div className="rep-sub">{corrigiendo ? 'Estás corrigiendo un pedido que ya mandaste: toca «Guardar corrección».' : 'El despachador todavía no ve nada. Toca «Enviar reporte» cuando termines.'}</div>
+          <div className="rep-sub">{corrigiendo ? 'Estás corrigiendo un pedido que ya mandaste: toca «Guardar corrección».' : 'Todavía nadie lo ve. Toca «Enviar reporte» cuando termines.'}</div>
         </div>
-      ) : (totalGuardados > 0 || huboPedidoHoy) ? (
+      ) : totalSabores > 0 && totalGuardados >= totalSabores ? (
         <div className="rep-hero ok">
-          <b style={{ fontSize: '1.15rem' }}>Reporte de la noche enviado</b>
-          <div className="rep-sub">{totalGuardados > 0 && `${totalGuardados} sabor${totalGuardados === 1 ? '' : 'es'} pesado${totalGuardados === 1 ? '' : 's'}`}{totalGuardados > 0 && huboPedidoHoy && ' y '}{huboPedidoHoy && 'pedido de insumos enviado'}. El despachador ya lo puede ver; puedes seguir agregando si hace falta.</div>
+          <b style={{ fontSize: '1.15rem' }}>Pesaje de hoy completo</b>
+          <div className="rep-sub">{totalGuardados} de {totalSabores} sabores enviados{huboPedidoHoy ? ' y pedido de insumos enviado' : ''}. Ya lo puede ver el despachador; si te equivocaste en alguno, corrígelo y vuelve a enviar.</div>
         </div>
+      ) : totalGuardados > 0 ? (
+        <div className="rep-hero aviso fila espacio">
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <b>Enviaste {totalGuardados} de {totalSabores} sabores</b>
+            <div className="rep-progreso" aria-hidden="true"><i style={{ width: `${progreso}%` }} /></div>
+            <div className="rep-sub">Faltan {faltanPesar}. {huboPedidoHoy ? 'Pedido de insumos enviado.' : ''}</div>
+          </div>
+          <button className="btn" onClick={irAFaltantes}>Ver los que faltan</button>
+        </div>
+      ) : huboPedidoHoy ? (
+        <div className="rep-hero ok"><b>Pedido de insumos enviado</b><div className="rep-sub">Todavía no has pesado el gelato de hoy.</div></div>
+      ) : totalSabores > 0 ? (
+        <div className="rep-hero"><b>Todavía no has pesado hoy</b><div className="rep-sub">Son {totalSabores} sabores: pesa cada pana, escribe los gramos y toca «Enviar reporte». Lo que escribas se guarda aunque se vaya la señal.</div></div>
       ) : null}
 
       <Tabs tabs={tabs} valor={tab} onCambio={setTab} />
@@ -231,9 +278,9 @@ export default function Pesaje() {
                 {leyendo ? 'Leyendo la foto…' : 'Leer pesaje por foto'}
                 <input type="file" accept="image/*" capture="environment" onChange={leerFoto} disabled={leyendo} hidden />
               </label>
-            ) : (
-              <span className="chip" title="Falta ANTHROPIC_API_KEY en el servidor">Lectura por foto desactivada en este servidor: pesa a mano</span>
-            )}
+            ) : puede('rep:costeo') ? (
+              <span className="chip" title="Falta ANTHROPIC_API_KEY en el servidor">Lectura por foto desactivada en el servidor (solo lo ves tú como administración)</span>
+            ) : null}
           </div>
           {Object.keys(porFoto).length > 0 && <div className="aviso-caja">{Object.keys(porFoto).length} sabores detectados por foto: revisa los números y toca «Enviar reporte» cuando termines.</div>}
           {nuevosFoto.length > 0 && (
@@ -252,8 +299,10 @@ export default function Pesaje() {
             <div className="rep-grid">{[0, 1, 2, 3, 4, 5].map((i) => <Esqueleto key={i} alto={110} />)}</div>
           ) : errorCarga && !sabores.length ? (
             <div className="tarjeta centro"><b>No se pudo cargar la lista</b><p>{errorCarga}</p><button className="btn primario bloque" onClick={cargarSabores}>Reintentar</button></div>
+          ) : sabores.length === 0 ? (
+            <div className="tarjeta centro"><b>Esta tienda todavía no tiene sabores para pesar</b><p>Entra a «Mis sabores» y activa los que sí vendes aquí. Después aparecen en esta pantalla.</p><button className="btn primario bloque" onClick={() => setTab('catalogo')}>Elegir mis sabores</button></div>
           ) : filtrados.length === 0 ? (
-            <div className="vacio">Sin resultados</div>
+            <div className="vacio">{soloFaltan && !q ? 'No falta ningún sabor por pesar.' : 'Ningún sabor se llama así.'}</div>
           ) : (
             <div className="rep-grid">
               {filtrados.map((s) => {
@@ -266,7 +315,7 @@ export default function Pesaje() {
                     <div className="rep-entrada">
                       <input type="number" inputMode="numeric" min="0" placeholder="g" value={valores[s.id] ?? ''} aria-label={`Gramos de ${s.nombre}`}
                         onChange={(e) => { delete clientes.current[s.id]; setValores((v) => ({ ...v, [s.id]: e.target.value })); setGuardados((g) => ({ ...g, [s.id]: false })); }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }} />
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const l = [...document.querySelectorAll('.rep-grid input[type=number]')]; const sig = l[l.indexOf(e.target) + 1]; if (sig) sig.focus(); else e.target.blur(); } }} enterKeyHint="next" />
                       {guardados[s.id] ? <span className="rep-estado ok">✓</span> : sinEnviar ? <span className="rep-estado pend">•</span> : null}
                     </div>
                   </div>

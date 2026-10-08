@@ -39,7 +39,9 @@ export function manejadorErrores(log = console.error) {
     if (code === 'P0001') return res.status(409).json({ error: err.message, codigo: 'regla_de_negocio' });
     if (code === '23505') return res.status(409).json({ error: 'Ya existe un registro con esos datos', codigo: 'duplicado' });
     if (code === '23503') return res.status(409).json({ error: 'El registro está enlazado con otros datos o referencia algo que no existe', codigo: 'referencia' });
-    if (code === '23514' || code === '22P02' || code === '23502') return res.status(400).json({ error: 'Datos inválidos', codigo: 'dato_invalido' });
+    if (code === '22003') return res.status(400).json({ error: 'Un número está fuera del rango permitido', codigo: 'dato_invalido' });
+    if (code === '22001') return res.status(400).json({ error: 'Un texto es demasiado largo', codigo: 'dato_invalido' });
+    if (code === '23514' || code === '22P02' || code === '23502' || code === '22007' || code === '22008' || code === '22021' || code === '22P05' || (typeof code === 'string' && code.startsWith('22'))) return res.status(400).json({ error: 'Datos inválidos', codigo: 'dato_invalido' });
     log(`[error] ${req.method} ${req.originalUrl}:`, err);
     res.status(500).json({ error: 'Error interno del servidor' });
   };

@@ -70,23 +70,32 @@ export async function pendientes(tipo) {
 }
 export const contarPendientes = async (tipo) => (await pendientes(tipo)).length;
 /** Reintenta lo encolado. Devuelve cuántos siguen pendientes. Un error del servidor (no de red) descarta el pedido para no atascar la cola. */
-export async function sincronizar() {
-  const lista = await pendientes();
-  let quedan = 0;
-  for (const p of lista) {
-    try {
-      await api(p.pedido.ruta, { metodo: p.pedido.metodo, cuerpo: p.pedido.cuerpo });
-      await tx('readwrite', (s) => s.delete(p.id));
-    } catch (e) {
-      if (e.codigo === 'sin_red') quedan += 1;
-      else if (e.status >= 400 && e.status < 500 && e.status !== 401) await tx('readwrite', (s) => s.delete(p.id)).catch(() => {});
-      else quedan += 1;
+// Una sola sincronización a la vez: al abrir la pantalla y al volver la señal se llama casi juntas, y dos pasadas
+// leían la misma cola y mandaban cada pedido DOS veces (artículos duplicados en el pedido de fábrica).
+let sincronizando = null;
+export function sincronizar() {
+  if (sincronizando) return sincronizando;
+  sincronizando = (async () => {
+    const lista = await pendientes();
+    let quedan = 0;
+    for (const p of lista) {
+      try {
+        await api(p.pedido.ruta, { metodo: p.pedido.metodo, cuerpo: p.pedido.cuerpo });
+        await tx('readwrite', (s) => s.delete(p.id));
+      } catch (e) {
+        if (e.codigo === 'sin_red') quedan += 1;
+        else if (e.status >= 400 && e.status < 500 && e.status !== 401) await tx('readwrite', (s) => s.delete(p.id)).catch(() => {});
+        else quedan += 1;
+      }
     }
-  }
-  return quedan;
+    return quedan;
+  })().finally(() => { sincronizando = null; });
+  return sincronizando;
 }
 /** POST que, sin señal, queda en cola y avisa `offline: true`. */
 export async function postConCola(tipo, ruta, cuerpo) {
+  // Cada envío lleva su propio id: si la respuesta se pierde (señal débil) y el reintento llega después, el servidor lo reconoce y no duplica el pedido.
+  if (cuerpo && typeof cuerpo === 'object' && !cuerpo.cliente_id) cuerpo = { ...cuerpo, cliente_id: idCliente() };
   try { return await api(ruta, { metodo: 'POST', cuerpo }); }
   catch (e) {
     if (e.codigo === 'sin_red' && await encolar(tipo, { ruta, metodo: 'POST', cuerpo })) return { ok: true, offline: true };

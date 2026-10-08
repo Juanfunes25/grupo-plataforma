@@ -88,11 +88,25 @@ test('antifraude y cotizaciones solo existen donde la empresa los enciende', () 
 
 test('reposición de gelato: el módulo de empresa muestra su grupo y oculta el inventario genérico', () => {
   const d = modulosVisibles(['pos', 'inventario', 'reposicion'], permisosDe('dueno')).map((m) => m.id);
-  for (const id of ['rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_incidencias', 'rep_mantenimiento']) assert.ok(d.includes(id), id);
+  for (const id of ['rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_incidencias', 'rep_mantenimiento', 'rep_tablero']) assert.ok(d.includes(id), id);
   assert.ok(!d.includes('inventario'));
   // roles de tienda: la cajera pesa y recibe; producción produce; bodega despacha
   assert.ok(modulosVisibles(['reposicion'], permisosDe('cajero')).map((m) => m.id).includes('rep_pesaje'));
   assert.ok(modulosVisibles(['reposicion'], permisosDe('produccion')).map((m) => m.id).includes('rep_produccion'));
   assert.ok(modulosVisibles(['reposicion'], permisosDe('bodega')).map((m) => m.id).includes('rep_despacho'));
   assert.ok(!modulosVisibles(['pos'], permisosDe('dueno')).some((m) => m.id.startsWith('rep_')));
+});
+
+test('gelato: cada rol entra a lo suyo y la noche cambia al mediodía (hora de Honduras)', async () => {
+  const { inicioGelato, nocheDeTrabajo } = await import('../src/index.js');
+  const vis = (rol) => modulosVisibles(['pos', 'reposicion'], permisosDe(rol));
+  assert.equal(inicioGelato(vis('dueno'), permisosDe('dueno')), 'gelato');
+  assert.equal(inicioGelato(vis('gerente'), permisosDe('gerente')), 'gelato');
+  assert.equal(inicioGelato(vis('bodega'), permisosDe('bodega')), 'despacho');
+  assert.equal(inicioGelato(vis('produccion'), permisosDe('produccion')), 'gelato-produccion');
+  assert.equal(inicioGelato(vis('cajero'), permisosDe('cajero')), 'pesaje');
+  assert.equal(inicioGelato(modulosVisibles(['pos'], permisosDe('cajero')), permisosDe('cajero')), null);
+  // 09:00 HN = 15:00 UTC → anoche; 15:00 HN = 21:00 UTC → hoy
+  assert.deepEqual(nocheDeTrabajo(new Date('2026-10-08T15:00:00Z')), { fecha: '2026-10-07', esHoy: false });
+  assert.deepEqual(nocheDeTrabajo(new Date('2026-10-08T21:00:00Z')), { fecha: '2026-10-08', esHoy: true });
 });

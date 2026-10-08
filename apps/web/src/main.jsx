@@ -6,6 +6,7 @@ import { ProveedorAvisos } from './ui/kit.jsx';
 import TablasResponsivas from './ui/TablasResponsivas.jsx';
 import { aplicarTema, leerTema } from './lib/acento.js';
 import App from './App.jsx';
+import LimiteError from './ui/LimiteError.jsx';
 import './estilos.css';
 
 aplicarTema(leerTema());
@@ -15,7 +16,7 @@ createRoot(document.getElementById('raiz')).render(
     <BrowserRouter>
       <ProveedorAvisos>
         <ProveedorSesion>
-          <App />
+          <LimiteError><App /></LimiteError>
           <TablasResponsivas />
         </ProveedorSesion>
       </ProveedorAvisos>

@@ -1,11 +1,15 @@
 import { Link, Navigate } from 'react-router-dom';
+import { inicioGelato } from '@grupo/shared';
 import { useSesion } from '../sesion.jsx';
 import Icono from '../ui/Icono.jsx';
 
 export default function Hub() {
-  const { contexto, modulos, usuario } = useSesion();
+  const { contexto, modulos, usuario, permisos } = useSesion();
   if (!contexto) return null;
   const base = `/${contexto.empresa.codigo}`;
+  // Italo (gelato): cada rol entra a lo suyo: tablero, despacho, producción o el pesaje de su tienda.
+  const gelato = inicioGelato(modulos, permisos);
+  if (gelato) return <Navigate to={`${base}/${gelato}`} replace />;
   // Como en Italo: se entra directo a Facturación (o al primer módulo disponible).
   const inicio = modulos.find((m) => m.id === 'pos') ?? modulos.find((m) => m.nav === 'Operación') ?? modulos.find((m) => m.nav === 'Negocio');
   if (inicio) return <Navigate to={`${base}/${inicio.ruta}`} replace />;

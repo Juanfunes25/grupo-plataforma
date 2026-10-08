@@ -8,10 +8,9 @@ import { resolverRango, FECHA_ISO } from './lib/rangoFechas.js';
 import { sumarDias } from './lib/fechasSemana.js';
 import { CLASIFICACION } from './lib/rotacion.js';
 import { armarInsumosDespachados } from './lib/insumosDespachados.js';
-import { armarConsumo } from './lib/consumo.js';
 import { armarResumen, formatearResumenHtml, formatearResumenTexto } from './lib/resumen.js';
 import { PERM_ADMIN, empresaDe } from './util.js';
-import { analisisDe, existeTabla, insumosMasDespachados, opcional, recomendacionDespachoDeDatos, rotacionDeSabores } from './datos.js';
+import { analisisDe, consumoDeRango, existeTabla, insumosMasDespachados, opcional, recomendacionDespachoDeDatos, rotacionDeSabores } from './datos.js';
 
 export function rutasAnalitica({ db }) {
   const r = Router();
@@ -96,22 +95,7 @@ export function rutasAnalitica({ db }) {
   // Consumo medido en vitrina por sucursal/sabor/día, cruzado con la venta del POS.
   r.get('/consumo', requierePermiso('rep:ver'), async (req, res) => {
     const x = rango({ ...req.query, dias: req.query.dias || 14 });
-    const holgura = sumarDias(x.desde, -1);
-    const [sucursales, sabores, pesajes, despachos, ventas] = await Promise.all([
-      db.query(`select s.id, s.nombre, coalesce(c.fuera_de_analisis,false) as fuera_de_analisis from core.sucursales s left join rep.sucursal_config c on c.sucursal_id = s.id
-                 where s.empresa_id = $1 and s.activo and not coalesce(c.cerrada,false)`, [emp(req)]).then((q) => q.rows),
-      db.query('select id, nombre from rep.sabores where empresa_id = $1', [emp(req)]).then((q) => q.rows),
-      // el último pesaje de cada noche
-      db.query(`select distinct on (sucursal_id, sabor_id, fecha) sucursal_id, sabor_id, fecha::text as fecha, gramos::float8 as gramos
-                  from rep.pesajes where empresa_id = $1 and fecha between $2 and $3 order by sucursal_id, sabor_id, fecha, created_at desc`, [emp(req), holgura, x.hasta]).then((q) => q.rows),
-      db.query(`select sucursal_id, sabor_id, fecha::text as fecha, enviado_en::text as enviado_en, gramos_enviados, estado from rep.despachos
-                 where empresa_id = $1 and fecha between $2 and $3 and estado in ('enviado','recibido')`, [emp(req), sumarDias(holgura, -1), x.hasta]).then((q) => q.rows),
-      // Venta del POS de Italo por tienda y día (hora de Honduras). Solo lectura; nada se escribe en pos.
-      opcional(db, `select v.sucursal_id, ((v.fecha_emision at time zone 'America/Tegucigalpa')::date)::text as fecha, sum(v.total)::float8 as total, count(*)::int as n
-                      from pos.ventas v where v.empresa_id = $1 and v.estado = 'pagada' and v.fecha_emision is not null
-                       and (v.fecha_emision at time zone 'America/Tegucigalpa')::date between $2 and $3 group by 1, 2`, [emp(req), x.desde, x.hasta]),
-    ]);
-    res.json({ ...armarConsumo({ desde: x.desde, hasta: x.hasta, pesajes, despachos, ventas, sucursales, sabores }), hayVentas: ventas.length > 0 });
+    res.json(await consumoDeRango(db, emp(req), x));
   });
 
   // ── Resumen diario (lista de envíos) ──

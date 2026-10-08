@@ -310,3 +310,20 @@ test('historial de pesajes: noches con reporte dentro del rango', async () => {
   assert.equal(h.body.diasEnRango, 14);
   assert.equal((await tienda.get(`/api/rep/pesajes/historial?sucursal_id=${sucMackey}`)).status, 403);
 });
+
+test('tablero de gelato: semáforo por tienda, solo para administración', async () => {
+  const noche = () => ayer(40);   // una noche que ningún otro test tocó
+  await tienda.post('/api/rep/pesajes/lote', { sucursal_id: sucMackey, fecha: noche(), pesajes: [{ sabor_id: S.MANGO.id, gramos: 1000 }] });
+  assert.equal((await tienda.get('/api/rep/tablero')).status, 403);
+  assert.equal((await bodega.get('/api/rep/tablero')).status, 403);
+  const r = await dueno.get(`/api/rep/tablero?fecha=${noche()}`);
+  assert.equal(r.status, 200);
+  assert.equal(r.body.noche.fecha, noche()); assert.equal(r.body.noche.esHoy, false);
+  const mk = r.body.tiendas.find((t) => t.id === sucMackey), pr = r.body.tiendas.find((t) => t.id === sucProceres), an = r.body.tiendas.find((t) => t.id === sucAndes);
+  assert.equal(mk.estado, 'parcial'); assert.ok(mk.pesados >= 1 && mk.pesados < mk.esperados);
+  assert.equal(pr.estado, 'falta');          // otra noche, nadie pesó: rojo
+  assert.equal(an.estado, 'opcional');       // Los Andes no se pinta de rojo
+  assert.ok(r.body.alertas.some((a) => a.id === `sin-pesar-${sucProceres}`));
+  assert.ok(r.body.despacho.sabores_totales >= 1 && Array.isArray(r.body.consumo));
+  assert.equal((await ger.get('/api/rep/tablero')).status, 200);
+});

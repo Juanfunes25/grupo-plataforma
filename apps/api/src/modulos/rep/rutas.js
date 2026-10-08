@@ -7,6 +7,7 @@ import { rutasCatalogo } from './catalogo.js';
 import { rutasAnalitica } from './analitica.js';
 import { rutasGerente } from './gerente.js';
 import { rutasExtraccion } from './extraccion.js';
+import { rutasTablero } from './tablero.js';
 
 /**
  * /api/rep — Reposición de gelato (Italo). Solo funciona en empresas con el módulo `reposicion`.
@@ -21,6 +22,7 @@ export function rutasRep(deps) {
   r.use('/extraccion', rutasExtraccion(deps));
   r.use('/analitica', rutasAnalitica(deps));
   r.use('/gerente', rutasGerente(deps));
+  r.use('/tablero', rutasTablero(deps));
   r.use('/', rutasCatalogo(deps));
   return r;
 }
