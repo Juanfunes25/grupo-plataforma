@@ -195,7 +195,7 @@ td.der, th.der { text-align: right; }
 .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 6px; padding: 14px 10px; background: var(--panel); border-right: 1px solid var(--borde); overflow-y: auto; }
 .sidebar-marca { display: flex; align-items: center; gap: 10px; padding: 4px 6px 10px; min-width: 0; }
 .sidebar-logo { width: 38px; height: 38px; display: grid; place-items: center; flex: none; overflow: hidden; }
-.sidebar-logo > * { transform: scale(.42); transform-origin: center; flex: none; }
+.sidebar-logo > *, .sidebar-logo svg, .sidebar-logo img { width: 100%; height: 100%; max-width: 38px; max-height: 38px; object-fit: contain; }
 .sidebar-marca-texto { display: flex; flex-direction: column; min-width: 0; }
 .sidebar-marca-texto b { font-size: 1.15rem; letter-spacing: .1em; line-height: 1.1; }
 .sidebar-marca-texto small { color: var(--tenue); font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
