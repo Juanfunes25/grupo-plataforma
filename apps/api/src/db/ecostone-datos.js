@@ -82,6 +82,7 @@ export function prepararDatos() {
     { tema: 'Precios de las listas Contratista y Distribuidor', detalle: 'Solo existe el precio Público (con ISV). Las otras listas no tienen precios propios: cotizan el precio Público sin ISV hasta que se carguen.', cantidad: 0, codigos: [] },
     { tema: 'Lista de precios, límite y días de crédito de los clientes', detalle: `Los ${clientes.length} clientes quedan con su tipo pero sin lista de precios asignada (cotizan con Público), límite de crédito 0 y 0 días.`, cantidad: clientes.length, codigos: [] },
     { tema: 'Clientes posiblemente repetidos', detalle: 'WILFREDO GOMEZ PINEDA aparece con dos RTN que solo difieren en el último dígito (…040 y …041); se cargaron ambos, uno puede ser error de digitación.', cantidad: 2, codigos: [] },
+    { tema: 'RTN compartidos con otros negocios del grupo', detalle: '5 clientes ya estaban en el directorio común con el mismo RTN (no se duplicaron; conservan su nombre actual). En uno el nombre difiere: RTN 08019002277587 figura como «GRUPO ALPES» y en el seed de EcoStone como «CERAMICAS Y MAS».', cantidad: 5, codigos: [] },
     { tema: 'Moldes, zonas de flete y proveedores', detalle: 'El original no traía ninguno: no se cargó nada.', cantidad: 0, codigos: [] },
     { tema: 'Existencias', detalle: 'No se cargó ninguna existencia de piedra ni de insumos (sin lotes ni movimientos). Se registran con el conteo físico / primera producción.', cantidad: 0, codigos: [] },
   ];
