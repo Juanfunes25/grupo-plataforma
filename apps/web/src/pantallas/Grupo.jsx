@@ -5,6 +5,7 @@ import { useSesion } from '../sesion.jsx';
 import { BarrasH, Campo, Columnas, Estado, Kpi, Modal, Tabs, useAccion, useDatos } from '../ui/kit.jsx';
 import { Anillo, InformeEmpresa, ListaHallazgos } from '../ui/GerenteDigital.jsx';
 import GrupoDocumentos from '../documentos/GrupoDocumentos.jsx';
+import PanelRrhh from '../rrhh/Directorio.jsx';
 
 const PERIODOS = () => { const h = fechaHN(); return { 'Este mes': [`${h.slice(0, 8)}01`, h], '7 días': [sumarDias(h, -6), h], '30 días': [sumarDias(h, -29), h], Hoy: [h, h] }; };
 const ROLES = [['ventas', 'Ventas'], ['gerente', 'Manager'], ['admin', 'Administrador'], ['dueno', 'Dueño de la empresa'], ['cajero', 'Cajero'], ['produccion', 'Producción / cocina'], ['bodega', 'Bodega'], ['contador', 'Contador'], ['solo_lectura', 'Solo lectura']];
@@ -13,7 +14,7 @@ const rolNombre = (id) => ROLES.find((r) => r[0] === id)?.[1] ?? id;
 export default function Grupo() {
   const { usuario } = useSesion();
   const [tab, setTab] = useState('resumen');
-  const tabs = [['resumen', 'Resumen'], ['gerente', 'Gerente digital'], ['finanzas', 'Finanzas del grupo'], ['alertas', 'Alertas'], ['documentos', 'Documentos'], ...(usuario?.es_dueno_grupo ? [['usuarios', 'Administradores y accesos']] : [])];
+  const tabs = [['resumen', 'Resumen'], ['gerente', 'Gerente digital'], ['finanzas', 'Finanzas del grupo'], ['alertas', 'Alertas'], ['rrhh', 'Recursos humanos'], ['documentos', 'Documentos'], ...(usuario?.es_dueno_grupo ? [['usuarios', 'Administradores y accesos']] : [])];
   return (
     <div className="pagina" style={{ maxWidth: 1360 }}>
       <div className="encabezado-pagina"><div><h1>Dirección del grupo</h1><small>Las cuatro empresas en una sola vista. Cada empresa lleva su propio inventario y operación; aquí ves y controlas todo.</small></div></div>
@@ -22,6 +23,7 @@ export default function Grupo() {
       {tab === 'gerente' && <GerenteGrupo />}
       {tab === 'finanzas' && <Finanzas />}
       {tab === 'alertas' && <Alertas />}
+      {tab === 'rrhh' && <PanelRrhh grupo />}
       {tab === 'documentos' && <GrupoDocumentos />}
       {tab === 'usuarios' && <Administradores />}
     </div>

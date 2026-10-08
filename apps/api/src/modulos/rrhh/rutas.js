@@ -4,7 +4,8 @@ import { fechaHN, sumarDias } from '@grupo/shared';
 import { requierePermiso } from '../../lib/contexto.js';
 import { montarPerfil } from './perfil.js';
 import { montarTurno } from './turno.js';
-import { calendario, resumen } from './consultas.js';
+import { calendario, directorio, resumen } from './consultas.js';
+import { ESTADOS } from './comun.js';
 import { auditar } from '../../lib/auditoria.js';
 import { malaPeticion, noEncontrado, prohibido, uuid, validar, fechaISO } from '../../lib/http.js';
 
@@ -65,6 +66,12 @@ export function rutasRrhh({ db }) {
     res.json({ desde, hasta, empleados: emp.rows.map((e) => ({ ...e, ...(horas.get(e.id) ?? { horas: 0, jornadas: 0, sin_salida: 0 }) })) });
   });
 
+  // Directorio de la empresa con los mismos filtros que el del grupo.
+  r.get('/personal', requierePermiso('rrhh:ver'), async (req, res) => {
+    const f = validar(z.object({ q: z.string().trim().max(80).optional(), sucursal_id: uuid.optional(), cargo: z.string().trim().max(80).optional(),
+      estado: z.enum(ESTADOS).optional(), vence: z.enum(['30', '60', '90', 'vencidos']).optional() }), req.query);
+    res.json(await directorio(db, { empresaIds: [req.ctx.empresa.id], sensibles: req.ctx.permisos.has('rrhh:sensible') ? new Set([req.ctx.empresa.id]) : new Set(), filtros: f }));
+  });
   r.get('/resumen', requierePermiso('rrhh:ver'), async (req, res) => res.json(await resumen(db, { empresaIds: [req.ctx.empresa.id] })));
   r.get('/calendario', requierePermiso('rrhh:ver'), async (req, res) => {
     const f = validar(z.object({ desde: fechaISO.optional(), hasta: fechaISO.optional() }), req.query);

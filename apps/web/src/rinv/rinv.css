@@ -1,0 +1,49 @@
+/* Inventario de reposición, incidencias y mantenimiento — solo lo que el kit no trae (táctil para tablet en tienda) */
+.rv-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.rv-pills .btn { min-height: 46px; }
+.rv-lista { display: grid; }
+.rv-fila { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--borde); min-height: 56px; }
+.rv-fila:first-child { border-top: 0; }
+.rv-fila.clic { cursor: pointer; } .rv-fila.clic:hover { background: var(--panel-2); }
+.rv-fila .info { flex: 1; min-width: 0; }
+.rv-fila .info b { display: block; overflow: hidden; text-overflow: ellipsis; }
+.rv-grupo { background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); overflow: hidden; }
+.rv-grupo > button { width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px; background: none; border: 0; text-align: left; font-weight: 700; min-height: 52px; }
+.rv-grupo > button span.nombre { flex: 1; }
+.rv-sticky { position: sticky; top: 56px; z-index: 5; background: var(--fondo); padding: 6px 0; display: grid; gap: 8px; }
+.rv-stock { text-align: center; padding: 18px 14px; }
+.rv-stock .grande { font-family: 'Barlow Condensed', sans-serif; font-size: 3.4rem; line-height: 1; font-weight: 700; }
+.rv-stock .grande.mal { color: var(--peligro); } .rv-stock .grande.ok { color: var(--ok); }
+.rv-paso { display: grid; grid-template-columns: 84px 1fr 84px; gap: 10px; align-items: center; margin: 14px 0 8px; }
+.rv-paso .btn { min-height: 72px; font-size: 2rem; }
+.rv-paso input { min-height: 72px; font-size: 2rem; text-align: center; font-weight: 700; }
+.rv-saltos { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 8px 0; }
+.rv-saltos .btn { min-width: 64px; min-height: 46px; }
+.rv-conteo .rv-stock .grande { font-size: 5rem; }
+.rv-fila-cant { display: flex; align-items: center; gap: 6px; }
+.rv-fila-cant input { width: 78px; text-align: right; }
+.rv-tabla td.cero, .rv-tabla td.bajo { font-weight: 700; } .rv-tabla td.cero { color: var(--peligro); background: var(--peligro-fondo); } .rv-tabla td.bajo { color: var(--aviso); background: var(--aviso-fondo); }
+.rv-valor { font-family: 'Barlow Condensed', sans-serif; font-size: 2.6rem; font-weight: 700; color: var(--oro); }
+.rv-mini { height: 5px; border-radius: 3px; background: var(--panel-3); overflow: hidden; margin-top: 6px; } .rv-mini i { display: block; height: 100%; background: var(--oro); }
+.rv-barras { display: flex; gap: 10px; align-items: flex-end; height: 110px; }
+.rv-barras .mes { flex: 1; text-align: center; font-size: .72rem; color: var(--tenue); }
+.rv-barras .par { height: 90px; display: flex; gap: 3px; align-items: flex-end; justify-content: center; }
+.rv-barras .par i { width: 40%; border-radius: 3px 3px 0 0; min-height: 2px; } .rv-barras .par .e { background: var(--ok); } .rv-barras .par .s { background: var(--peligro); }
+.rv-fotos { display: flex; gap: 10px; flex-wrap: wrap; }
+.rv-fotos img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid var(--borde); }
+.rv-fotos .grande { width: 100%; max-width: 360px; height: auto; }
+.rv-foto { position: relative; } .rv-foto button { position: absolute; top: 2px; right: 2px; min-height: 30px; padding: 0 8px; }
+.rv-escaner { position: fixed; inset: 0; z-index: 60; background: rgba(4, 7, 14, .92); display: grid; place-items: center; padding: 14px; }
+.rv-escaner > div { width: min(520px, 100%); display: grid; gap: 12px; }
+.rv-escaner video { width: 100%; border-radius: 14px; background: #000; max-height: 50vh; object-fit: cover; }
+.rv-epc { font-family: ui-monospace, Menlo, monospace; font-size: .78rem; word-break: break-all; color: var(--tenue); }
+.rv-punto { width: 12px; height: 12px; border-radius: 50%; background: var(--tenue); flex: none; }
+.rv-punto.listo, .rv-punto.escaneando { background: var(--ok); } .rv-punto.error { background: var(--peligro); } .rv-punto.conectando { background: var(--aviso); }
+.rv-contador { font-family: 'Barlow Condensed', sans-serif; font-size: 4rem; text-align: center; line-height: 1; }
+.rv-nota { color: var(--tenue); font-size: .84rem; }
+.rv-dato { background: var(--panel-2); border-radius: var(--radio-s); padding: 10px 14px; text-align: center; }
+.rv-dato b { display: block; font-size: 1.5rem; font-family: 'Barlow Condensed', sans-serif; }
+.rv-dato.alerta b { color: var(--peligro); } .rv-dato.bien b { color: var(--ok); }
+.rv-barcode { background: #fff; border-radius: 10px; padding: 8px; text-align: center; color: #000; }
+.rv-barcode svg { max-width: 100%; height: 70px; }
+@media (max-width: 640px) { .rv-paso { grid-template-columns: 64px 1fr 64px; } }

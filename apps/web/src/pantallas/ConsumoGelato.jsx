@@ -1,1 +1,2 @@
-export default function ConsumoGelato() { return <div className="pagina"><div className="encabezado-pagina"><h1>Consumo y reposición</h1></div><div className="aviso-caja">En construcción.</div></div>; }
+import Consumo from '../rep/Consumo.jsx';
+export default function ConsumoGelato() { return <Consumo />; }

@@ -1,0 +1,30 @@
+/* Producción de gelato y costeo — solo lo que el kit no trae */
+.pg-sub { display: block; color: var(--tenue); font-size: .8rem; }
+.pg-fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--borde); flex-wrap: wrap; }
+.pg-fila:first-child { border-top: 0; }
+.pg-fila > .info { flex: 1 1 200px; min-width: 0; }
+.pg-fila b { font-weight: 600; }
+.pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.pg-celda { min-height: 84px; padding: 10px 12px; border-radius: 16px; border: 3px solid var(--borde); background: var(--panel); color: var(--texto); text-align: left; display: grid; align-content: space-between; gap: 4px; touch-action: manipulation; cursor: pointer; }
+.pg-req { border-color: var(--aviso); }
+.pg-celda b { font-size: 1rem; line-height: 1.15; }
+.pg-celda .kg { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pg-celda.on { border-color: var(--acento); background: color-mix(in srgb, var(--acento) 20%, var(--panel)); }
+.pg-celda.ya { border-color: color-mix(in srgb, var(--ok) 55%, var(--borde)); }
+.pg-barra { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; padding: 10px 14px calc(10px + env(safe-area-inset-bottom)); background: var(--panel); border-top: 1px solid var(--borde); }
+.pg-barra > div { max-width: 640px; margin: 0 auto; }
+.pg-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pg-pad button { min-height: 68px; font-size: 1.7rem; font-weight: 700; border-radius: 16px; border: 1px solid var(--borde); background: var(--panel-2); color: var(--texto); touch-action: manipulation; }
+.pg-pad button:active { background: var(--panel-3); }
+.pg-visor { font-size: 3rem; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; padding: 8px 0; }
+.pg-atajos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+.pg-atajos .btn { min-height: 52px; }
+.pg-dia { opacity: 1; } .pg-dia.vacio-dia { opacity: .7; }
+.pg-etq { display: block; width: 220px; max-width: 100%; margin: 10px auto; background: #fff; border-radius: 6px; border: 1px dashed rgba(255,255,255,.4); }
+.pg-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.pg-num { font-variant-numeric: tabular-nums; text-align: right; }
+.pg-barra-costo { height: 8px; background: var(--panel-3); border-radius: 99px; overflow: hidden; } .pg-barra-costo i { display: block; height: 100%; background: var(--oro); }
+.pg-visor-cam { width: 100%; max-height: 50vh; border-radius: 12px; background: #000; }
+.pg-ctl { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+.pg-ctl > * { flex: 1 1 150px; }
+@media (max-width: 700px) { .pagina.pg { padding-bottom: 130px; } }
