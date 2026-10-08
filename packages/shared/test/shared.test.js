@@ -69,7 +69,8 @@ test('módulos visibles dependen de empresa y permisos', () => {
   assert.ok(!v.includes('inventario'));
   assert.ok(!v.includes('grupo'));
   const d = modulosVisibles(['pos', 'inventario', 'grupo', 'kds'], permisosDe('dueno')).map((m) => m.id);
-  for (const id of ['pos', 'ventas', 'catalogo', 'inventario', 'grupo', 'kds', 'admin']) assert.ok(d.includes(id), id);
+  for (const id of ['pos', 'ventas', 'catalogo', 'inventario', 'kds', 'admin']) assert.ok(d.includes(id), id);
+  assert.ok(!d.includes('grupo'), 'Dirección no aparece dentro de una empresa');
 });
 
 test('fecha Honduras (UTC-6) y sumarDias', () => {

@@ -14,6 +14,7 @@ export const MODULOS = {
   admin:      { nombre: 'Administración',  descripcion: 'Usuarios, sucursales, fiscal y auditoría', permiso: 'admin:usuarios', ruta: 'admin',    icono: 'sucursales' },
 };
 
+// «Dirección» (grupo) NO es módulo de empresa: vive solo en /grupo, fuera de cualquier empresa.
 // Qué módulos "de base" se derivan de un módulo encendido en core.empresa_modulos.
 export const MODULOS_DERIVADOS = {
   pos: ['pos', 'ventas', 'catalogo', 'clientes', 'gerente'],
@@ -21,7 +22,6 @@ export const MODULOS_DERIVADOS = {
   inventario: ['inventario'],
   rrhh: ['rrhh'],
   finanzas: ['finanzas'],
-  grupo: ['grupo'],
 };
 export const MODULOS_SIEMPRE = ['admin'];
 

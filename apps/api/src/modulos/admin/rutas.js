@@ -222,12 +222,12 @@ export function rutasAdmin({ db, config, ctxMgr }) {
   // ── Módulos encendidos (solo dueño del grupo) ────────────────────────────
   r.get('/modulos', requierePermiso('admin:empresa'), async (req, res) => {
     const act = (await db.query('select modulo, activo from core.empresa_modulos where empresa_id = $1', [req.ctx.empresa.id])).rows;
-    res.json(['pos', 'kds', 'inventario', 'rrhh', 'finanzas', 'grupo'].map((m) => ({
+    res.json(['pos', 'kds', 'inventario', 'rrhh', 'finanzas'].map((m) => ({
       id: m, nombre: MODULOS[m]?.nombre ?? m, activo: act.find((a) => a.modulo === m)?.activo ?? false })));
   });
   r.put('/modulos/:modulo', async (req, res) => {
     if (!req.ctx.usuario.es_dueno_grupo) throw prohibido('Solo el dueño del grupo enciende o apaga módulos');
-    const modulo = validar(z.enum(['pos', 'kds', 'inventario', 'rrhh', 'finanzas', 'grupo']), req.params.modulo);
+    const modulo = validar(z.enum(['pos', 'kds', 'inventario', 'rrhh', 'finanzas']), req.params.modulo);
     const { activo } = validar(z.object({ activo: z.boolean() }), req.body);
     await db.query(
       `insert into core.empresa_modulos (empresa_id, modulo, activo) values ($1,$2,$3)
