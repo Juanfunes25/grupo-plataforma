@@ -1,0 +1,15 @@
+/* Pantallas de EcoStone (catálogo de piedra, cotizaciones de proyecto, inventario de piedra). */
+.eco-barra { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+.eco-barra input, .eco-barra select { width: auto; min-width: 180px; }
+.eco-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; align-items: end; }
+.eco-form .ancho { grid-column: 1 / -1; }
+.eco-sub { display: block; color: var(--tenue); font-size: .8rem; }
+.eco-mal { color: var(--peligro); }
+.eco-ok { color: var(--ok); }
+.eco-lineas input, .eco-lineas select { min-height: 38px; padding: 6px 8px; }
+.eco-resultados { position: absolute; z-index: 5; left: 0; right: 0; background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; padding: 6px; display: grid; gap: 4px; }
+.eco-resultados button { text-align: left; }
+.eco-totales { text-align: right; display: grid; gap: 4px; }
+.eco-totales .gran { font-size: 1.5rem; font-weight: 800; }
+.eco-cobrar { width: 100%; padding: 18px 20px; font-size: 1.2rem; font-weight: 800; min-height: 64px; }
+.eco-sugeridos { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }

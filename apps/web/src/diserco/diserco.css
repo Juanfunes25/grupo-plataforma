@@ -1,0 +1,25 @@
+/* DISERCO: cotizaciones, salidas, productos e inventario (mismo kit oscuro de la plataforma). */
+.dis-tabla-ancha { min-width: 720px; }
+.dis-barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.dis-barra > * { flex: 0 1 auto; } .dis-barra input[type=search], .dis-barra input.busca { flex: 1 1 240px; min-width: 200px; }
+.dis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; align-items: start; }
+.dis-grid .todo { grid-column: 1 / -1; }
+.dis-sub { margin: 0 0 8px; font-size: .95rem; color: var(--tenue); text-transform: uppercase; letter-spacing: .08em; }
+.dis-check { display: flex; gap: 8px; align-items: center; font-size: .9rem; color: var(--texto); }
+.dis-check input { flex: none; }
+.dis-totales { text-align: right; display: grid; gap: 2px; justify-items: end; }
+.dis-totales .gran { font-family: 'Barlow Condensed', sans-serif; font-size: 1.8rem; }
+.dis-seccion { border-left: 3px solid var(--acento); padding-left: 10px; margin-bottom: 12px; display: grid; gap: 6px; }
+.dis-resultados { position: absolute; z-index: 5; left: 0; right: 0; background: var(--panel-2); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 6px; display: grid; gap: 4px; }
+.dis-fila-prod { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid var(--borde); }
+.dis-fila-prod.sel { background: color-mix(in srgb, var(--acento) 12%, transparent); }
+.dis-fila-prod .nom { flex: 1; min-width: 0; line-height: 1.2; }
+.dis-cant { width: 70px !important; text-align: center; font-size: 1.1rem; font-weight: 700; padding: 8px 4px; }
+.dis-grande { width: 100%; padding: 20px 16px; font-size: 1.25rem; font-weight: 800; min-height: 64px; }
+.dis-existencia { font-size: 1.7rem; font-weight: 800; font-family: 'Barlow Condensed', sans-serif; }
+.dis-lista-proy { display: grid; gap: 10px; }
+.dis-lista-proy button { text-align: left; padding: 14px; display: block; width: 100%; }
+.dis-rec { display: grid; grid-template-columns: minmax(0, 1fr) 54px 76px 56px; gap: 6px; align-items: center; padding: 6px 4px; border-top: 1px solid var(--borde); }
+.dis-hist { display: flex; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--borde); font-size: .85rem; }
+.dis-menu { position: absolute; right: 0; top: 100%; z-index: 31; min-width: 190px; display: grid; gap: 6px; padding: 8px; background: var(--panel-2); border: 1px solid var(--borde); border-radius: 10px; box-shadow: var(--sombra); }
+@media (max-width: 640px) { .dis-barra > * { flex: 1 1 100%; } }

@@ -31,7 +31,7 @@ export const textoOpc = z.string().trim().max(500).optional().nullable().transfo
 export function manejadorErrores(log = console.error) {
   return (err, req, res, _next) => {
     if (err instanceof ErrorHttp) {
-      return res.status(err.status).json({ error: err.message, codigo: err.codigo });
+      return res.status(err.status).json({ error: err.message, codigo: err.codigo, ...(err.faltantes ? { faltantes: err.faltantes } : {}) });
     }
     if (err?.type === 'entity.parse.failed') return res.status(400).json({ error: 'JSON inválido' });
     if (err?.type === 'entity.too.large') return res.status(413).json({ error: 'Cuerpo demasiado grande' });

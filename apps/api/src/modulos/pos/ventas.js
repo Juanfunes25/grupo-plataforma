@@ -8,6 +8,7 @@ import { formatearTicket, formatearTicketPrueba, envolverTicketHtml, anchoValido
 import { generarPdfFactura } from './pdf.js';
 import { UMBRAL_RTN_OBLIGATORIO, identidadValida } from '@grupo/shared';
 import { vigilarVenta } from '../antifraude/vigilancia.js';
+import { antesDeCobrar, despuesDeAnular, despuesDeCobrar } from '../eco/existencias.js';
 
 const item = z.object({
   producto_id: uuid,
@@ -27,6 +28,7 @@ const cuerpoVenta = z.object({
   items: z.array(item).min(1, 'La orden no tiene productos').max(100),
   tercera_edad: z.object({ nombre: z.string().trim().min(3).max(120), identidad: z.string().trim().max(30).refine(identidadValida, 'Escribe el número de identidad o carné (mínimo 5 caracteres)') }).optional().nullable(),
   cobrar: z.object({ pagos: z.array(pago).min(1) }).optional(),
+  confirmar_sin_stock: z.boolean().optional(),
 });
 
 export function rutasVentas({ db, ctxMgr }) {
@@ -89,7 +91,7 @@ export function rutasVentas({ db, ctxMgr }) {
     return (await q.query(`select * from pos.turnos where sucursal_id = $1 and cajero_id = $2 and estado = 'abierto'`, [sucursalId, ctx.usuario.id])).rows[0];
   }
 
-  async function cobrar(q, ctx, ventaId, pagos) {
+  async function cobrar(q, ctx, ventaId, pagos, extras = {}) {
     const v = await cargar(q, ctx, ventaId, { bloquear: true });
     if (v.estado !== 'abierta') throw conflicto(`La venta ya está ${v.estado}`);
     // La ley pide identificar al comprador en facturas grandes: sin RTN no se cobra por encima del umbral (L 10,000 por defecto).
@@ -97,7 +99,11 @@ export function rutasVentas({ db, ctxMgr }) {
     const umbral = Number(cfgPos.umbral_rtn) > 0 ? Number(cfgPos.umbral_rtn) : UMBRAL_RTN_OBLIGATORIO;
     if (Number(v.total) > umbral) {
       const cli = v.cliente_id ? (await q.query('select rtn from core.terceros where id = $1', [v.cliente_id])).rows[0] : null;
-      if (!String(cli?.rtn ?? '').trim()) throw malaPeticion(`Se requiere el RTN del cliente para ventas mayores a L ${umbral.toLocaleString('es-HN')}`);
+      if (!String(cli?.rtn ?? '').trim()) {
+        // rtn_bloqueante=false (EcoStone, DISERCO): solo avisa y deja constancia en la bitácora; se cobra igual.
+        if (cfgPos.rtn_bloqueante !== false) throw malaPeticion(`Se requiere el RTN del cliente para ventas mayores a L ${umbral.toLocaleString('es-HN')}`);
+        extras.aviso_rtn = `Recordatorio: esta factura pasa de L ${umbral.toLocaleString('es-HN')} y el cliente no tiene RTN. Trata de pedirlo y agregarlo al cliente.`;
+      }
     }
     if (cfgPos.exigir_tercera_edad !== false && !(v.tercera_edad_nombre && v.tercera_edad_identidad)
         && (await q.query('select 1 from pos.detalle_venta where venta_id = $1 and descuento_porcentaje = 25 limit 1', [ventaId])).rowCount) {
@@ -112,8 +118,11 @@ export function rutasVentas({ db, ctxMgr }) {
       await auditar(q, ctx, 'turno_abierto', 'turno', turno.id, { fondo: 0, automatico: true }, { sucursalId: v.sucursal_id });
     }
     await q.query('update pos.ventas set turno_id = $1, cajero_id = $2 where id = $3', [turno.id, ctx.usuario.id, ventaId]);
+    const avisados = await antesDeCobrar(q, ctx, ventaId, { confirmarSinStock: extras.confirmarSinStock });   // fábricas: piedra sin existencia → confirmación
     const pagado = (await q.query('select * from pos.cobrar_venta($1, $2::jsonb)', [ventaId, JSON.stringify(pagos)])).rows[0];
     await auditar(q, ctx, 'venta_cobrada', 'venta', ventaId, { factura: pagado.numero_factura, total: pagado.total }, { sucursalId: v.sucursal_id });
+    if (extras.aviso_rtn) await auditar(q, ctx, 'venta_sin_rtn', 'venta', ventaId, { factura: pagado.numero_factura, total: Number(pagado.total) }, { sucursalId: v.sucursal_id });
+    extras.faltantes_inventario = await despuesDeCobrar(q, ctx, pagado, { faltantesAvisados: avisados });
     return pagado;
   }
 
@@ -134,8 +143,9 @@ export function rutasVentas({ db, ctxMgr }) {
         [req.ctx.empresa.id, suc.id, cliente.id, req.ctx.usuario.id, b.canal, b.tipo_orden, b.nombre_orden ?? null, b.notas ?? null, ticket, ...camposTotales(tot)])).rows[0];
       await guardarLineas(q, v.id, tot);
       if (te.nombre) await q.query('update pos.ventas set tercera_edad_nombre = $2, tercera_edad_identidad = $3 where id = $1', [v.id, te.nombre, te.identidad]);
-      if (b.cobrar) await cobrar(q, req.ctx, v.id, b.cobrar.pagos);
-      return detalle(q, req.ctx, await cargar(q, req.ctx, v.id));
+      const extras = { confirmarSinStock: b.confirmar_sin_stock };
+      if (b.cobrar) await cobrar(q, req.ctx, v.id, b.cobrar.pagos, extras);
+      return { ...(await detalle(q, req.ctx, await cargar(q, req.ctx, v.id))), ...(b.cobrar ? { aviso_rtn: extras.aviso_rtn ?? null, faltantes_inventario: extras.faltantes_inventario ?? [] } : {}) };
     });
     if (b.cobrar) await vigilarVenta(db, req.ctx, 'cobrada', out.id);   // antifraude: doble factura, tercera edad
     res.status(201).json(out);
@@ -174,10 +184,11 @@ export function rutasVentas({ db, ctxMgr }) {
   // ── Cobrar una orden abierta ─────────────────────────────────────────────
   r.post('/:id/cobrar', requierePermiso('pos:vender'), async (req, res) => {
     const id = validar(uuid, req.params.id);
-    const { pagos } = validar(z.object({ pagos: z.array(pago).min(1, 'Falta la forma de pago') }), req.body);
+    const { pagos, confirmar_sin_stock } = validar(z.object({ pagos: z.array(pago).min(1, 'Falta la forma de pago'), confirmar_sin_stock: z.boolean().optional() }), req.body);
     const out = await db.tx(async (q) => {
-      await cobrar(q, req.ctx, id, pagos);
-      return detalle(q, req.ctx, await cargar(q, req.ctx, id));
+      const extras = { confirmarSinStock: confirmar_sin_stock };
+      await cobrar(q, req.ctx, id, pagos, extras);
+      return { ...(await detalle(q, req.ctx, await cargar(q, req.ctx, id))), aviso_rtn: extras.aviso_rtn ?? null, faltantes_inventario: extras.faltantes_inventario ?? [] };
     });
     await vigilarVenta(db, req.ctx, 'cobrada', id);   // antifraude: doble factura, tercera edad
     res.json(out);
@@ -193,6 +204,7 @@ export function rutasVentas({ db, ctxMgr }) {
         await q.query(`update pos.ventas set estado = 'anulada', anulada_at = now(), anulada_por = $2, motivo_anulacion = $3, updated_at = now() where id = $1`, [id, req.ctx.usuario.id, motivo]);
       } else {
         await q.query('select pos.anular_venta($1,$2,$3)', [id, motivo, req.ctx.usuario.id]);
+        await despuesDeAnular(q, req.ctx, v);   // fábricas: la piedra vuelve a su lote
       }
       await auditar(q, req.ctx, 'venta_anulada', 'venta', id, { motivo, factura: v.numero_factura, total: v.total, estado_previo: v.estado }, { sucursalId: v.sucursal_id });
       return detalle(q, req.ctx, await cargar(q, req.ctx, id));
