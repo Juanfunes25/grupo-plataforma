@@ -28,6 +28,10 @@ export const PERMISOS = {
   'grupo:ver':        'Ver el consolidado del grupo',
   'gerente:ver':      'Ver el gerente digital (análisis de la empresa)',
   'antifraude:ver':   'Ver y gestionar el antifraude (alertas, arqueos)',
+  'fab:registrar':    'Registrar producción de fábrica',
+  'fab:ver':          'Ver órdenes, trazabilidad y reportes de producción',
+  'fab:editar':       'Editar recetas, costos y órdenes de producción',
+  'dis:salidas':      'Registrar salidas a proyecto (DISERCO)',
   'cotizaciones:ver': 'Ver y crear cotizaciones y eventos',
   // Administración
   'admin:usuarios':   'Administrar usuarios y accesos',
@@ -45,7 +49,7 @@ export const ROLES = {
   gerente: {
     nombre: 'Manager',
     permisos: ['gerente:ver', 'pos:vender', 'pos:caja', 'pos:anular', 'pos:descuento', 'pos:reimprimir', 'pos:catalogo', 'pos:reportes',
-      'kds:ver', 'inv:ver', 'inv:mover', 'inv:recetas', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos',
+      'kds:ver', 'inv:ver', 'inv:mover', 'inv:recetas', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos', 'fab:ver', 'fab:editar', 'fab:registrar', 'dis:salidas',
       'clientes:ver', 'clientes:editar', 'cotizaciones:ver'],
   },
   cajero: {
@@ -54,15 +58,19 @@ export const ROLES = {
   },
   produccion: {
     nombre: 'Producción / cocina',
-    permisos: ['kds:ver', 'inv:ver', 'inv:mover', 'rrhh:asistencia'],
+    permisos: ['kds:ver', 'inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:registrar', 'fab:ver'],
   },
   bodega: {
     nombre: 'Bodega',
-    permisos: ['inv:ver', 'inv:mover', 'rrhh:asistencia'],
+    permisos: ['inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:ver', 'dis:salidas'],
+  },
+  gestor: {
+    nombre: 'Gestor de proyectos',
+    permisos: ['dis:salidas', 'inv:ver', 'rrhh:asistencia'],
   },
   ventas: {
     nombre: 'Ventas',
-    permisos: ['pos:vender', 'pos:descuento', 'pos:reimprimir', 'pos:reportes', 'clientes:ver', 'clientes:editar', 'inv:ver'],
+    permisos: ['pos:vender', 'pos:descuento', 'pos:reimprimir', 'pos:reportes', 'clientes:ver', 'clientes:editar', 'inv:ver', 'cotizaciones:ver'],
   },
   contador: {
     nombre: 'Contador',
@@ -76,7 +84,7 @@ export const ROLES = {
 
 // Roles que PUEDEN entrar con PIN (operación de mostrador/cocina/bodega).
 // Los roles de dirección exigen correo + contraseña.
-export const ROLES_CON_PIN = ['cajero', 'produccion', 'bodega', 'ventas', 'gerente'];
+export const ROLES_CON_PIN = ['cajero', 'produccion', 'bodega', 'ventas', 'gerente', 'gestor'];
 
 /** Conjunto efectivo de permisos de un acceso. */
 export function permisosDe(rol, extra = [], quitados = []) {

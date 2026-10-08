@@ -28,12 +28,25 @@ const Bitacora = lazy(() => import('./pantallas/Bitacora.jsx'));
 const Cai = lazy(() => import('./pantallas/Cai.jsx'));
 const Usuarios = lazy(() => import('./pantallas/Usuarios.jsx'));
 const Sucursales = lazy(() => import('./pantallas/Sucursales.jsx'));
-const Cotizaciones = lazy(() => import('./pantallas/Cotizaciones.jsx'));
+const Cotizaciones = lazy(() => import('./pantallas/CotizacionesRuta.jsx'));
+const Piedra = lazy(() => import('./pantallas/Piedra.jsx'));
+const RegistrarProduccion = lazy(() => import('./pantallas/RegistrarProduccion.jsx'));
+const Fabricacion = lazy(() => import('./pantallas/Fabricacion.jsx'));
+const Recetas = lazy(() => import('./pantallas/Recetas.jsx'));
+const Insumos = lazy(() => import('./pantallas/Insumos.jsx'));
+const InventarioPiedra = lazy(() => import('./pantallas/InventarioPiedra.jsx'));
+const Trazabilidad = lazy(() => import('./pantallas/Trazabilidad.jsx'));
+const ReporteProduccion = lazy(() => import('./pantallas/ReporteProduccion.jsx'));
+const Salidas = lazy(() => import('./pantallas/Salidas.jsx'));
+const ProductosDis = lazy(() => import('./pantallas/ProductosDis.jsx'));
+const InventarioDis = lazy(() => import('./pantallas/InventarioDis.jsx'));
 const Impresora = lazy(() => import('./pantallas/Impresora.jsx'));
 
 const PANTALLAS = { pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, terceros: Terceros, admin: Admin, gerente: Gerente,
   facturas: Facturas, cierres: Cierres, 'caja-chica': CajaChica, reportes: Reportes, dashboard: Dashboard, antifraude: Antifraude, bitacora: Bitacora,
-  cai: Cai, usuarios: Usuarios, sucursales: Sucursales, cotizaciones: Cotizaciones, impresora: Impresora };
+  cai: Cai, usuarios: Usuarios, sucursales: Sucursales, cotizaciones: Cotizaciones, impresora: Impresora,
+  piedra: Piedra, 'registrar-produccion': RegistrarProduccion, produccion: Fabricacion, recetas: Recetas, insumos: Insumos, 'inventario-piedra': InventarioPiedra,
+  trazabilidad: Trazabilidad, 'reporte-produccion': ReporteProduccion, salidas: Salidas, productos: ProductosDis, 'inventario-d': InventarioDis };
 
 function Protegida({ children }) {
   const s = useSesion();

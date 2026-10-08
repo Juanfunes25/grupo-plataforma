@@ -1,0 +1,1 @@
+export default function ReporteProduccion() { return <div className="pagina"><div className="encabezado-pagina"><h1>Reporte de producción</h1></div><div className="aviso-caja">En construcción.</div></div>; }

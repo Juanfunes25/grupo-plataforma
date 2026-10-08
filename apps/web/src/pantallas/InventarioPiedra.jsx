@@ -1,0 +1,1 @@
+export default function InventarioPiedra() { return <div className="pagina"><div className="encabezado-pagina"><h1>Inventario de piedra</h1></div><div className="aviso-caja">En construcción.</div></div>; }

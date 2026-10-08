@@ -1,0 +1,1 @@
+export default function RegistrarProduccion() { return <div className="pagina"><div className="encabezado-pagina"><h1>Registrar producción</h1></div><div className="aviso-caja">En construcción.</div></div>; }
