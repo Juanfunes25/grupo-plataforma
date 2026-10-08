@@ -16,6 +16,7 @@ const enUnMinuto = () => new Date(Date.now() + 60_000);
 
 before(async () => {
   t = await iniciar();
+  await t.activarNotasCredito('origen');
   await sembrar(t.db, t.config.semillas, 'origen');
   await t.usuario({ nombre: 'Dueño', email: 'dueno@grupo.hn', password: 'ClaveSegura123', dueno: true });
   await t.usuario({ nombre: 'Gerente', email: 'ger@origen.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'origen', rol: 'gerente' }] });

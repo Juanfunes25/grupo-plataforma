@@ -60,6 +60,12 @@ export async function iniciar() {
     return u;
   }
 
+  /** El negocio no usa notas de crédito (apagadas por defecto): las pruebas que las ejercitan las encienden. */
+  async function activarNotasCredito(empresa) {
+    await db.query(`insert into core.config (empresa_id, clave, valor) values ($1, 'pos', '{"usar_notas_credito": true}'::jsonb)
+                    on conflict (empresa_id, clave) do update set valor = core.config.valor || '{"usar_notas_credito": true}'::jsonb`, [await empresaId(empresa)]);
+  }
+
   async function login(empresa, email, password) {
     const r = await cli().post('/api/auth/login', { empresa, email, password });
     if (r.status !== 200) throw new Error(`login falló: ${r.status} ${JSON.stringify(r.body)}`);
@@ -72,7 +78,7 @@ export async function iniciar() {
   }
 
   return {
-    db, config, app, base, cli, usuario, login, loginPin, empresaId, sucursalId,
+    db, config, app, base, cli, usuario, activarNotasCredito, login, loginPin, empresaId, sucursalId,
     cerrar: async () => { server.close(); await db.close(); if (borrarBase) await borrarBase(); },
   };
 }

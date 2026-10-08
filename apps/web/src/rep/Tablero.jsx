@@ -12,7 +12,6 @@ import './rep.css';
 
 const saludo = () => { const h = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Tegucigalpa', hour: '2-digit', hourCycle: 'h23' }).format(new Date())); return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'; };
 const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
-const horaLimite = (h) => `${h > 12 ? h - 12 : h} p. m.`;
 const diaLargo = (f) => { const [y, m, d] = f.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long' }); };
 
 /** Texto y tono de una tienda según el semáforo. */
@@ -20,8 +19,8 @@ function resumenTienda(t, noche) {
   switch (t.estado) {
     case 'completo': return { tono: 'ok', titulo: 'Ya pesó', detalle: `${t.pesados} de ${t.esperados} sabores${t.reportado_en ? ` · ${cuandoTexto(t.reportado_en)}` : ''}` };
     case 'parcial': return { tono: 'aviso', titulo: 'Pesó una parte', detalle: `Faltan ${t.esperados - t.pesados} de ${t.esperados} sabores${t.reportado_en ? ` · último envío ${cuandoTexto(t.reportado_en)}` : ''}` };
-    case 'pendiente': return { tono: 'aviso', titulo: 'Todavía no pesa', detalle: `Se espera antes de las ${horaLimite(noche.hora_limite_pesaje)}` };
-    case 'falta': return { tono: 'mal', titulo: noche.esHoy ? 'No envió su pesaje' : 'No pesó esa noche', detalle: t.noches_sin_reporte > 1 ? `Lleva ${t.noches_sin_reporte} noches sin pesar` : t.ultima_noche ? `Última vez: ${fechaCorta(t.ultima_noche)}` : 'Sin pesajes en la última semana' };
+    case 'pendiente': return { tono: 'aviso', titulo: 'Todavía no pesa', detalle: 'La noche sigue abierta: se espera su pesaje antes del despacho de mañana' };
+    case 'falta': return { tono: 'mal', titulo: 'No pesó esa noche', detalle: t.noches_sin_reporte > 1 ? `Lleva ${t.noches_sin_reporte} noches sin pesar` : t.ultima_noche ? `Última vez: ${fechaCorta(t.ultima_noche)}` : 'Sin pesajes en la última semana' };
     default: return { tono: 'neutro', titulo: 'No es obligatorio', detalle: 'Se sirve directo de fábrica' };
   }
 }
@@ -120,7 +119,7 @@ export default function Tablero() {
         <div>
           <b>{listas === obligatorias.length && obligatorias.length > 0 ? 'Todas las tiendas ya pesaron' : `${plural(listas, 'tienda ya pesó', 'tiendas ya pesaron')} su gelato`}</b>
           <div className="rep-sub">
-            {[sem.falta > 0 && `${plural(sem.falta, 'no envió', 'no enviaron')} su pesaje`, sem.parcial > 0 && `${sem.parcial} a medias`, sem.pendiente > 0 && `${sem.pendiente} por pesar (se espera antes de las ${horaLimite(noche.hora_limite_pesaje)})`].filter(Boolean).join(' · ') || 'No falta nadie.'}
+            {[sem.falta > 0 && `${plural(sem.falta, 'no envió', 'no enviaron')} su pesaje`, sem.parcial > 0 && `${sem.parcial} a medias`, sem.pendiente > 0 && `${sem.pendiente} por pesar (la noche sigue abierta)`].filter(Boolean).join(' · ') || 'No falta nadie.'}
           </div>
         </div>
       </div>

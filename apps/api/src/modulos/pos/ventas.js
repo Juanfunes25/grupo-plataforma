@@ -2,11 +2,14 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { requierePermiso, resolverSucursal, sucursalesPermitidas } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
-import { conflicto, malaPeticion, noEncontrado, prohibido, uuid, validar, fechaISO } from '../../lib/http.js';
+import { ErrorHttp, conflicto, malaPeticion, noEncontrado, prohibido, uuid, validar, fechaISO } from '../../lib/http.js';
 import { armarItems, totalesDe } from './calculo.js';
 import { formatearTicket, formatearTicketPrueba, envolverTicketHtml, anchoValido } from './ticket.js';
 import { generarPdfFactura } from './pdf.js';
-import { UMBRAL_RTN_OBLIGATORIO, identidadValida } from '@grupo/shared';
+import { UMBRAL_RTN_OBLIGATORIO, identidadValida, fechaHN } from '@grupo/shared';
+import { verificarSecreto } from '../../auth/passwords.js';
+import { loginSupabase } from '../../auth/supabase.js';
+import { crearLimitador } from '../../lib/limitador.js';
 import { vigilarVenta } from '../antifraude/vigilancia.js';
 import { antesDeCobrar, despuesDeAnular, despuesDeCobrar } from '../eco/existencias.js';
 
@@ -31,8 +34,52 @@ const cuerpoVenta = z.object({
   confirmar_sin_stock: z.boolean().optional(),
 });
 
-export function rutasVentas({ db, ctxMgr }) {
+export function rutasVentas({ db, config, ctxMgr }) {
   const r = Router();
+  const limAutorizacion = crearLimitador({ max: 6, ventanaMs: 10 * 60_000 });
+
+  /** ¿Esta empresa usa notas de crédito? El negocio hoy NO las usa: están apagadas (core.config 'pos'.usar_notas_credito = true las enciende). */
+  async function usaNotasCredito(q, empresaId) {
+    const cfg = (await q.query(`select valor from core.config where empresa_id = $1 and clave = 'pos'`, [empresaId])).rows[0]?.valor ?? {};
+    return cfg.usar_notas_credito === true;
+  }
+
+  /**
+   * Anular una factura ya emitida:
+   *  · el MISMO día (hora de Honduras): quien tenga pos:anular;
+   *  · días anteriores del MISMO MES: solo con la aprobación de un dueño / administrador general (su correo y contraseña
+   *    en la misma pantalla, o que quien anula ya sea ese dueño). Queda en la bitácora quién autorizó;
+   *  · de un mes anterior: no se puede; se contacta a contabilidad.
+   */
+  async function autorizarAnulacion(q, req, v, autorizacion) {
+    const hoy = fechaHN();
+    const fecha = fechaHN(new Date(v.fecha_emision ?? v.created_at));
+    if (fecha === hoy) return null;
+    if (fecha.slice(0, 7) !== hoy.slice(0, 7)) {
+      throw conflicto('Esta factura es de un mes anterior y ya no se puede anular desde el sistema. Comunícate con contabilidad.');
+    }
+    const esDueno = (u, rol) => u.es_dueno_grupo || rol === 'dueno';
+    if (esDueno(req.ctx.usuario, req.ctx.rol)) return { id: req.ctx.usuario.id, nombre: req.ctx.usuario.nombre, via: 'propio' };
+    if (!autorizacion?.email || !autorizacion?.password) {
+      throw new ErrorHttp(403, 'Esta factura es de un día anterior: para anularla un dueño debe autorizarlo con su correo y contraseña.', 'requiere_autorizacion');
+    }
+    const clave = `${req.ctx.ip}|${req.ctx.usuario.id}`;
+    if (limAutorizacion.bloqueado(clave)) throw new ErrorHttp(429, 'Demasiados intentos de autorización. Espera unos minutos.');
+    const email = String(autorizacion.email).trim().toLowerCase();
+    const u = (await q.query('select * from core.usuarios where email = $1 and activo', [email])).rows[0];
+    let ok = false;
+    if (u) ok = config?.supabaseUrl && u.auth_user_id ? Boolean(await loginSupabase(config, email, autorizacion.password)) : verificarSecreto(autorizacion.password, u.password_hash);
+    else verificarSecreto(autorizacion.password, 'scrypt$00$00');
+    let rolAut = null;
+    if (ok && !u.es_dueno_grupo) rolAut = (await q.query('select rol from core.accesos where usuario_id = $1 and empresa_id = $2 and activo', [u.id, req.ctx.empresa.id])).rows[0]?.rol;
+    if (!ok || !esDueno(u, rolAut)) {
+      limAutorizacion.fallo(clave);
+      await auditar(db, req.ctx, 'anulacion_autorizacion_fallida', 'venta', v.id, { email }, { sucursalId: v.sucursal_id });
+      throw new ErrorHttp(403, 'No se pudo autorizar: el correo o la contraseña no son de un dueño de esta empresa.', 'autorizacion_invalida');
+    }
+    limAutorizacion.exito(clave);
+    return { id: u.id, nombre: u.nombre, via: 'contraseña' };
+  }
 
   async function consumidorFinal(q) {
     return (await q.query('select * from core.terceros where es_consumidor_final')).rows[0];
@@ -61,7 +108,9 @@ export function rutasVentas({ db, ctxMgr }) {
       v.punto_emision_id ? q.query('select * from pos.puntos_emision where id = $1', [v.punto_emision_id]) : { rows: [] },
       q.query('select id, numero_nota, motivo, monto, created_at from pos.notas_credito where venta_id = $1 order by created_at', [v.id]),
     ]);
-    return { ...v, notas_credito: notas.rows, lineas: lineas.rows, pagos: pagos.rows, cliente: cliente.rows[0] ?? null, sucursal: sucursal.rows[0], cajero: cajero.rows[0] ?? null, punto: punto.rows[0] ?? null };
+    // Factura emitida: el cliente es el que se congeló al cobrar (editar la ficha después no cambia facturas viejas).
+    const cli = cliente.rows[0] ? { ...cliente.rows[0], ...(v.cliente_nombre ? { nombre: v.cliente_nombre, rtn: v.cliente_rtn, direccion: v.cliente_direccion } : {}) } : null;
+    return { ...v, notas_credito: notas.rows, lineas: lineas.rows, pagos: pagos.rows, cliente: cli, sucursal: sucursal.rows[0], cajero: cajero.rows[0] ?? null, punto: punto.rows[0] ?? null };
   }
 
   /** Descuento de tercera edad (25 %): la ley exige identificar a la persona; la regla se puede apagar por empresa. */
@@ -197,16 +246,21 @@ export function rutasVentas({ db, ctxMgr }) {
   // ── Anular ───────────────────────────────────────────────────────────────
   r.post('/:id/anular', requierePermiso('pos:anular'), async (req, res) => {
     const id = validar(uuid, req.params.id);
-    const { motivo } = validar(z.object({ motivo: z.string().trim().min(3, 'Escribe el motivo de la anulación').max(300) }), req.body);
+    const { motivo, autorizacion } = validar(z.object({
+      motivo: z.string().trim().min(3, 'Escribe el motivo de la anulación').max(300),
+      autorizacion: z.object({ email: z.string().max(200), password: z.string().max(200) }).optional().nullable(),
+    }), req.body);
     const out = await db.tx(async (q) => {
       const v = await cargar(q, req.ctx, id, { bloquear: true });
+      let autorizo = null;
+      if (v.estado === 'pagada') autorizo = await autorizarAnulacion(q, req, v, autorizacion);
       if (v.estado === 'abierta') {   // una orden sin cobrar simplemente se descarta
         await q.query(`update pos.ventas set estado = 'anulada', anulada_at = now(), anulada_por = $2, motivo_anulacion = $3, updated_at = now() where id = $1`, [id, req.ctx.usuario.id, motivo]);
       } else {
         await q.query('select pos.anular_venta($1,$2,$3)', [id, motivo, req.ctx.usuario.id]);
         await despuesDeAnular(q, req.ctx, v);   // fábricas: la piedra vuelve a su lote
       }
-      await auditar(q, req.ctx, 'venta_anulada', 'venta', id, { motivo, factura: v.numero_factura, total: v.total, estado_previo: v.estado }, { sucursalId: v.sucursal_id });
+      await auditar(q, req.ctx, 'venta_anulada', 'venta', id, { motivo, factura: v.numero_factura, total: v.total, estado_previo: v.estado, ...(autorizo ? { autorizado_por: autorizo.nombre, autorizado_por_id: autorizo.id, autorizacion: autorizo.via } : {}) }, { sucursalId: v.sucursal_id });
       return detalle(q, req.ctx, await cargar(q, req.ctx, id));
     });
     if (out.numero_factura) await vigilarVenta(db, req.ctx, 'anulada', id, { motivo });   // antifraude: factura anulada
@@ -218,6 +272,7 @@ export function rutasVentas({ db, ctxMgr }) {
     const id = validar(uuid, req.params.id);
     const b = validar(z.object({ motivo: z.string().trim().min(3, 'Escribe el motivo').max(300), monto: z.coerce.number().positive().optional() }), req.body);
     const nota = await db.tx(async (q) => {
+      if (!(await usaNotasCredito(q, req.ctx.empresa.id))) throw conflicto('Las notas de crédito no están habilitadas en esta empresa. Si ya se cobró mal, anula la factura.');
       const v = await cargar(q, req.ctx, id, { bloquear: true });
       if (v.estado !== 'pagada') throw conflicto('Solo se emite nota de crédito sobre facturas cobradas y vigentes');
       const previas = Number((await q.query('select coalesce(sum(monto),0) as m from pos.notas_credito where venta_id = $1', [id])).rows[0].m);
@@ -263,7 +318,7 @@ export function rutasVentas({ db, ctxMgr }) {
       `select v.id, v.ticket_dia, v.numero_orden, v.numero_factura, v.estado, v.estado_prep, v.nombre_orden, v.canal, v.tipo_orden, v.total,
               v.created_at, v.fecha_emision, v.es_borrador_fiscal, v.sucursal_id, v.cajero_id, v.cliente_id, v.isv_total, v.descuento, v.cambio,
               v.motivo_anulacion, v.impresiones, v.reimpresiones, s.nombre as sucursal, u.nombre as cajero,
-              t.nombre as cliente, t.rtn as cliente_rtn, t.es_consumidor_final,
+              coalesce(v.cliente_nombre, t.nombre) as cliente, coalesce(v.cliente_rtn, t.rtn) as cliente_rtn, t.es_consumidor_final,
               (select count(*)::int from pos.detalle_venta d where d.venta_id = v.id) as lineas,
               (select coalesce(json_agg(json_build_object('forma', f.nombre, 'tipo', f.tipo, 'monto', p.monto) order by f.orden), '[]'::json)
                  from pos.venta_pagos p join pos.formas_pago f on f.id = p.forma_pago_id where p.venta_id = v.id) as pagos,
@@ -275,7 +330,7 @@ export function rutasVentas({ db, ctxMgr }) {
           and ($5::date is null or (coalesce(v.fecha_emision, v.created_at) at time zone 'America/Tegucigalpa')::date <= $5::date)
           and ($6::uuid is null or v.sucursal_id = $6)
           and ($7::text is null or v.numero_factura ilike '%'||$7||'%' or v.nombre_orden ilike '%'||$7||'%' or v.numero_orden::text = $7 or v.ticket_dia::text = $7
-               or t.nombre ilike '%'||$7||'%' or t.rtn like $7||'%')
+               or coalesce(v.cliente_nombre, t.nombre) ilike '%'||$7||'%' or coalesce(v.cliente_rtn, t.rtn) like $7||'%')
           and ($8::boolean or v.cajero_id = $9 or v.estado = 'abierta')
         order by coalesce(v.fecha_emision, v.created_at) desc limit $10`,
       [req.ctx.empresa.id, suc, f.estado ?? null, f.desde ?? null, f.hasta ?? null, f.sucursal_id ?? null, f.q ?? null, ver, req.ctx.usuario.id, f.limite]);

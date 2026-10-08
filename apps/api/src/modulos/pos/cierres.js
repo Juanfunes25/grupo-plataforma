@@ -211,7 +211,7 @@ export function rutasCierres({ db }) {
     const a = { empresaId: req.ctx.empresa.id, sucursalId: c.sucursal_id, desde: c.fecha_inicio, hasta: c.fecha_fin };
     const [desglose, facturas, turnos] = await Promise.all([
       desgloseCierre(db, a),
-      db.query(`select v.id, v.numero_factura, v.total, v.estado, coalesce(t.nombre, 'Consumidor Final') as cliente, v.fecha_emision from pos.ventas v left join core.terceros t on t.id = v.cliente_id
+      db.query(`select v.id, v.numero_factura, v.total, v.estado, coalesce(v.cliente_nombre, t.nombre, 'Consumidor Final') as cliente, v.fecha_emision from pos.ventas v left join core.terceros t on t.id = v.cliente_id
                  where ${BASE} and v.estado in ('pagada','anulada') order by v.correlativo nulls last, v.fecha_emision`, [a.empresaId, a.sucursalId, a.desde, a.hasta]),
       db.query(`select t.id, t.abierto_at, t.cerrado_at, t.fondo_inicial, u.nombre as cajero from pos.turnos t join core.usuarios u on u.id = t.cajero_id where t.cierre_id = $1 order by t.abierto_at`, [id]),
     ]);

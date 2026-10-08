@@ -104,9 +104,18 @@ test('gelato: cada rol entra a lo suyo y la noche cambia al mediodía (hora de H
   assert.equal(inicioGelato(vis('gerente'), permisosDe('gerente')), 'gelato');
   assert.equal(inicioGelato(vis('bodega'), permisosDe('bodega')), 'despacho');
   assert.equal(inicioGelato(vis('produccion'), permisosDe('produccion')), 'gelato-produccion');
-  assert.equal(inicioGelato(vis('cajero'), permisosDe('cajero')), 'pesaje');
+  const noche = new Date('2026-10-09T02:00:00Z'), dia = new Date('2026-10-08T18:00:00Z');   // 8 p. m. y 12 m. en Honduras
+  assert.equal(inicioGelato(vis('cajero'), permisosDe('cajero'), noche), 'pesaje');
+  assert.equal(inicioGelato(vis('cajero'), permisosDe('cajero'), dia), null);   // de día entra a la caja
+  assert.equal(inicioGelato(modulosVisibles(['reposicion'], permisosDe('cajero')), permisosDe('cajero'), dia), 'pesaje');   // sin POS, siempre pesaje
   assert.equal(inicioGelato(modulosVisibles(['pos'], permisosDe('cajero')), permisosDe('cajero')), null);
   // 09:00 HN = 15:00 UTC → anoche; 15:00 HN = 21:00 UTC → hoy
   assert.deepEqual(nocheDeTrabajo(new Date('2026-10-08T15:00:00Z')), { fecha: '2026-10-07', esHoy: false });
   assert.deepEqual(nocheDeTrabajo(new Date('2026-10-08T21:00:00Z')), { fecha: '2026-10-08', esHoy: true });
+});
+
+test('gelato: un pesaje después de medianoche lleva la fecha del día nuevo (hora de Honduras)', async () => {
+  const { fechaHN } = await import('../src/index.js');
+  assert.equal(fechaHN(new Date('2026-10-09T05:59:00Z')), '2026-10-08');   // 11:59 p. m.
+  assert.equal(fechaHN(new Date('2026-10-09T06:01:00Z')), '2026-10-09');   // 12:01 a. m. = día nuevo
 });

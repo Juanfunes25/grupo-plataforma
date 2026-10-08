@@ -111,6 +111,22 @@ function FichaUsuario({ u, roles, sucursales, soyDueno, yo, onCerrar, onGuardado
   );
 }
 
+/** Un solo PIN por tienda, compartido por todo el personal de esa sucursal (pesaje, recepción y caja). */
+function ModalAccesoTienda({ sucursales, onCerrar, onCreado }) {
+  const [suc, setSuc] = useState('');
+  const [pin, setPin] = useState('');
+  const [ejecutar, ocupado] = useAccion();
+  const s = sucursales.find((x) => x.id === suc);
+  const guardar = async () => { if (await ejecutar(() => post('/admin/usuarios', { nombre: `Tienda ${s.nombre}`, rol: 'cajero', pin, sucursal_ids: [s.id], permisos_extra: [], permisos_quitados: [] }), `Acceso de ${s.nombre} creado`)) onCreado(); };
+  return (
+    <Modal titulo="Crear acceso de tienda" onCerrar={onCerrar} tam="angosto" pie={<button className="btn primario" disabled={ocupado || !s || pin.length < 4} onClick={guardar}>Crear acceso</button>}>
+      <Campo etiqueta="Sucursal"><select value={suc} onChange={(e) => setSuc(e.target.value)}><option value="">Elige la sucursal…</option>{sucursales.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}</select></Campo>
+      <Campo etiqueta="PIN de la tienda (4 a 8 dígitos)" ayuda="No puede repetirse con el de otra persona o tienda."><input inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} maxLength={8} /></Campo>
+      <div className="aviso-caja">Todo el personal de la tienda entra con este mismo PIN y solo ve su sucursal. Por eso lo que se haga (pesaje, recepción, caja) queda registrado a nombre de la tienda y no de una persona. Se crea como «{s ? `Tienda ${s.nombre}` : 'Tienda …'}» con rol Cajero.</div>
+    </Modal>
+  );
+}
+
 export function ContenidoUsuarios() {
   const { usuario, sucursales, contexto } = useSesion();
   const avisar = useAviso();
@@ -119,6 +135,7 @@ export function ContenidoUsuarios() {
   const roles = useDatos(() => get('/admin/roles'), []);
   const [edit, setEdit] = useState(null);
   const [clave, setClave] = useState(null);
+  const [tienda, setTienda] = useState(false);
   const [q, setQ] = useState('');
   const [rolF, setRolF] = useState('');
   const [verInactivos, setVerInactivos] = useState(true);
@@ -140,6 +157,7 @@ export function ContenidoUsuarios() {
     <>
       <div className="fila">
         <button className="btn primario" onClick={nuevo}>+ Nuevo usuario</button>
+        {contexto.modulos.some((m) => m.id === 'rep_pesaje') && <button className="btn" onClick={() => setTienda(true)}>Crear acceso de tienda</button>}
         <input placeholder="Buscar por nombre o correo…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280 }} />
         <select value={rolF} onChange={(e) => setRolF(e.target.value)} style={{ maxWidth: 200 }}><option value="">Todos los roles</option>{roles.datos?.roles.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}</select>
         <label className="fila" style={{ flexDirection: 'row' }}><input type="checkbox" checked={verInactivos} onChange={(e) => setVerInactivos(e.target.checked)} /> Ver inactivos</label>
@@ -169,6 +187,7 @@ export function ContenidoUsuarios() {
         </table></div></div>
       )}</Estado>
       {edit && roles.datos && <FichaUsuario u={edit} roles={roles.datos} sucursales={sucursales} soyDueno={contexto.rol === 'dueno'} yo={usuario.id} onCerrar={() => setEdit(null)} onGuardado={() => { setEdit(null); d.recargar(); }} />}
+      {tienda && <ModalAccesoTienda sucursales={sucursales} onCerrar={() => setTienda(false)} onCreado={() => { setTienda(false); d.recargar(); }} />}
       {clave && <ModalClave u={clave} onCerrar={() => { setClave(null); avisar('Queda registrado en la bitácora'); }} />}
     </>
   );

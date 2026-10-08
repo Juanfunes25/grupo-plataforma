@@ -11,6 +11,7 @@ const vender = async (cli, nombre = 'Naranja Pura', cant = 1, extra = {}) =>
 
 before(async () => {
   t = await iniciar();
+  await t.activarNotasCredito('origen');
   await sembrar(t.db, t.config.semillas, 'origen');
   await t.usuario({ nombre: 'Dueño', email: 'dueno@grupo.hn', password: 'ClaveSegura123', dueno: true });
   await t.usuario({ nombre: 'Gerente', email: 'ger@origen.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'origen', rol: 'gerente' }] });
@@ -49,7 +50,7 @@ test('tercera edad: exige identidad; se puede apagar por empresa', async () => {
   const ok = await dueno.post('/api/pos/ventas', { items: it, tercera_edad: { nombre: 'Don Jose Perez', identidad: '0801-1948-00456' }, cobrar: { pagos } });
   assert.equal(ok.status, 201);
   assert.equal(ok.body.tercera_edad_nombre, 'Don Jose Perez');
-  await t.db.query(`insert into core.config (empresa_id, clave, valor) values ((select id from core.empresas where codigo = 'origen'), 'pos', '{"exigir_tercera_edad": false}')`);
+  await t.db.query(`insert into core.config (empresa_id, clave, valor) values ((select id from core.empresas where codigo = 'origen'), 'pos', '{"exigir_tercera_edad": false}') on conflict (empresa_id, clave) do update set valor = core.config.valor || '{"exigir_tercera_edad": false}'::jsonb`);
   assert.equal((await dueno.post('/api/pos/ventas', { items: it, cobrar: { pagos } })).status, 201);
 });
 

@@ -128,7 +128,9 @@ export function rutasAuth({ db, config, ctxMgr }) {
       await ctxMgr.conEmpresa(req, res, () => {});
       const c = req.ctx;
       const suc = (await db.query('select id, nombre, alias, tipo, color from core.sucursales where empresa_id = $1 and activo order by orden, nombre', [c.empresa.id])).rows;
+      const cfgPos = (await db.query(`select valor from core.config where empresa_id = $1 and clave = 'pos'`, [c.empresa.id])).rows[0]?.valor ?? {};
       salida.contexto = {
+        usar_notas_credito: cfgPos.usar_notas_credito === true,   // el negocio hoy no las usa: la interfaz las oculta
         empresa: { codigo: c.empresa.codigo, nombre: c.empresa.nombre, razon_social: c.empresa.razon_social, color: c.empresa.color, logo: c.empresa.logo, tipo_negocio: c.empresa.tipo_negocio, isv_tasa: c.empresa.isv_tasa },
         rol: c.rol,
         permisos: [...c.permisos],

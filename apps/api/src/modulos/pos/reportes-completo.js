@@ -79,7 +79,7 @@ export async function reporteCompleto(q, { empresaId, sucursalIds = [], sucursal
   const ant = { ...a, desde: sumarDias(desde, -dias), hasta: sumarDias(desde, -1) };
 
   const [ventas, pagos, prods, cats, desc, clientes, notas, gastos, ingresos, kpis, kpisAnt] = await Promise.all([
-    q.query(`select v.id, v.sucursal_id, s.nombre as sucursal, v.numero_factura, v.correlativo, v.estado, v.cliente_id, t.nombre as cliente, t.rtn, t.es_consumidor_final,
+    q.query(`select v.id, v.sucursal_id, s.nombre as sucursal, v.numero_factura, v.correlativo, v.estado, v.cliente_id, coalesce(v.cliente_nombre, t.nombre) as cliente, coalesce(v.cliente_rtn, t.rtn) as rtn, t.es_consumidor_final,
                     v.cajero_id, coalesce(u.nombre, 'Sin cajero') as cajero, v.subtotal_exento, v.subtotal_exonerado, v.subtotal_gravado_15, v.subtotal_gravado_18,
                     v.descuento, v.isv_total, v.total, v.es_borrador_fiscal as borrador, v.fecha_emision, v.motivo_anulacion,
                     ${FECHA('v.fecha_emision')}::text as fecha, extract(hour from v.fecha_emision at time zone 'America/Tegucigalpa')::int as hora,
@@ -101,9 +101,9 @@ export async function reporteCompleto(q, { empresaId, sucursalIds = [], sucursal
     q.query(`select coalesce(nullif(d.descuento_porcentaje, 0), v.descuento_porcentaje)::int as porcentaje, count(distinct v.id)::int as facturas, sum(d.descuento)::numeric as monto,
                     sum(d.monto)::numeric as ventas, sum(d.cantidad)::numeric as unidades
                from pos.detalle_venta d join pos.ventas v on v.id = d.venta_id where v.estado = 'pagada' and d.descuento > 0 and ${filtroVentas()} group by 1 order by 1`, args),
-    q.query(`select t.nombre, max(t.rtn) as rtn, count(*)::int as facturas, sum(v.total)::numeric as total, max(v.fecha_emision) as ultima
+    q.query(`select max(coalesce(v.cliente_nombre, t.nombre)) as nombre, max(coalesce(v.cliente_rtn, t.rtn)) as rtn, count(*)::int as facturas, sum(v.total)::numeric as total, max(v.fecha_emision) as ultima
                from pos.ventas v join core.terceros t on t.id = v.cliente_id where v.estado = 'pagada' and not t.es_consumidor_final and ${filtroVentas()}
-              group by t.id, t.nombre order by 4 desc limit 50`, args),
+              group by t.id order by 4 desc limit 50`, args),
     q.query(`select nc.numero_nota, v.numero_factura, s.nombre as sucursal, v.sucursal_id, nc.created_at as fecha, nc.monto, nc.motivo, coalesce(u.nombre, '') as usuario,
                     (v.estado = 'anulada') as venta_anulada, v.total as venta_total, v.isv_total as venta_isv, v.es_borrador_fiscal as borrador
                from pos.notas_credito nc join pos.ventas v on v.id = nc.venta_id join core.sucursales s on s.id = v.sucursal_id left join core.usuarios u on u.id = nc.usuario_id

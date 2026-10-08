@@ -73,7 +73,7 @@ export function rutasReportes({ db }) {
     const f = validar(rango, req.query);
     const hoy = fechaHN();
     const { rows } = await db.query(
-      `select ${FECHA('v.fecha_emision')}::text as fecha, v.numero_factura, v.estado, s.nombre as sucursal, coalesce(c.nombre, 'Consumidor Final') as cliente, c.rtn,
+      `select ${FECHA('v.fecha_emision')}::text as fecha, v.numero_factura, v.estado, s.nombre as sucursal, coalesce(v.cliente_nombre, c.nombre, 'Consumidor Final') as cliente, coalesce(v.cliente_rtn, c.rtn) as rtn,
               v.subtotal_exento as exento, v.subtotal_exonerado as exonerado, v.subtotal_gravado_15 as gravado_15, v.subtotal_gravado_18 as gravado_18,
               v.isv_total as isv, v.descuento, v.total, v.es_borrador_fiscal as borrador
          from pos.ventas v join core.sucursales s on s.id = v.sucursal_id left join core.terceros c on c.id = v.cliente_id

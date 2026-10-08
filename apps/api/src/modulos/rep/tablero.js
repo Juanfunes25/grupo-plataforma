@@ -9,20 +9,21 @@ import { PERM_ADMIN, empresaDe, listarSucursales } from './util.js';
 import { consumoDeRango, opcional, rotacionDeSabores } from './datos.js';
 import { planProduccionDeDatos } from '../prod/plan.js';
 
-/** Antes de esta hora una tienda que todavía no pesó está «pendiente» (amarillo); después, «falta» (rojo). */
-export const HORA_LIMITE_PESAJE = 22;
+/** Hora (HN) desde la que se arma el despacho: antes de esta hora la noche anterior todavía se considera abierta. */
+export const HORA_ARMADO_DESPACHO = 6;
 const DIAS_RACHA = 7;
 const diaCorto = (f) => { const [y, m, d] = f.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }); };
 const dif = (a, b) => Math.round((Date.parse(`${a}T00:00:00Z`) - Date.parse(`${b}T00:00:00Z`)) / 86400000);
 
 /**
- * Estado de una tienda en la noche: 'completo' (pesó todo) · 'parcial' (pesó parte) · 'pendiente' (aún es temprano) · 'falta'.
+ * Estado de una tienda en la noche: 'completo' (pesó todo) · 'parcial' (pesó parte) · 'pendiente' (la noche sigue abierta) · 'falta'.
+ * Sin hora fija: «falta» solo cuando se llega al momento de armar el despacho (la mañana siguiente, noche ya cerrada) sin pesaje.
  * Las que no entran al análisis (la fábrica Los Andes) nunca se pintan de rojo: se informan en neutro.
  */
-export function estadoDeTienda({ pesados, esperados, esHoy, hora, fuera = false }) {
+export function estadoDeTienda({ pesados, esperados, abierta, fuera = false }) {
   if (pesados > 0) return esperados > 0 && pesados < esperados ? 'parcial' : 'completo';
   if (fuera) return 'opcional';
-  return esHoy && hora < HORA_LIMITE_PESAJE ? 'pendiente' : 'falta';
+  return abierta ? 'pendiente' : 'falta';
 }
 
 export function rutasTablero({ db }) {
@@ -35,14 +36,18 @@ export function rutasTablero({ db }) {
     const hora = horaDeHN(ahora);
     const fecha = req.query.fecha ? validar(fechaISO, req.query.fecha) : nocheDeTrabajo(ahora).fecha;
     const esHoy = fecha === hoy;
+    // La noche está abierta mientras sea hoy, o de madrugada (antes de que se arme el despacho).
+    const abierta = esHoy || (fecha === sumarDias(hoy, -1) && hora < HORA_ARMADO_DESPACHO);
     const desdeRacha = sumarDias(fecha, -(DIAS_RACHA - 1));
 
     const [sucursales, esperadosF, pesajesF, despachos, pedidos, porRecibir, discrepancias, rotacion, bajoMinimoF, incidencias, mantenimiento, consumo, produccionHoy] = await Promise.all([
       listarSucursales(db, req.ctx),
       db.query(`select ss.sucursal_id, count(*)::int as n from rep.sucursal_sabores ss join rep.sabores sa on sa.id = ss.sabor_id
                  where ss.empresa_id = $1 and ss.activo and sa.activo group by ss.sucursal_id`, [emp]).then((x) => x.rows),
-      db.query(`select sucursal_id, fecha::text as fecha, count(distinct sabor_id)::int as sabores, max(created_at) as reportado_en
-                  from rep.pesajes where empresa_id = $1 and fecha between $2 and $3 group by sucursal_id, fecha`, [emp, desdeRacha, fecha]).then((x) => x.rows),
+      // Un pesaje hecho después de la medianoche lleva la fecha del día nuevo; si es de madrugada (antes del mediodía) sigue siendo el de esa noche.
+      db.query(`select sucursal_id, (case when fecha > $3::date then $3::date else fecha end)::text as fecha, count(distinct sabor_id)::int as sabores, max(created_at) as reportado_en
+                  from rep.pesajes where empresa_id = $1 and (fecha between $2 and $3 or (fecha = $3::date + 1 and created_at < ((($3::date + 1)::timestamp + interval '18 hours') at time zone 'UTC')))
+                 group by sucursal_id, 2`, [emp, desdeRacha, fecha]).then((x) => x.rows),
       db.query(`select d.id, d.sucursal_id, d.categoria, d.panas, d.estado, d.discrepancia::int as discrepancia, sa.nombre as sabor_nombre
                   from rep.despachos d join rep.sabores sa on sa.id = d.sabor_id where d.empresa_id = $1 and d.fecha = $2`, [emp, fecha]).then((x) => x.rows),
       db.query(`select p.sucursal_id, p.estado, count(i.id) filter (where not i.enviado)::int as sin_enviar, count(i.id)::int as items
@@ -78,7 +83,7 @@ export function rutasTablero({ db }) {
       const ped = pedidos.filter((p) => p.sucursal_id === s.id);
       return {
         id: s.id, nombre: s.nombre, tipo: s.tipo, fuera_de_analisis: s.fuera_de_analisis,
-        estado: estadoDeTienda({ pesados, esperados: esperados.get(s.id) ?? 0, esHoy, hora, fuera: s.fuera_de_analisis }),
+        estado: estadoDeTienda({ pesados, esperados: esperados.get(s.id) ?? 0, abierta, fuera: s.fuera_de_analisis }),
         pesados, esperados: esperados.get(s.id) ?? 0, reportado_en: deNoche?.reportado_en ?? null,
         ultima_noche: ultima, noches_sin_reporte: ultima ? dif(fecha, ultima) : null, noches_con_reporte_7d: filas.length,
         rojas: ds.filter((d) => d.categoria === 'roja' && d.estado !== 'no_disponible').length,
@@ -138,7 +143,7 @@ export function rutasTablero({ db }) {
     if (mantenimiento[0]?.n) alertas.push({ id: 'mantenimiento', tono: 'aviso', titulo: `${mantenimiento[0].n} mantenimiento${mantenimiento[0].n === 1 ? '' : 's'} pendiente${mantenimiento[0].n === 1 ? '' : 's'}`, detalle: 'Equipos y checklist.', ir: 'mantenimiento' });
 
     res.json({
-      hoy, hora, noche: { fecha, esHoy, hora_limite_pesaje: HORA_LIMITE_PESAJE },
+      hoy, hora, noche: { fecha, esHoy, abierta },
       semaforo: { completo: cuenta('completo'), parcial: cuenta('parcial'), pendiente: cuenta('pendiente'), falta: cuenta('falta'), opcional: cuenta('opcional'), total: tiendas.length },
       tiendas, despacho, producir,
       por_recibir: porRecibir.map((d) => ({ sucursal: d.sucursal_nombre, sabor: d.sabor_nombre, panas: d.panas, enviado_en: d.enviado_en })),

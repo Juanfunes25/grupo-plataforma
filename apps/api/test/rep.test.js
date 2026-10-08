@@ -327,3 +327,25 @@ test('tablero de gelato: semáforo por tienda, solo para administración', async
   assert.ok(r.body.despacho.sabores_totales >= 1 && Array.isArray(r.body.consumo));
   assert.equal((await ger.get('/api/rep/tablero')).status, 200);
 });
+
+test('tablero: «falta» solo con la noche cerrada; un pesaje de madrugada cuenta para la noche anterior; PIN de tienda único', async () => {
+  const { estadoDeTienda } = await import('../src/modulos/rep/tablero.js');
+  assert.equal(estadoDeTienda({ pesados: 0, esperados: 35, abierta: true }), 'pendiente');   // de noche nunca es rojo
+  assert.equal(estadoDeTienda({ pesados: 0, esperados: 35, abierta: false }), 'falta');
+  assert.equal(estadoDeTienda({ pesados: 0, esperados: 35, abierta: false, fuera: true }), 'opcional');
+  // pesaje a las 12:30 a. m. (06:30 UTC): fecha del día nuevo, pero la noche anterior lo ve como suyo
+  const f = ayer(60), sig = ayer(59);
+  await t.db.query(`insert into rep.pesajes (empresa_id, sucursal_id, sabor_id, fecha, gramos, created_at)
+                    values ((select id from core.empresas where codigo='italo'), $1, $2, $3, 1000, ($3::date + time '06:30') at time zone 'UTC')`, [sucProceres, S.MANGO.id, sig]);
+  const r = await dueno.get(`/api/rep/tablero?fecha=${f}`);
+  assert.equal(r.body.tiendas.find((x) => x.id === sucProceres).pesados, 1);
+  // acceso de tienda: un solo PIN compartido, único en la empresa, con la sucursal fija
+  const crear = (nombre, pin, suc) => dueno.post('/api/admin/usuarios', { nombre, rol: 'cajero', pin, sucursal_ids: [suc] });
+  assert.equal((await crear('Tienda Mackey (acceso)', '8765', sucMackey)).status, 201);
+  assert.equal((await crear('Tienda Próceres (acceso)', '8765', sucProceres)).status, 409);   // PIN repetido
+  const tk = cliente(await t.loginPin('italo', '8765'), 'italo');
+  assert.equal((await tk.post('/api/rep/pesajes/lote', { sucursal_id: sucProceres, fecha: HOY, pesajes: [{ sabor_id: S.MANGO.id, gramos: 900 }] })).status, 403);   // solo su sucursal
+  assert.equal((await tk.post('/api/rep/pesajes/lote', { sucursal_id: sucMackey, fecha: HOY, pesajes: [{ sabor_id: S.CAFFE.id, gramos: 900 }] })).status, 201);
+  const aud = (await t.db.query(`select count(*)::int as n from core.auditoria where accion = 'pesaje.reporte' and sucursal_id = $1 and usuario_nombre = 'Tienda Mackey (acceso)'`, [sucMackey])).rows[0].n;
+  assert.ok(aud >= 1);   // queda registrado a nombre de la tienda y con la sucursal
+});

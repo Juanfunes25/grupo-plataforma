@@ -26,8 +26,13 @@ export function nocheDeTrabajo(d = new Date(), horaCambio = HORA_CAMBIO_DE_NOCHE
  * `modulos` son los módulos VISIBLES del usuario (ids o { id }). `null` si no maneja gelato: entonces rige el inicio normal.
  */
 const ENTRADAS = [['rep:costeo', 'rep_tablero', 'gelato'], ['rep:despachar', 'rep_despacho', 'despacho'], ['rep:producir', 'rep_produccion', 'gelato-produccion'], ['rep:pesar', 'rep_pesaje', 'pesaje']];
-export function inicioGelato(modulos, permisos) {
+/** Hora (HN) desde la que el cajero de tienda entra al pesaje en vez de a la caja. */
+export const HORA_PESAJE_TIENDA = 17;
+export function inicioGelato(modulos, permisos, ahora = new Date()) {
   const ids = new Set((modulos ?? []).map((m) => (typeof m === 'string' ? m : m.id)));
   const tiene = (p) => (permisos instanceof Set ? permisos.has(p) : (permisos ?? []).includes(p));
-  return ENTRADAS.find(([p, id]) => tiene(p) && ids.has(id))?.[2] ?? null;
+  const ruta = ENTRADAS.find(([p, id]) => tiene(p) && ids.has(id))?.[2] ?? null;
+  // La tienda cobra de día y pesa de noche: antes de las 5 p. m. entra a la caja (el pesaje queda a un toque en el menú).
+  if (ruta === 'pesaje' && ids.has('pos') && tiene('pos:vender') && horaDeHN(ahora) < HORA_PESAJE_TIENDA) return null;
+  return ruta;
 }
