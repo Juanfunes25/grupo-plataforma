@@ -4,6 +4,7 @@ import { migrar } from './db/migrar.js';
 import { crearApp } from './app.js';
 import { sembrarSiVacio } from './modulos/rinv/siembra.js';
 import { sembrarCatalogoItaloSiVacio } from './db/italo-catalogo.js';
+import { sembrarEcostoneSiVacio } from './db/ecostone-datos.js';
 
 const config = leerConfig();
 validarConfig(config);
@@ -18,6 +19,9 @@ await sembrarSiVacio(db).catch((e) => console.error('[rinv] no se pudo sembrar:'
 
 // Catálogo y clientes reales de Italo (export de WizPOS): se cargan solos la primera vez, si Italo aún no tiene productos.
 await sembrarCatalogoItaloSiVacio(db, { log: console.log }).catch((e) => console.error('[italo] no se pudo cargar el catálogo:', e.message));
+
+// Datos reales de EcoStone (piedra, insumos, recetas, clientes): se cargan solos la primera vez, si EcoStone aún no tiene productos.
+await sembrarEcostoneSiVacio(db, { log: console.log }).catch((e) => console.error('[ecostone] no se pudieron cargar los datos:', e.message));
 
 const app = crearApp({ db, config });
 const servidor = app.listen(config.puerto, () => console.log(`[api] escuchando en :${config.puerto}`));

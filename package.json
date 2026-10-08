@@ -23,6 +23,7 @@
     "demo": "node apps/api/src/db/demo.js",
     "crear-dueno": "node apps/api/src/db/crear-dueno.js",
     "importar:italo": "node apps/api/src/migracion/italo-facturacion.js",
-    "seed:italo": "node apps/api/src/db/italo-catalogo.js"
+    "seed:italo": "node apps/api/src/db/italo-catalogo.js",
+    "seed:ecostone": "node apps/api/src/db/ecostone-datos.js"
   }
 }
