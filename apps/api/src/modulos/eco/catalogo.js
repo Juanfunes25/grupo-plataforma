@@ -67,13 +67,14 @@ export function rutasCatalogoEco({ db }) {
       antes = (await q.query('select precio, nombre from pos.productos where id = $1 and empresa_id = $2', [id, ctx.empresa.id])).rows[0];
       if (!antes) throw noEncontrado('Producto no encontrado');
       await q.query(
-        `update pos.productos set codigo=$3,nombre=$4,descripcion=$5,categoria_id=$6,precio=$7,impuesto_tasa=$8,unidad=$9::text,unidad_venta=$9::text,es_piedra=$10,modelo=$11,color=$12,
+        // La unidad del POS queda en 'unidad' (cantidades enteras, sin modal de peso); la unidad real de venta va en unidad_venta.
+        `update pos.productos set codigo=$3,nombre=$4,descripcion=$5,categoria_id=$6,precio=$7,impuesto_tasa=$8,unidad='unidad',unidad_venta=$9::text,es_piedra=$10,modelo=$11,color=$12,
                 m2_por_caja=$13,piezas_por_m2=$14,stock_minimo=$15,activo=$16 where id=$1 and empresa_id=$2`, [id, ctx.empresa.id, ...vals]);
       p = { id };
     } else {
       p = (await q.query(
         `insert into pos.productos (empresa_id,codigo,nombre,descripcion,categoria_id,precio,impuesto_tasa,unidad,unidad_venta,es_piedra,modelo,color,m2_por_caja,piezas_por_m2,stock_minimo,activo)
-         values ($1,$2,$3,$4,$5,$6,$7,$8::text,$8::text,$9,$10,$11,$12,$13,$14,$15) returning id`,
+         values ($1,$2,$3,$4,$5,$6,$7,'unidad',$8::text,$9,$10,$11,$12,$13,$14,$15) returning id`,
         [ctx.empresa.id, b.codigo, b.nombre, b.descripcion, catId, b.precio, b.impuesto_tasa, b.unidad_venta, esPiedra, b.modelo, b.color,
           esPiedra ? b.m2_por_caja : null, esPiedra ? b.piezas_por_m2 : null, b.stock_minimo_m2 ?? 0, b.activo])).rows[0];
     }
@@ -171,6 +172,10 @@ export function rutasCatalogoEco({ db }) {
           and ($1 = '' or t.nombre ilike '%'||$1||'%' or t.rtn like $1||'%' or t.telefono like '%'||$1||'%' or t.correo ilike '%'||$1||'%')
         order by t.nombre limit 8`, [q]);
     res.json(rows);
+  });
+
+  r.get('/formas-pago', leer, async (req, res) => {
+    res.json((await db.query('select id, nombre, tipo from pos.formas_pago where empresa_id = $1 and activo order by orden', [req.ctx.empresa.id])).rows);
   });
 
   r.get('/parametros', leer, async (req, res) => res.json(await parametros(db, req.ctx.empresa.id)));

@@ -35,7 +35,7 @@ export function rutasCatalogo({ db }) {
     const eid = req.ctx.empresa.id;
     const [cats, prods, pg, grupos, mods, fp, suc, pe, cfg] = await Promise.all([
       db.query('select id, nombre, color, orden from pos.categorias where empresa_id = $1 and activo order by orden, nombre', [eid]),
-      db.query(`select id, codigo, codigo_barras, nombre, descripcion, categoria_id, precio, impuesto_tasa, exento, tipo, unidad, color, imagen, tiempo_prep_min, disponible
+      db.query(`select id, codigo, codigo_barras, nombre, descripcion, categoria_id, precio, impuesto_tasa, exento, tipo, unidad, unidad_venta, color, imagen, tiempo_prep_min, disponible
                   from pos.productos where empresa_id = $1 and activo order by orden, nombre`, [eid]),
       db.query('select producto_id, grupo_id from pos.producto_grupos pg join pos.productos p on p.id = pg.producto_id where p.empresa_id = $1 order by pg.orden', [eid]),
       db.query('select id, nombre, min_sel, max_sel from pos.modificador_grupos where empresa_id = $1 and activo order by orden, nombre', [eid]),
@@ -62,7 +62,8 @@ export function rutasCatalogo({ db }) {
         }];
       })),
       // Reglas de caja de la empresa (con los valores de fábrica de Italo).
-      config: { umbral_rtn: Number(c.umbral_rtn) > 0 ? Number(c.umbral_rtn) : UMBRAL_RTN_OBLIGATORIO, exigir_tercera_edad: c.exigir_tercera_edad !== false },
+      config: { umbral_rtn: Number(c.umbral_rtn) > 0 ? Number(c.umbral_rtn) : UMBRAL_RTN_OBLIGATORIO, exigir_tercera_edad: c.exigir_tercera_edad !== false,
+        rtn_bloqueante: c.rtn_bloqueante !== false, permitir_sin_stock: c.permitir_sin_stock === true },
     });
   });
 

@@ -5,7 +5,7 @@ import { Modal } from '../ui/kit.jsx';
 const redondear = (n) => Math.round(n * 100) / 100;
 
 /** Cobro con pagos mixtos. Calcula falta y cambio en vivo; el servidor valida de nuevo. */
-export default function CobroModal({ total, formas, cliente, onCobrar, onCerrar, ocupado, error, requiereRtn = false, umbralRtn = 10000 }) {
+export default function CobroModal({ total, formas, cliente, onCobrar, onCerrar, ocupado, error, requiereRtn = false, avisoRtn = false, umbralRtn = 10000 }) {
   const efectivo = formas.find((f) => f.tipo === 'efectivo');
   const [pagos, setPagos] = useState([]);                 // [{forma_pago_id, monto, referencia}]
   const [actual, setActual] = useState(efectivo?.id ?? formas[0]?.id);
@@ -41,6 +41,7 @@ export default function CobroModal({ total, formas, cliente, onCobrar, onCerrar,
         <button className="btn primario grande" disabled={!valido || ocupado} onClick={() => onCobrar(pagos)}>{ocupado ? 'Cobrando…' : `Confirmar cobro ${lempiras(total)} (Enter)`}</button>
       </>}>
       {requiereRtn && <div className="aviso-caja mal" role="alert">Esta venta supera L {umbralRtn.toLocaleString('es-HN')}: hace falta el RTN del cliente antes de cobrar. Cierra esta ventana y elige o crea el cliente.</div>}
+      {avisoRtn && <div className="aviso-caja" role="note">Recordatorio: esta venta supera L {umbralRtn.toLocaleString('es-HN')} y el cliente no tiene RTN. Pídelo si puedes; puedes cobrar igual (queda constancia para el administrador).</div>}
       <div className="rejilla cols-3">
         <div className="kpi acento"><div className="etq">Total a cobrar</div><div className="val">{lempiras(total)}</div><div className="sub">{cliente?.nombre ?? 'Consumidor final'}{cliente?.rtn ? ` · RTN ${cliente.rtn}` : ''}</div></div>
         <div className="kpi"><div className="etq">Recibido</div><div className="val">{lempiras(recibido)}</div></div>

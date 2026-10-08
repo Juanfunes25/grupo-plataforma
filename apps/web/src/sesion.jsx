@@ -8,6 +8,10 @@ export const useSesion = () => useContext(Ctx);
  * Sesión = token + empresa activa + contexto (rol, permisos, módulos, sucursales).
  * El token vale para todas las empresas del usuario (salvo el de PIN, que es de una sola).
  */
+// EcoStone llama «Venta Directa» al mostrador (nombre por empresa; el catálogo de módulos compartido no cambia).
+const NOMBRE_POS = { ecostone: 'Venta Directa' };
+const renombrar = (ms, emp) => (NOMBRE_POS[emp] ? ms.map((m) => (m.id === 'pos' ? { ...m, nombre: NOMBRE_POS[emp] } : m)) : ms);
+
 export function ProveedorSesion({ children }) {
   const [guardada, setGuardada] = useState(() => almacen.leer());
   const [yo, setYo] = useState(null);                 // /auth/yo
@@ -69,7 +73,7 @@ export function ProveedorSesion({ children }) {
     return {
       autenticado: Boolean(guardada), cargando, yo, usuario: yo?.usuario, via: guardada?.via,
       empresa, contexto: yo?.contexto, empresas: yo?.empresas ?? [], permisos,
-      puede: (p) => permisos.has(p), modulos: yo?.contexto?.modulos ?? [],
+      puede: (p) => permisos.has(p), modulos: renombrar(yo?.contexto?.modulos ?? [], yo?.contexto?.empresa?.codigo),
       sucursales, sucursalId, sucursal: sucursales.find((s) => s.id === sucursalId) ?? null,
       elegirSucursal, entrar, salir, cambiarEmpresa, recargar: () => cargar(empresa),
     };

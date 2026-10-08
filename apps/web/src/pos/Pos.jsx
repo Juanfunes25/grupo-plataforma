@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AvisoSinStock from '../eco/AvisoSinStock.jsx';
 import { MOTIVOS_DESCARTE, MOTIVOS_REIMPRESION, OPCIONES_DESCUENTO, UMBRAL_RTN_OBLIGATORIO, calcularTotales, identidadValida, lempiras, nombreCortoSucursal, requiereRtn as faltaRtn } from '@grupo/shared';
 import { get, patch, post, put, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
@@ -53,6 +54,7 @@ export default function Pos() {
   const [cobrando, setCobrando] = useState(false);
   const [abiertas, setAbiertas] = useState(0);
   const [toast, setToast] = useState('');
+  const [avisoStock, setAvisoStock] = useState(null);   // fábricas: faltan existencias, pide confirmación
 
   const empresa = contexto.empresa.codigo;
 
@@ -139,7 +141,9 @@ export default function Pos() {
   const terceraEdadLista = orden.tercera_edad.nombre.trim().length >= 3 && identidadValida(orden.tercera_edad.identidad);
   const exigeCarne = cat?.config?.exigir_tercera_edad !== false;
   const faltaCarne = hayTerceraEdad && exigeCarne && !terceraEdadLista;
-  const necesitaRtn = faltaRtn(totales.total, orden.cliente, umbral);
+  const sinRtn = faltaRtn(totales.total, orden.cliente, umbral);
+  const rtnBloquea = cat?.config?.rtn_bloqueante !== false;   // EcoStone/DISERCO: solo avisa y deja constancia
+  const necesitaRtn = sinRtn && rtnBloquea;
   const fiscal = cat && sucursal ? cat.fiscal[sucursal.id] : null;
   const sinPunto = Boolean(cat && sucursal && !fiscal);
   const bloqueoFiscal = sinPunto || Boolean(fiscal?.agotado || fiscal?.vencido);
@@ -329,14 +333,14 @@ export default function Pos() {
   };
 
   // ── Cobro ────────────────────────────────────────────────────────────────
-  const confirmarPago = async (pagos) => {
+  const confirmarPago = async (pagos, confirmarSinStock = false) => {
     if (cobroBloqueado && !modal) return;
     setCobrando(true); setErrCobro(''); setError('');
     try {
       clearTimeout(timerRef.current);
       const id = await guardarEnCola();            // el total cobrado es SIEMPRE el que ve el cajero
       if (!id) throw new Error('No se pudo guardar la orden antes de cobrar');
-      const venta = await post(`/pos/ventas/${id}/cobrar`, { pagos });
+      const venta = await post(`/pos/ventas/${id}/cobrar`, confirmarSinStock ? { pagos, confirmar_sin_stock: true } : { pagos });
       ultimaRef.current = { cliente: orden.cliente, lineas: orden.lineas };
       pendienteRef.current = false; ventaIdRef.current = null;
       setModal(null); setOrden(vacio());
@@ -347,7 +351,10 @@ export default function Pos() {
         imprimirTicket(venta.id).then(() => setRecibo((x) => (x && x.id === venta.id ? { ...x, impresa: true } : x)))
           .catch((e) => setError(`La factura se emitió, pero no se pudo imprimir: ${e.message}`));
       }
-    } catch (e) { setErrCobro(e.message); setError(e.message); } finally { setCobrando(false); }
+    } catch (e) {
+      if (e.codigo === 'SIN_STOCK' && e.faltantes?.length) { setErrCobro(''); setError(''); setAvisoStock({ faltantes: e.faltantes, pagos, bloqueante: cat?.config?.permitir_sin_stock !== true }); }
+      else { setErrCobro(e.message); setError(e.message); }
+    } finally { setCobrando(false); }
   };
   // Un solo toque: Efectivo y Tarjeta cobran de inmediato el total exacto. Dividir pagos / transferencia / cambio van en "Más formas de pago".
   const pagoInstantaneo = (tipo) => {
@@ -407,7 +414,7 @@ export default function Pos() {
             return (
               <button key={p.id} className={`pos-prod ${p.disponible ? '' : 'agotado'}`} style={{ '--cc': c || 'var(--acento)' }} onClick={() => tocar(p)}>
                 <span className="pn">{p.nombre}</span>
-                <span className="pp">{lempiras(p.precio)}{p.unidad !== 'unidad' ? ` / ${p.unidad}` : ''}</span>
+                <span className="pp">{lempiras(p.precio)}{p.unidad !== 'unidad' ? ` / ${p.unidad}` : p.unidad_venta ? ` / ${p.unidad_venta === 'm2' ? 'm²' : p.unidad_venta}` : ''}</span>
                 {!p.disponible && <span className="chip mal">Agotado</span>}
                 {p.disponible && p.grupo_ids.length > 0 && <span className="pm">+ opciones</span>}
               </button>
@@ -504,6 +511,7 @@ export default function Pos() {
           ))}
           <div className="fila espacio"><small>ISV incluido</small><small className="num">{lempiras(totales.isv_total)}</small></div>
           <div className="fila espacio"><span className="titulo" style={{ fontSize: '1.2rem' }}>Total</span><b className="num pos-total">{lempiras(totales.total)}</b></div>
+          {sinRtn && !rtnBloquea && <small style={{ color: 'var(--aviso)' }}>Recordatorio: venta mayor a L {umbral.toLocaleString('es-HN')} sin RTN del cliente (no bloquea el cobro; queda en la bitácora). <button className="btn chico" style={{ marginLeft: 6 }} onClick={() => setModal({ tipo: 'cliente' })}>Elegir cliente</button></small>}
           {necesitaRtn && <small style={{ color: 'var(--aviso)' }}>Se necesita el RTN del cliente para cobrar (venta mayor a L {umbral.toLocaleString('es-HN')}). <button className="btn chico" style={{ marginLeft: 6 }} onClick={() => setModal({ tipo: 'cliente' })}>Elegir cliente</button></small>}
         </div>
 
@@ -539,12 +547,13 @@ export default function Pos() {
       {modal?.tipo === 'abiertas' && <AbiertasModal sucursalId={sucursal.id} actualId={orden.id} onCerrar={() => setModal(null)} onElegir={abrirOrden} />}
       {modal?.tipo === 'movimiento' && <MovimientoCaja sucursal={sucursal} onCerrar={() => setModal(null)} onListo={() => { setModal(null); cargarTurno(); }} />}
       {modal?.tipo === 'cerrar' && <CerrarTurno sucursal={sucursal} turno={turno} resumen={resumenTurno} onCerrar={() => setModal(null)} onCerrado={() => { setModal(null); setTurno(null); reiniciar(); cargarTurno(); }} />}
-      {modal?.tipo === 'cobro' && <CobroModal total={totales.total} formas={cat.formas_pago} cliente={orden.cliente} ocupado={cobrando} error={errCobro} requiereRtn={necesitaRtn} umbralRtn={umbral} onCerrar={() => setModal(null)} onCobrar={confirmarPago} />}
+      {modal?.tipo === 'cobro' && <CobroModal total={totales.total} formas={cat.formas_pago} cliente={orden.cliente} ocupado={cobrando} error={errCobro} requiereRtn={necesitaRtn} avisoRtn={sinRtn && !rtnBloquea} umbralRtn={umbral} onCerrar={() => setModal(null)} onCobrar={confirmarPago} />}
       {modal?.tipo === 'descartar' && (
         <MotivoModal titulo="Descartar la orden" texto="¿Por qué se descarta esta orden? Los productos se pierden y queda registrado." opciones={MOTIVOS_DESCARTE} etiquetaBoton="Descartar orden" peligro
           onCerrar={() => setModal(null)} onListo={descartarConMotivo} />
       )}
 
+      {avisoStock && <AvisoSinStock faltantes={avisoStock.faltantes} bloqueante={avisoStock.bloqueante} onCancelar={() => setAvisoStock(null)} onContinuar={() => { const p = avisoStock.pagos; setAvisoStock(null); confirmarPago(p, true); }} />}
       {recibo && (
         <Modal titulo={recibo.es_borrador_fiscal ? 'Orden registrada' : 'Factura emitida'} onCerrar={() => { setRecibo(null); buscadorRef.current?.focus(); }} tam="angosto"
           pie={<><button className="btn" onClick={() => repetirUltima()}>Repetir pedido</button><button className="btn primario grande" autoFocus onClick={() => { setRecibo(null); buscadorRef.current?.focus(); }}>Nueva venta</button></>}>
@@ -554,6 +563,8 @@ export default function Pos() {
             <small>Orden #{recibo.ticket_dia}{recibo.nombre_orden ? ` · ${recibo.nombre_orden}` : ''} · {recibo.cliente?.nombre ?? 'Consumidor Final'}</small>
             <small className="num">Factura {recibo.numero_factura}</small>
             {recibo.es_borrador_fiscal && <span className="chip aviso" style={{ justifySelf: 'center' }}>Sin validez fiscal (CAI pendiente)</span>}
+            {recibo.aviso_rtn && <div className="aviso-caja mal">{recibo.aviso_rtn}</div>}
+            {recibo.faltantes_inventario?.length > 0 && <div className="aviso-caja mal">Se facturó sin existencia suficiente: {recibo.faltantes_inventario.map((f) => f.producto).join(', ')}. Revisa el inventario.</div>}
           </div>
           <div className="fila" style={{ justifyContent: 'center' }}>
             <button className="btn" disabled={ocupado} onClick={() => (recibo.impresa ? setModal({ tipo: 'reimprimir' }) : imprimirRecibo())}><Icono n="impresora" tam={16} /> {recibo.impresa ? 'Reimprimir ticket' : 'Imprimir ticket'}</button>

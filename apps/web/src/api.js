@@ -32,7 +32,7 @@ export async function api(ruta, { metodo = 'GET', cuerpo, empresa, sinSesion = f
   try { datos = await r.json(); } catch { /* sin cuerpo */ }
   if (!r.ok) {
     if (r.status === 401 && !sinSesion) window.dispatchEvent(new Event('grupo:sesion-vencida'));
-    throw new ErrorApi(datos?.error || `Error ${r.status}`, r.status, datos?.codigo);
+    throw Object.assign(new ErrorApi(datos?.error || `Error ${r.status}`, r.status, datos?.codigo), datos?.faltantes ? { faltantes: datos.faltantes } : {});
   }
   return datos;
 }

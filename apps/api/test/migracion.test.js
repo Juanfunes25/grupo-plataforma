@@ -90,13 +90,13 @@ test('ensayo: informa lo que haría pero NO guarda nada', async () => {
   assert.equal(r.tablas.ventas.nuevos, 4);          // 3 pagadas + 1 anulada (la abierta no se importa)
   assert.equal(r.tablas.productos.nuevos, 3);
   assert.equal(await cuenta(`select count(*) n from pos.ventas where origen_legado is not null`), 0);
-  assert.equal(await cuenta(`select count(*) n from pos.productos`), 0);
+  assert.equal(await cuenta(`select count(*) n from pos.productos p join core.empresas e on e.id = p.empresa_id where e.codigo = 'italo'`), 0);
 });
 
 test('aplicar: importa catálogo, clientes, ventas, pagos, cierres, notas y archiva la bitácora', async () => {
   const r = await importar({ aplicar: true });
   assert.equal(r.modo, 'APLICADO');
-  assert.equal(await cuenta(`select count(*) n from pos.productos`), 3);
+  assert.equal(await cuenta(`select count(*) n from pos.productos p join core.empresas e on e.id = p.empresa_id where e.codigo = 'italo'`), 3);
   assert.equal(await cuenta(`select count(*) n from pos.categorias where nombre in ('Helados','Bebidas')`), 2);
   assert.equal(await cuenta(`select count(*) n from pos.ventas where origen_legado = 'italo-facturacion'`), 4);
   assert.equal(await cuenta(`select count(*) n from pos.detalle_venta`), 3);

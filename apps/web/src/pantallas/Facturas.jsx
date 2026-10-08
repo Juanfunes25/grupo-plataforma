@@ -134,6 +134,8 @@ function DetalleFactura({ id, sucursales, puede, avisar, onCerrar, onCambio }) {
   const [v, setV] = useState(null);
   const [error, setError] = useState('');
   const [motivo, setMotivo] = useState(null);          // 'reimprimir' | 'anular'
+  const { modulos } = useSesion();
+  const fabrica = modulos.some((m) => m.id === 'prod_inventario');   // EcoStone: una factura emitida solo se reimprime o se anula completa (sin notas de crédito parciales)
   const [nc, setNc] = useState(null);                  // {motivo, monto}
   const [ejecutar, ocupado] = useAccion();
 
@@ -208,7 +210,7 @@ function DetalleFactura({ id, sucursales, puede, avisar, onCerrar, onCambio }) {
           <div style={{ borderTop: '1px solid var(--borde)', paddingTop: 10, display: 'grid', gap: 10 }}>
             {!nc ? (
               <div className="fila">
-                <button className="btn" disabled={restante <= 0} onClick={() => setNc({ motivo: '', monto: String(restante) })}>Nota de crédito{restante <= 0 ? ' (ya acreditada)' : ''}</button>
+                {!fabrica && <button className="btn" disabled={restante <= 0} onClick={() => setNc({ motivo: '', monto: String(restante) })}>Nota de crédito{restante <= 0 ? ' (ya acreditada)' : ''}</button>}
                 <button className="btn peligro" onClick={() => setMotivo('anular')}>Anular factura</button>
               </div>
             ) : (
@@ -218,7 +220,7 @@ function DetalleFactura({ id, sucursales, puede, avisar, onCerrar, onCambio }) {
                 <div className="fila"><button className="btn peligro" disabled={ocupado || nc.motivo.trim().length < 3 || !(Number(nc.monto) > 0) || Number(nc.monto) > restante + 0.001} onClick={emitirNc}>Emitir nota de crédito</button><button className="btn fantasma" onClick={() => setNc(null)}>Cancelar</button></div>
               </div>
             )}
-            <small className="tenue">Anular deja la factura marcada como anulada (con motivo y usuario), no reutiliza el correlativo y devuelve el inventario. La nota de crédito acredita dinero sin anular.</small>
+            <small className="tenue">{fabrica ? 'Una factura emitida no se modifica: solo se puede reimprimir o anular. Al anular conserva su número y la piedra regresa al inventario.' : 'Anular deja la factura marcada como anulada (con motivo y usuario), no reutiliza el correlativo y devuelve el inventario. La nota de crédito acredita dinero sin anular.'}</small>
           </div>
         )}
       </Modal>
