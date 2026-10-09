@@ -9,7 +9,6 @@ import { rutasPublicas, rutasAuth } from './modulos/auth/rutas.js';
 import { montarModulos } from './modulos/indice.js';
 import { crearRegistroErrores } from './lib/errores.js';
 import { crearLimitador } from './lib/limitador.js';
-import { rutasSaludPublica } from './modulos/salud/rutas.js';
 
 /**
  * Construye la aplicación Express. Recibe db y config: así los tests corren el
@@ -60,13 +59,12 @@ export function crearApp({ db, config, log = console.error }) {
   let alertaGrave = null;
   import('./modulos/mensajeria/alertas.js').then((m) => { alertaGrave = m.registrarErrorGrave ?? null; }).catch(() => {});
 
+  // Único endpoint público de salud (para monitores externos como UptimeRobot): sin datos sensibles. El detalle vive en /api/sistema/estado (dueño).
   app.get('/api/health', async (_req, res) => {
-    try { await db.query('select 1'); res.json({ ok: true, db: db.driver }); }
+    const t0 = Date.now();
+    try { await db.query('select 1'); res.json({ ok: true, db: db.driver, ms: Date.now() - t0, version: config.version || null }); }
     catch { res.status(503).json({ ok: false }); }
   });
-
-  // Para monitores externos (UptimeRobot, Better Stack): solo dice si el servicio y la base responden.
-  app.use('/api/salud', rutasSaludPublica({ db, config }));
 
   // Errores de pantalla que reportan los navegadores. Abierto (puede ocurrir antes de entrar), por eso con tope por IP y tamaño.
   const limErrores = crearLimitador({ max: 40, ventanaMs: 10 * 60_000 });
