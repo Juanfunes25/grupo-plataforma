@@ -85,7 +85,7 @@ function Modulo() {
   const Pantalla = PANTALLAS[ruta];
   if (!contexto) return <Cargando />;
   if (!Pantalla || !modulos.some((m) => m.ruta === ruta)) {
-    return <div className="pagina"><div className="aviso-caja mal">No tienes acceso a este módulo en {contexto.empresa.nombre}.</div></div>;
+    return <Navigate to={`/${contexto.empresa.codigo}`} replace />;   // lo que no está disponible no se muestra: se vuelve al inicio de la empresa
   }
   return <Suspense fallback={<Cargando />}><Pantalla /></Suspense>;
 }
