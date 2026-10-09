@@ -15,6 +15,7 @@ const Catalogo = lazy(() => import('./pantallas/Catalogo.jsx'));
 const Inventario = lazy(() => import('./pantallas/Inventario.jsx'));
 const Personal = lazy(() => import('./pantallas/Personal.jsx'));
 const Finanzas = lazy(() => import('./pantallas/Finanzas.jsx'));
+const Compras = lazy(() => import('./compras/Compras.jsx'));
 const Terceros = lazy(() => import('./pantallas/Terceros.jsx'));
 const Admin = lazy(() => import('./pantallas/Admin.jsx'));
 const Grupo = lazy(() => import('./pantallas/Grupo.jsx'));
@@ -56,7 +57,7 @@ const Impresora = lazy(() => import('./pantallas/Impresora.jsx'));
 const Ayuda = lazy(() => import('./ayuda/Ayuda.jsx'));
 const MiApp = lazy(() => import('./pantallas/MiApp.jsx'));
 
-const PANTALLAS = { cobranza: Cobranza, pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, terceros: Terceros, admin: Admin, gerente: Gerente,
+const PANTALLAS = { cobranza: Cobranza, pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, compras: Compras, terceros: Terceros, admin: Admin, gerente: Gerente,
   facturas: Facturas, cierres: Cierres, 'caja-chica': CajaChica, reportes: Reportes, dashboard: Dashboard, antifraude: Antifraude, bitacora: Bitacora,
   cai: Cai, usuarios: Usuarios, sucursales: Sucursales, cotizaciones: Cotizaciones, impresora: Impresora,
   piedra: Piedra, 'registrar-produccion': RegistrarProduccion, produccion: Fabricacion, recetas: Recetas, insumos: Insumos, 'inventario-piedra': InventarioPiedra,
