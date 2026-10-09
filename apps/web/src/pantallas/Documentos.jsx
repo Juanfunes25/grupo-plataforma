@@ -7,6 +7,7 @@ import { ESTADO_INFO, fechaCorta, tamanoLegible, textoVence } from '../documento
 import Formulario from '../documentos/Formulario.jsx';
 import Ficha from '../documentos/Ficha.jsx';
 import ZonaArchivos from '../documentos/ZonaArchivos.jsx';
+import DocsLote from '../rrhh/DocsLote.jsx';
 
 /** Documentos de la empresa activa: contratos, permisos (ARSA, alcaldía…), registros sanitarios, pólizas… con vencimientos. */
 import { qInicial } from '../busqueda/qInicial.js';
@@ -23,6 +24,7 @@ export default function Documentos() {
   const [abierto, setAbierto] = useState(null);       // id de la ficha
   const [form, setForm] = useState(null);             // { doc? , inicial? }
   const [subiendo, setSubiendo] = useState(false);
+  const [lote, setLote] = useState(false);
 
   const tipos = tiposD.datos?.tipos ?? [];
   const lista = useDatos(() => get(`/documentos${qs({ ...filtros, limite: 300, orden: 'vencimiento' })}`), [filtros.q, filtros.tipo, filtros.sucursal_id, filtros.estado, filtros.vence_en]);
@@ -34,7 +36,7 @@ export default function Documentos() {
     <div className="pagina">
       <div className="encabezado-pagina">
         <div><h1>Documentos</h1><small>Contratos, permisos, registros sanitarios y todo lo que vence. {contexto?.empresa?.nombre}.</small></div>
-        {editar && <div className="fila"><button className="btn primario" onClick={() => setSubiendo(true)}>+ Subir documento</button></div>}
+        {editar && <div className="fila"><button className="btn" onClick={() => setLote(true)}>Subir varios</button><button className="btn primario" onClick={() => setSubiendo(true)}>+ Subir documento</button></div>}
       </div>
 
       <Estado d={resumen}>{({ kpis: k, checklist: cl }) => (
@@ -81,6 +83,7 @@ export default function Documentos() {
           <ZonaArchivos onArchivos={(a) => { setSubiendo(false); setForm({ inicial: { archivo: a[0] } }); }} onError={(m) => avisar(m, 'mal')} texto="Suelta aquí el archivo o tómale una foto" />
           <button className="btn fantasma" onClick={() => { setSubiendo(false); setForm({}); }}>Registrar sin archivo</button>
         </Modal>)}
+      {lote && <DocsLote modo="empresa" onCerrar={() => setLote(false)} onListo={todo} />}
       {form && tipos.length > 0 && <Formulario doc={form.doc} inicial={form.inicial} tipos={tipos} onCerrar={() => setForm(null)} onGuardado={(d) => { setForm(null); todo(); setAbierto(d.id); }} />}
       {abierto && <Ficha id={abierto} onCerrar={() => setAbierto(null)} onCambio={todo} onEditar={(doc) => { setAbierto(null); setForm({ doc }); }} />}
     </div>

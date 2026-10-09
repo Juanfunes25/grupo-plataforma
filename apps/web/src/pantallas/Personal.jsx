@@ -5,7 +5,7 @@ import { Tabs, useAccion, useAviso } from '../ui/kit.jsx';
 import PanelRrhh from '../rrhh/Directorio.jsx';
 import Ficha, { camposPersona } from '../rrhh/Ficha.jsx';
 import Form from '../rrhh/Form.jsx';
-import DniLote from '../rrhh/DniLote.jsx';
+import DocsLote from '../rrhh/DocsLote.jsx';
 import { Turno } from '../rrhh/Turno.jsx';
 import { Asistencia, AusenciasLista, Horarios, VacacionesLista } from '../rrhh/Operacion.jsx';
 import { TIPOS_CONTRATO, TIPOS_PAGO } from '../rrhh/util.js';
@@ -29,14 +29,14 @@ export default function Personal() {
     <div className="pagina">
       <div className="encabezado-pagina"><h1>Personal</h1>{puede('rrhh:asistencia') && <Marcar />}</div>
       <Tabs tabs={tabs} valor={tab} onCambio={setTab} />
-      {tab === 'equipo' && <PanelRrhh recargaExterna={recarga} acciones={editar && <><button className="btn" onClick={() => setLote(true)}>Subir DNI en lote</button><button className="btn primario" onClick={() => setNuevo(true)}>+ Empleado</button></>} />}
+      {tab === 'equipo' && <PanelRrhh recargaExterna={recarga} acciones={editar && <><button className="btn" onClick={() => setLote(true)}>Subir documentos en lote</button><button className="btn primario" onClick={() => setNuevo(true)}>+ Empleado</button></>} />}
       {tab === 'turno' && <Turno />}
       {tab === 'horarios' && <Horarios />}
       {tab === 'asistencia' && <Asistencia />}
       {tab === 'vacaciones' && <VacacionesLista onFicha={(id) => setFicha(id)} />}
       {tab === 'ausencias' && <AusenciasLista onFicha={(id) => setFicha(id)} />}
       {ficha && <Ficha id={ficha} empresa={empresa} onCerrar={() => setFicha(null)} onCambio={() => setRecarga((n) => n + 1)} />}
-      {lote && <DniLote onCerrar={() => setLote(false)} onListo={() => setRecarga((n) => n + 1)} />}
+      {lote && <DocsLote modo="empleado" onCerrar={() => setLote(false)} onListo={() => setRecarga((n) => n + 1)} />}
       {nuevo && <NuevoEmpleado onCerrar={() => setNuevo(false)} onCreado={() => { setNuevo(false); setRecarga((n) => n + 1); }} />}
     </div>
   );

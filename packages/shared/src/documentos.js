@@ -28,6 +28,10 @@ export const TIPOS_DOC = [
   T('identidad_empleado', 'Identidad del empleado', 'laboral', true, { confidencial: true, de_empleado: true, dias_aviso: 60 }),
   T('escritura_propiedad', 'Escritura / propiedad', 'legal', false),
   T('certificado_otro', 'Certificado u otro', 'otro', false),
+  T('constitucion_sociedad', 'Constitución y reformas de la sociedad', 'legal', false),
+  T('certificado_senprende', 'Certificado SENPRENDE / MIPYME', 'legal', true, { dias_aviso: 60 }),
+  T('rtn_empleado', 'RTN del empleado', 'laboral', false, { confidencial: true, de_empleado: true }),
+  T('terminacion_laboral', 'Terminación de relación laboral', 'laboral', false, { confidencial: true, de_empleado: true }),
 ];
 
 // Qué se espera tener, por tipo de negocio (core.empresas.tipo_negocio). [codigo, porSucursal]
