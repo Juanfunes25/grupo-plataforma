@@ -42,8 +42,8 @@ test('permisos y módulo: solo dueño/admin; EcoStone no tiene antifraude', asyn
   assert.equal(eco.body.codigo, 'modulo_inactivo');
   // lo que necesita cualquier usuario: ¿hay vigilancia y cuándo bloquear?
   const s = (await caja.get('/api/antifraude/sesion')).body;
-  assert.deepEqual(s, { activo: true, minutos_bloqueo: 10 });
-  assert.equal((await gerente.get('/api/antifraude/sesion')).body.minutos_bloqueo, 20);
+  assert.deepEqual(s, { activo: true, minutos_bloqueo: 60 });
+  assert.equal((await gerente.get('/api/antifraude/sesion')).body.minutos_bloqueo, 60);
   assert.equal((await ecoDueno.get('/api/antifraude/sesion')).body.activo, false);
   // en una empresa sin el módulo los eventos se ignoran en silencio
   assert.equal((await ecoDueno.post('/api/antifraude/evento', { accion: 'pantalla.ver', detalle: { pantalla: 'x' } })).status, 204);
@@ -105,7 +105,7 @@ test('las alertas son de cada empresa: Italo no ve las de Origen', async () => {
 test('reglas: se ajustan por empresa, se validan y quedan en la bitácora', async () => {
   const r0 = (await dueno.get('/api/antifraude/reglas')).body;
   assert.equal(r0.max_usos_carne_dia, 3);
-  assert.equal(r0.minutos_bloqueo_cajero, 10);
+  assert.equal(r0.minutos_bloqueo_cajero, 60);
   const r1 = (await dueno.put('/api/antifraude/reglas', { minutos_bloqueo_cajero: 5, intentos_login: '4', inventada: 9, minutos_hueco: -3 })).body;
   assert.equal(r1.minutos_bloqueo_cajero, 5);
   assert.equal(r1.intentos_login, 4);

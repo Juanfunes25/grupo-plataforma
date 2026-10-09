@@ -24,8 +24,8 @@ export const REGLAS_DEFECTO = {
   hueco_desde_hora: 11,          // franja en que la tienda debería estar vendiendo
   hueco_hasta_hora: 21,
   // Sesiones
-  minutos_bloqueo_cajero: 10,
-  minutos_bloqueo_otros: 20,
+  minutos_bloqueo_cajero: 60,
+  minutos_bloqueo_otros: 60,
   intentos_login: 5,             // intentos fallidos en 15 min
   hora_apertura: 9,              // uso normal del sistema (hora de Honduras)
   hora_cierre: 24,
