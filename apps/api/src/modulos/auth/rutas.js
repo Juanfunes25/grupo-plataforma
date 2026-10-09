@@ -33,8 +33,9 @@ export function rutasAuth({ db, config, ctxMgr }) {
   const r = Router();
   const limLogin = crearLimitador({ max: 6, ventanaMs: 10 * 60_000 });
   const limPin = crearLimitador({ max: 8, ventanaMs: 10 * 60_000 });
+  const limPesaje = crearLimitador({ max: 40, ventanaMs: 10 * 60_000 });   // aperturas del pesaje de tienda por IP
   const limMfa = crearLimitador({ max: 6, ventanaMs: 10 * 60_000 });   // intentos del código de 6 dígitos, por persona
-  r.limitadores = { limLogin, limPin, limMfa };
+  r.limitadores = { limLogin, limPin, limMfa, limPesaje };
 
   const ipDe = (req) => req.ip || req.socket?.remoteAddress || '';
 
@@ -120,14 +121,40 @@ export function rutasAuth({ db, config, ctxMgr }) {
   // Lista pública para la pantalla de entrada: tiendas y nombres de quienes entran con PIN (solo nombre; nunca datos sensibles).
   r.get('/pin/opciones', async (req, res) => {
     const emp = await empresaPorCodigo(validar(z.string().min(1), req.query.empresa));
-    if (emp.esGrupo) return res.json({ sucursales: [], usuarios: [] });
+    if (emp.esGrupo) return res.json({ sucursales: [], usuarios: [], pesaje_libre: false });
     const [suc, usu] = await Promise.all([
       db.query('select id, nombre, color from core.sucursales where empresa_id = $1 and activo order by orden, nombre', [emp.id]),
       db.query(`select u.id, u.nombre, a.rol, a.sucursal_ids from core.accesos a join core.usuarios u on u.id = a.usuario_id
                  where a.empresa_id = $1 and a.activo and u.activo and a.pin_hash is not null and a.rol = any($2::text[]) order by u.nombre`, [emp.id, ROLES_CON_PIN]),
     ]);
-    res.json({ sucursales: suc.rows, usuarios: usu.rows });
+    res.json({ sucursales: suc.rows, usuarios: usu.rows.filter((x) => x.rol !== 'pesaje'), pesaje_libre: await pesajeLibre(emp.id) });
   });
+  // Pesaje de tienda sin PIN: solo si la empresa lo tiene encendido (core.config 'pesaje_libre'). La sesión que se da solo puede pesar en esa tienda.
+  const pesajeLibre = async (empresaId) => Boolean((await db.query(`select valor->>'activo' as a from core.config where empresa_id = $1 and clave = 'pesaje_libre'`, [empresaId])).rows[0]?.a === 'true');
+  r.post('/pesaje', async (req, res) => {
+    const { empresa: cod, sucursal_id: sucId } = validar(z.object({ empresa: z.string().min(1), sucursal_id: z.string().uuid('Elige tu tienda') }), req.body);
+    const emp = await empresaPorCodigo(cod);
+    if (emp.esGrupo || !(await pesajeLibre(emp.id))) throw new ErrorHttp(403, 'El pesaje sin clave no está activo en esta empresa');
+    const clave = `${ipDe(req)}|${emp.codigo}|pesaje`;
+    if (limPesaje.bloqueado(clave)) throw new ErrorHttp(429, 'Demasiados intentos. Espera unos minutos.');
+    limPesaje.fallo(clave);   // tope por IP: nadie necesita abrir esto cientos de veces
+    const suc = (await db.query('select id, nombre from core.sucursales where id = $1 and empresa_id = $2 and activo', [sucId, emp.id])).rows[0];
+    if (!suc) throw new ErrorHttp(404, 'Tienda no encontrada');
+    let u = (await db.query(
+      `select u.* from core.usuarios u join core.accesos a on a.usuario_id = u.id
+        where u.es_tienda and u.activo and a.activo and a.empresa_id = $1 and a.rol = 'pesaje' and a.sucursal_ids = array[$2]::uuid[] limit 1`, [emp.id, suc.id])).rows[0];
+    if (!u) {   // primera vez: se crea la cuenta de la tienda
+      u = await db.tx(async (q) => {
+        const nu = (await q.query(`insert into core.usuarios (nombre, es_tienda) values ($1, true) returning *`, [`Pesaje ${suc.nombre}`])).rows[0];
+        await q.query(`insert into core.accesos (usuario_id, empresa_id, rol, sucursal_ids) values ($1,$2,'pesaje',array[$3]::uuid[])`, [nu.id, emp.id, suc.id]);
+        return nu;
+      });
+      ctxMgr.invalidar();
+    }
+    await auditar(db, null, 'login', 'usuario', u.id, { via: 'pesaje_tienda', sucursal_id: suc.id }, { empresaId: emp.id, usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
+    res.json(await respuestaSesion(u, emp, 'pin', true, req));
+  });
+
   r.post('/pin', async (req, res) => {
     const { empresa: cod, usuario_id: usuarioId, sucursal_id: sucursalId, pin } = validar(z.object({
       empresa: z.string().min(1), usuario_id: z.string().uuid('Elige quién eres'), sucursal_id: z.string().uuid().optional(), pin: z.string().regex(PIN_RE, 'El PIN son 4 a 8 dígitos'),

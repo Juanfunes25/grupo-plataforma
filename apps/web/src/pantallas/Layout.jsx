@@ -142,7 +142,7 @@ export default function Layout({ children, esGrupo = false }) {
   const usuarioChip = (
     <div className="usuario-chip">
       <span>{s.usuario?.nombre?.split(' ')[0]} · <small>{s.usuario?.es_dueno_grupo ? 'administrador general' : (ROLES[ctx.rol]?.nombre ?? ctx.rol)}</small></span>
-      {s.via !== 'pin' && <button className="btn chico fantasma" onClick={() => setCambiando(true)} aria-label="Cambiar contraseña" title="Cambiar contraseña"><Icono n="candado" tam={16} /></button>}
+      {s.via !== 'pin' && !leerPlanta(ctx.empresa.codigo) && <button className="btn chico fantasma" onClick={() => setCambiando(true)} aria-label="Cambiar contraseña" title="Cambiar contraseña"><Icono n="candado" tam={16} /></button>}
       <button className="btn chico fantasma" onClick={salir} aria-label="Cerrar sesión" title="Cerrar sesión"><Icono n="salir" tam={16} /></button>
     </div>
   );

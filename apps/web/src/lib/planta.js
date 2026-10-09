@@ -4,7 +4,8 @@
 export const PUESTOS = {
   italo: {
     rol: 'prod_despacho', boton: 'Despacho, producción e inventario', pregunta: '¿Qué vas a hacer?',
-    funciones: { despacho: { titulo: 'Despacho', ruta: 'despacho' }, produccion: { titulo: 'Producción', ruta: 'gelato-produccion' }, inventario: { titulo: 'Inventario', ruta: 'gelato-inventario' } },
+    funciones: { despacho: { titulo: 'Despacho', ruta: 'despacho' }, produccion: { titulo: 'Producción', ruta: 'gelato-produccion' }, inventario: { titulo: 'Inventario', ruta: 'gelato-inventario' },
+      pesaje: { titulo: 'Pesaje', ruta: 'pesaje', suelta: true } },   // «suelta»: no sale en el submenú de planta; es la cuenta de la tienda
   },
   ecostone: { rol: 'produccion', boton: 'Fabricación', pregunta: '', funciones: { fabricacion: { titulo: 'Registrar producción', ruta: 'registrar-produccion' } } },
   diserco: { rol: 'gestor', boton: 'Gestión de proyecto', pregunta: '', funciones: { proyecto: { titulo: 'Salidas a proyecto', ruta: 'salidas' } } },

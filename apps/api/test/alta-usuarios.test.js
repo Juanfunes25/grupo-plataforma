@@ -44,3 +44,21 @@ test('entrada con PIN: lista de tiendas y personas, exige quién eres, y la tien
   assert.equal((await post({ pin: '6161', usuario_id: mackey, sucursal_id: sucProceres })).status, 403, 'no puede entrar a una tienda que no es la suya');
   assert.equal((await post({ pin: '6161', usuario_id: mackey, sucursal_id: sucMackey })).status, 200);
 });
+
+test('pesaje de tienda sin PIN: se elige la tienda, la cuenta se crea sola, solo pesa en su tienda y no ve nada más', async () => {
+  const op = (await t.cli().get('/api/auth/pin/opciones?empresa=italo')).body;
+  assert.equal(op.pesaje_libre, true);
+  assert.ok(!op.usuarios.some((u) => u.rol === 'pesaje'), 'las cuentas de tienda no salen en la lista de personas');
+  const suc = await t.sucursalId('italo', 'mackey');
+  const a = await t.cli().post('/api/auth/pesaje', { empresa: 'italo', sucursal_id: suc });
+  assert.equal(a.status, 200);
+  const b = await t.cli().post('/api/auth/pesaje', { empresa: 'italo', sucursal_id: suc });
+  assert.equal(b.body.usuario.id, a.body.usuario.id, 'la cuenta de la tienda se reutiliza');
+  const cli = t.cli(a.body.token, 'italo');
+  const lista = (await cli.get('/api/rep/sucursales')).body;
+  assert.deepEqual(lista.map((s) => s.alias), ['mackey'], 'solo ve su tienda');
+  assert.equal((await cli.get('/api/pos/ventas')).status, 403, 'no ve la caja');
+  assert.equal((await t.cli().post('/api/auth/pesaje', { empresa: 'origen', sucursal_id: suc })).status, 403, 'solo donde está encendido');
+  assert.equal((await t.cli().post('/api/auth/pesaje', { empresa: 'italo', sucursal_id: '00000000-0000-4000-8000-000000000000' })).status, 404);
+  assert.equal((await cli.get('/api/antifraude/sesion')).body?.minutos_bloqueo ?? 0, 0, 'sin bloqueo por inactividad (no tiene clave para desbloquear)');
+});

@@ -26,6 +26,7 @@ export default function Acceso() {
   const [usrSel, setUsrSel] = useState(null);   // persona elegida (paso 2)
   const [verPlanta, setVerPlanta] = useState(false);   // submenú: Despacho · Producción · Inventario
   const [funcion, setFuncion] = useState(null);       // función del puesto elegida
+  const [verPesaje, setVerPesaje] = useState(false);   // pesaje de tienda sin PIN: se elige la tienda y se entra
   const [otros, setOtros] = useState(false);         // empresas sin tiendas: «otros usuarios» (ventas, etc.)
   const [correo, setCorreo] = useState('');
   const [clave, setClave] = useState('');
@@ -42,7 +43,7 @@ export default function Acceso() {
 
   const entrar = async (ruta, cuerpo) => {
     setError('');
-    if (ruta !== '/auth/pin') quitarPlanta();   // solo la entrada de planta por PIN deja el puesto de una sola pantalla
+    if (ruta !== '/auth/pin' && ruta !== '/auth/pesaje') quitarPlanta();   // solo la entrada de planta por PIN deja el puesto de una sola pantalla
     const r = await ejecutar(async () => {
       try { return await s.entrar(ruta, cuerpo); }
       catch (e) { setError(e.message); setPin(''); setSacude(true); vibrar([60, 40, 60]); setTimeout(() => setSacude(false), 450); throw e; }
@@ -55,7 +56,7 @@ export default function Acceso() {
   const usuarios = op.datos?.usuarios ?? [];
   // Con una sola tienda (o ninguna) se salta ese paso. Quien no tiene tiendas asignadas aparece en todas.
   const puesto = PUESTOS[codigo] ?? null;
-  const funcionesPuesto = puesto ? Object.entries(puesto.funciones) : [];
+  const funcionesPuesto = puesto ? Object.entries(puesto.funciones).filter(([, f]) => !f.suelta) : [];
   const esPlanta = (u) => !!puesto && u.rol === puesto.rol;   // personas de un puesto: entran por su botón, no por una tienda
   const hayPlanta = !!puesto && usuarios.some(esPlanta);
   const sinTiendas = sucursales.length === 0;
@@ -63,7 +64,13 @@ export default function Acceso() {
   const hayPasoTienda = sucursales.length > 1 || hayPlanta;
   const personas = funcion ? usuarios.filter(esPlanta)
     : usuarios.filter((u) => !esPlanta(u) && (!sucActiva || !u.sucursal_ids?.length || u.sucursal_ids.includes(sucActiva.id)));
-  const paso = hayPasoTienda && !sucActiva && !funcion && !otros ? (verPlanta ? 'funcion' : 'tienda') : !usrSel ? 'persona' : 'pin';
+  const hayPesaje = !!op.datos?.pesaje_libre && sucursales.length > 0;
+  const paso = verPesaje ? 'pesaje' : hayPasoTienda && !sucActiva && !funcion && !otros ? (verPlanta ? 'funcion' : 'tienda') : !usrSel ? 'persona' : 'pin';
+  const entrarPesaje = (x) => {
+    try { localStorage.setItem(`grupo.sucursal.${codigo}`, x.id); } catch { /* */ }
+    ponerPlanta(codigo, 'pesaje');
+    entrar('/auth/pesaje', { empresa: codigo, sucursal_id: x.id });
+  };
   const elegirPuesto = () => { if (funcionesPuesto.length === 1) setFuncion(funcionesPuesto[0][0]); else setVerPlanta(true); };
   const volverInicio = () => { setSucSel(null); setUsrSel(null); setFuncion(null); setVerPlanta(false); setOtros(false); };
   const enviarPin = () => {
@@ -97,7 +104,7 @@ export default function Acceso() {
         <div className="acceso-marca">
           <div className="acceso-logo"><Logo codigo={emp.logo || emp.codigo} color={emp.color} /></div>
           <h1>{emp.nombre}</h1>
-          <p>{modo === 'pin' ? (paso === 'tienda' ? 'Elige tu tienda' : paso === 'funcion' ? (puesto?.pregunta || '¿Qué vas a hacer?') : paso === 'persona' ? '¿Quién eres?' : `${usrSel.nombre}${sucActiva ? ` · ${sucActiva.nombre}` : funcion ? ` · ${puesto.funciones[funcion].titulo}` : ''}: escribe tu PIN`) : 'Entra con tu usuario y contraseña'}</p>
+          <p>{modo === 'pin' ? (paso === 'pesaje' ? 'Pesaje: elige tu tienda' : paso === 'tienda' ? 'Elige tu tienda' : paso === 'funcion' ? (puesto?.pregunta || '¿Qué vas a hacer?') : paso === 'persona' ? '¿Quién eres?' : `${usrSel.nombre}${sucActiva ? ` · ${sucActiva.nombre}` : funcion ? ` · ${puesto.funciones[funcion].titulo}` : ''}: escribe tu PIN`) : 'Entra con tu usuario y contraseña'}</p>
         </div>
         {!esGrupo && (
           <div className="segmento" role="tablist" aria-label="Forma de entrar">
@@ -109,11 +116,17 @@ export default function Acceso() {
           {segundo ? (
             <Suspense fallback={<Esqueleto alto={220} />}><SegundoPaso r={segundo} onCancelar={() => { setSegundo(null); setClave(''); }}
               onSesion={(resp) => { s.completar(resp); nav(codigo === 'grupo' ? '/grupo' : `/${codigo}`, { replace: true }); }} /></Suspense>
+          ) : modo === 'pin' && paso === 'pesaje' ? (
+            <div style={{ display: 'grid', gap: 10 }}>
+              {sucursales.map((x) => <button key={x.id} className="btn grande bloque" style={x.color ? { borderLeft: `6px solid ${x.color}` } : undefined} disabled={ocupado} onClick={() => entrarPesaje(x)}>{x.nombre}</button>)}
+              <button className="btn fantasma" onClick={() => setVerPesaje(false)}><Icono n="atras" tam={16} /> Volver</button>
+            </div>
           ) : modo === 'pin' && paso === 'tienda' ? (
             <div style={{ display: 'grid', gap: 10 }}>
               {op.cargando && <Esqueleto alto={120} />}
               {(sucursales.length > 1 || !hayPlanta) && sucursales.map((x) => <button key={x.id} className="btn grande bloque" style={x.color ? { borderLeft: `6px solid ${x.color}` } : undefined} onClick={() => setSucSel(x)}>{x.nombre}</button>)}
               {hayPlanta && <button className="btn grande bloque" onClick={elegirPuesto}>{puesto.boton}</button>}
+              {hayPesaje && <button className="btn grande bloque" onClick={() => setVerPesaje(true)}>Pesaje de la noche</button>}
               {sucursales.length <= 1 && hayPlanta && <button className="btn grande bloque" onClick={() => setOtros(true)}>Otros usuarios</button>}
             </div>
           ) : modo === 'pin' && paso === 'funcion' ? (

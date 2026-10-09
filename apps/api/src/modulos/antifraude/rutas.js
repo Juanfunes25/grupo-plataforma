@@ -45,7 +45,7 @@ export function rutasAntifraude({ db }) {
   r.get('/sesion', async (req, res) => {
     if (!antifraudeActivo(req.ctx)) return res.json({ activo: false });
     const R = await obtenerReglas(db, req.ctx.empresa.id);
-    res.json({ activo: true, minutos_bloqueo: req.ctx.rol === 'cajero' ? R.minutos_bloqueo_cajero : R.minutos_bloqueo_otros });
+    res.json({ activo: true, minutos_bloqueo: req.ctx.rol === 'pesaje' ? 0 : req.ctx.rol === 'cajero' ? R.minutos_bloqueo_cajero : R.minutos_bloqueo_otros });
   });
 
   r.post('/evento', async (req, res) => {
