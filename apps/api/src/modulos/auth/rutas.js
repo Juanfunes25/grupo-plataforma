@@ -4,7 +4,7 @@ import { ROLES_CON_PIN, permisosDe } from '@grupo/shared';
 import { hashSecreto, verificarSecreto } from '../../auth/passwords.js';
 import { firmarDesafio, firmarSesion } from '../../auth/tokens.js';
 import { problemaClave } from '../../auth/politica.js';
-import { crearSesion, revocarSesiones, rutasSesiones } from './sesiones.js';
+import { auditarSeguridad, crearSesion, revocarSesiones, rutasSesiones } from './sesiones.js';
 import { esDireccion, estadoMfa, rutasMfa } from './mfa.js';
 import { loginSupabase } from '../../auth/supabase.js';
 import { hashPin, PIN_RE } from '../../auth/pin.js';
@@ -175,7 +175,7 @@ export function rutasAuth({ db, config, ctxMgr }) {
     if (actual === nueva) throw malaPeticion('La nueva contraseña debe ser distinta a la actual');
     await db.query('update core.usuarios set password_hash = $1, token_version = token_version + 1 where id = $2', [hashSecreto(nueva), u.id]);
     await revocarSesiones(db, ctxMgr, u.id, { motivo: 'cambio de contraseña' });
-    await auditar(db, null, 'password_cambiada', 'usuario', u.id, {}, { usuarioId: u.id, usuarioNombre: u.nombre, ip: req.auth.ip });
+    await auditarSeguridad(db, ctxMgr, req, u, 'password_cambiada', 'usuario', u.id);
     ctxMgr.invalidar();
     res.json({ ok: true, mensaje: 'Contraseña cambiada. Vuelve a entrar.' });
   });

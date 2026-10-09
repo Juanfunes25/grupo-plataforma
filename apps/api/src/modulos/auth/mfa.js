@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { hashSecreto, verificarSecreto } from '../../auth/passwords.js';
 import { cifrarSecreto, descifrarSecreto, generarCodigosRecuperacion, nuevoSecretoTotp, normalizarCodigoRecuperacion, uriOtpauth, verificarTotp } from '../../auth/mfa.js';
 import { verificarDesafio } from '../../auth/tokens.js';
-import { auditar } from '../../lib/auditoria.js';
+import { auditarSeguridad } from './sesiones.js';
 import { ErrorHttp, malaPeticion, noAutenticado, prohibido, validar } from '../../lib/http.js';
 
 const ROLES_DIRECCION_2FA = ['dueno', 'admin'];
@@ -109,11 +109,11 @@ export function rutasMfa({ db, config, ctxMgr, limitadorMfa, emitirSesion }) {
     const via = await comprobarSegundoPaso(db, config, u.id, codigo);
     if (!via) {
       limitadorMfa.fallo(u.id);
-      await auditar(db, null, 'login_2fa_fallido', 'usuario', u.id, {}, { usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
+      await auditarSeguridad(db, ctxMgr, req, u, 'login_2fa_fallido', 'usuario', u.id, {}, d.empresaCodigo);
       throw new ErrorHttp(401, 'Código incorrecto', 'codigo_incorrecto');
     }
     limitadorMfa.exito(u.id);
-    if (via === 'recuperacion') await auditar(db, null, 'mfa_codigo_recuperacion_usado', 'usuario', u.id, { restantes: await codigosRestantes(db, u.id) }, { usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
+    if (via === 'recuperacion') await auditarSeguridad(db, ctxMgr, req, u, 'mfa_codigo_recuperacion_usado', 'usuario', u.id, { restantes: await codigosRestantes(db, u.id) }, d.empresaCodigo);
     const out = await emitirSesion(req, u, d.empresaCodigo, { mfa: true });
     res.json(via === 'recuperacion' ? { ...out, aviso: `Usaste un código de recuperación. Te quedan ${await codigosRestantes(db, u.id)}.` } : out);
   });
@@ -133,7 +133,7 @@ export function rutasMfa({ db, config, ctxMgr, limitadorMfa, emitirSesion }) {
     let codigos;
     try { codigos = await confirmar(db, config, u, codigo); } catch (e) { if (e.codigo === 'codigo_incorrecto') limitadorMfa.fallo(u.id); throw e; }
     limitadorMfa.exito(u.id);
-    await auditar(db, null, 'mfa_activado', 'usuario', u.id, { obligatorio: true }, { usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
+    await auditarSeguridad(db, ctxMgr, req, u, 'mfa_activado', 'usuario', u.id, { obligatorio: true }, d.empresaCodigo);
     res.json({ ...(await emitirSesion(req, u, d.empresaCodigo, { mfa: true })), codigos_recuperacion: codigos });
   });
 
@@ -165,7 +165,7 @@ export function rutasMfa({ db, config, ctxMgr, limitadorMfa, emitirSesion }) {
     let codigos;
     try { codigos = await confirmar(db, config, u, codigo); } catch (e) { if (e.codigo === 'codigo_incorrecto') limitadorMfa.fallo(u.id); throw e; }
     limitadorMfa.exito(u.id);
-    await auditar(db, null, 'mfa_activado', 'usuario', u.id, { obligatorio: false }, { usuarioId: u.id, usuarioNombre: u.nombre, ip: req.auth.ip });
+    await auditarSeguridad(db, ctxMgr, req, u, 'mfa_activado', 'usuario', u.id, { obligatorio: false });
     ctxMgr.invalidar();
     res.json({ ok: true, codigos_recuperacion: codigos });
   });
@@ -177,7 +177,7 @@ export function rutasMfa({ db, config, ctxMgr, limitadorMfa, emitirSesion }) {
     if (!(await comprobarSegundoPaso(db, config, u.id, codigo, { permitirRecuperacion: false }))) { limitadorMfa.fallo(u.id); throw new ErrorHttp(400, 'Código incorrecto', 'codigo_incorrecto'); }
     limitadorMfa.exito(u.id);
     const codigos = await db.tx((q) => guardarCodigosNuevos(q, u.id));
-    await auditar(db, null, 'mfa_codigos_regenerados', 'usuario', u.id, {}, { usuarioId: u.id, usuarioNombre: u.nombre, ip: req.auth.ip });
+    await auditarSeguridad(db, ctxMgr, req, u, 'mfa_codigos_regenerados', 'usuario', u.id);
     res.json({ ok: true, codigos_recuperacion: codigos });
   });
   privadas.post('/2fa/desactivar', async (req, res) => {
@@ -195,7 +195,7 @@ export function rutasMfa({ db, config, ctxMgr, limitadorMfa, emitirSesion }) {
       await q.query('delete from core.usuarios_mfa where usuario_id = $1', [u.id]);
       await q.query('delete from core.mfa_recuperacion where usuario_id = $1', [u.id]);
     });
-    await auditar(db, null, 'mfa_desactivado', 'usuario', u.id, {}, { usuarioId: u.id, usuarioNombre: u.nombre, ip: req.auth.ip });
+    await auditarSeguridad(db, ctxMgr, req, u, 'mfa_desactivado', 'usuario', u.id);
     ctxMgr.invalidar();
     res.json({ ok: true });
   });

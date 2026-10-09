@@ -2,6 +2,17 @@ import { Router } from 'express';
 import { auditar } from '../../lib/auditoria.js';
 import { noEncontrado, uuid, validar } from '../../lib/http.js';
 
+/**
+ * Registra en la bitácora un evento de seguridad de una persona. La empresa sale del código dado o del encabezado X-Empresa;
+ * así el evento aparece en la bitácora de esa empresa (con empresa vacía no lo vería nadie).
+ */
+export async function auditarSeguridad(db, ctxMgr, req, usuario, accion, entidad, entidadId, detalle = {}, empresaCodigo = null) {
+  const cod = String(empresaCodigo ?? req.headers['x-empresa'] ?? '').toLowerCase();
+  const emp = cod ? (await ctxMgr.empresas()).find((e) => e.codigo === cod) : null;
+  await auditar(db, null, accion, entidad, entidadId, detalle, {
+    empresaId: emp?.id ?? null, usuarioId: usuario.id, usuarioNombre: usuario.nombre, ip: req.ip || req.socket?.remoteAddress || null });
+}
+
 /** «Chrome en Windows», «Safari en iPhone»… para que la persona reconozca el equipo en su lista de sesiones. */
 export function nombreNavegador(ua = '') {
   const u = String(ua);
@@ -51,13 +62,13 @@ export function rutasSesiones({ db, ctxMgr }) {
     const id = validar(uuid, req.params.id);
     const n = await revocarSesiones(db, ctxMgr, req.auth.usuario.id, { id, motivo: 'cerrada por la persona' });
     if (!n) throw noEncontrado('Esa sesión ya no está abierta');
-    await auditar(db, null, 'sesion_cerrada', 'sesion', id, { propia: true, actual: id === req.auth.sesionId }, { usuarioId: req.auth.usuario.id, usuarioNombre: req.auth.usuario.nombre, ip: req.auth.ip });
+    await auditarSeguridad(db, ctxMgr, req, req.auth.usuario, 'sesion_cerrada', 'sesion', id, { propia: true, actual: id === req.auth.sesionId });
     res.json({ ok: true, cerrada_la_actual: id === req.auth.sesionId });
   });
 
   r.post('/sesiones/cerrar-otras', async (req, res) => {
     const n = await revocarSesiones(db, ctxMgr, req.auth.usuario.id, { excepto: req.auth.sesionId, motivo: 'cerradas por la persona desde otro equipo' });
-    if (n) await auditar(db, null, 'sesiones_cerradas', 'usuario', req.auth.usuario.id, { cantidad: n }, { usuarioId: req.auth.usuario.id, usuarioNombre: req.auth.usuario.nombre, ip: req.auth.ip });
+    if (n) await auditarSeguridad(db, ctxMgr, req, req.auth.usuario, 'sesiones_cerradas', 'usuario', req.auth.usuario.id, { cantidad: n });
     res.json({ ok: true, cerradas: n });
   });
 

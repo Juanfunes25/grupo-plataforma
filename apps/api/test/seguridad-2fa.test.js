@@ -51,7 +51,7 @@ test('política de contraseñas: mínimo 8 y nada trivial', () => {
   for (const mala of ['corta1', '12345678', '11111111', 'password', 'Password1'.toLowerCase() + '', 'abcdefgh', 'qwertyuiop', '87654321', 'honduras', 'aaaaaaaa'])
     assert.ok(problemaClave(mala), mala);
   assert.ok(problemaClave('maria.lopez2026', { email: 'maria.lopez@x.hn' }), 'no debe contener el correo');
-  assert.ok(problemaClave('Mariaperez1', { nombre: 'Maria Perez' }) === null || true);
+  assert.ok(problemaClave('MariaPerez12', { nombre: 'Maria Perez' }), 'no debe ser su nombre');
   for (const buena of ['ClaveSegura123', 'Demo-Grupo-2026', 'mala-clave', 'cafe con leche 77']) assert.equal(problemaClave(buena), null, buena);
   assert.equal(problemaPin('1234', { pin_largo_min: 4, pin_largo_max: 6 }), null);
   assert.ok(problemaPin('123', { pin_largo_min: 4, pin_largo_max: 6 }));
@@ -135,7 +135,7 @@ test('verificación en dos pasos: activar, entrar con el código, no reutilizarl
   const p3 = await t.cli().post('/api/auth/login', { empresa: 'italo', email: 'admin@italo.hn', password: 'ClaveSegura123' });
   assert.equal((await t.cli().post('/api/auth/login-2fa', { desafio: p3.body.desafio, codigo: rec })).status, 401);
   const acciones = (await dueno.get('/api/admin/auditoria?accion=mfa_')).body.map((a) => a.accion);
-  assert.ok(acciones.includes('mfa_codigo_recuperacion_usado') || true);
+  assert.ok(acciones.includes('mfa_activado') && acciones.includes('mfa_codigo_recuperacion_usado'), acciones.join());
 });
 
 test('intentos de código limitados: tras 6 fallos se bloquea y avisa con 429', async () => {
@@ -187,9 +187,7 @@ test('un administrador cierra a distancia las sesiones de su equipo, pero no las
   const tg = await t.login('italo', 'gerente@italo.hn', 'OtraClave98765');
   const g = t.cli(tg, 'italo');
   const gid = (await t.db.query(`select id from core.usuarios where email = 'gerente@italo.hn'`)).rows[0].id;
-  const adminDin = t.cli(await t.login('italo', 'admin@italo.hn', 'ClaveSegura123').catch(() => null), 'italo');
-  void adminDin;
-  // el admin tiene 2FA activo: se entra con desafío; para esta prueba usamos al dueño del grupo
+  // el administrador de la prueba tiene 2FA activo, así que quien cierra las sesiones es el dueño del grupo
   const r = await dueno.post(`/api/admin/usuarios/${gid}/cerrar-sesiones`);
   assert.equal(r.status, 200);
   assert.ok(r.body.cerradas >= 1);
