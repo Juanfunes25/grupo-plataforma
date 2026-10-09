@@ -557,6 +557,7 @@ export function rutasVentas({ db, config, ctxMgr }) {
     const b = validar(z.object({ email: z.string().trim().max(160).optional(), mensaje: z.string().trim().max(500).optional() }), req.body ?? {});
     const v = await cargar(db, req.ctx, id);
     if (v.estado === 'abierta') throw conflicto('La orden todavía no tiene factura');
+    if (v.estado !== 'pagada') throw conflicto('Esa factura está anulada: no se envía por correo');
     const d = await detalle(db, req.ctx, v);
     res.json(await enviarFacturaPorCorreo({ q: db, ctx: req.ctx, d, destino: b.email || d.cliente?.correo, mensaje: b.mensaje }));
   });

@@ -4,6 +4,7 @@ import { fechaHN, sumarDias } from '@grupo/shared';
 import { requierePermiso, resolverSucursal } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
 import { malaPeticion, noEncontrado, prohibido, uuid, validar, dinero, fechaISO } from '../../lib/http.js';
+import { montarFinExtra } from './extra.js';
 
 const FECHA = (col) => `(${col} at time zone 'America/Tegucigalpa')::date`;
 
@@ -74,6 +75,7 @@ export function rutasFin({ db, ctxMgr }) {
       fecha: fechaISO.optional(), sucursal_id: uuid.optional().nullable(), categoria_id: uuid, proveedor_id: uuid.optional().nullable(),
       descripcion: z.string().trim().min(3).max(200), monto: dinero.refine((n) => n > 0, 'El monto debe ser mayor a 0'), isv: dinero.default(0),
       documento: z.string().trim().max(40).optional().nullable(), forma_pago: z.string().trim().max(30).optional().nullable(), pagado: z.boolean().default(true),
+      vence: fechaISO.optional().nullable(),
     }), req.body);
     if (b.isv > b.monto) throw malaPeticion('El ISV no puede ser mayor al monto');
     const out = await db.tx(async (q) => {
@@ -81,9 +83,9 @@ export function rutasFin({ db, ctxMgr }) {
       const cat = await q.query('select 1 from fin.categorias_gasto where id = $1 and empresa_id = $2', [b.categoria_id, req.ctx.empresa.id]);
       if (!cat.rowCount) throw noEncontrado('Categoría inexistente');
       const g = (await q.query(
-        `insert into fin.gastos (empresa_id,sucursal_id,fecha,categoria_id,proveedor_id,descripcion,monto,isv,documento,forma_pago,pagado,registrado_por)
-         values ($1,$2,coalesce($3::date,(now() at time zone 'America/Tegucigalpa')::date),$4,$5,$6,$7,$8,$9,$10,$11,$12) returning *`,
-        [req.ctx.empresa.id, suc?.id ?? null, b.fecha ?? null, b.categoria_id, b.proveedor_id ?? null, b.descripcion, b.monto, b.isv, b.documento ?? null, b.forma_pago ?? null, b.pagado, req.ctx.usuario.id])).rows[0];
+        `insert into fin.gastos (empresa_id,sucursal_id,fecha,categoria_id,proveedor_id,descripcion,monto,isv,documento,forma_pago,pagado,registrado_por,vence)
+         values ($1,$2,coalesce($3::date,(now() at time zone 'America/Tegucigalpa')::date),$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) returning *`,
+        [req.ctx.empresa.id, suc?.id ?? null, b.fecha ?? null, b.categoria_id, b.proveedor_id ?? null, b.descripcion, b.monto, b.isv, b.documento ?? null, b.forma_pago ?? null, b.pagado, req.ctx.usuario.id, b.pagado ? null : (b.vence ?? null)])).rows[0];
       await auditar(q, req.ctx, 'gasto_registrado', 'gasto', g.id, { monto: g.monto, descripcion: g.descripcion }, { sucursalId: suc?.id });
       return g;
     });
@@ -103,6 +105,8 @@ export function rutasFin({ db, ctxMgr }) {
     res.json(await resultadosEmpresa(db, { empresaId: req.ctx.empresa.id, sucursalIds: req.ctx.sucursalIds, sucursalId: f.sucursal_id ?? null,
       desde: f.desde ?? `${hoy.slice(0, 8)}01`, hasta: f.hasta ?? hoy }));
   });
+
+  montarFinExtra(r, { db, ctxMgr }, resultadosEmpresa);
 
   // ── Operaciones entre empresas del grupo ─────────────────────────────────
   r.get('/intercompania', requierePermiso('fin:ver'), async (req, res) => {

@@ -6,10 +6,12 @@ import { Campo, Estado, Modal, Tabs, useAccion, useDatos } from '../ui/kit.jsx';
 
 const VACIO = { nombre: '', rtn: '', telefono: '', correo: '', direccion: '', es_cliente: true, es_proveedor: false, exento_impuestos: false, activo: true };
 
+import { qInicial } from '../busqueda/qInicial.js';
+
 export default function Terceros() {
   const { puede } = useSesion();
   const [tab, setTab] = useState('cliente');
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState(qInicial);
   const d = useDatos(() => get(`/terceros${qs({ q: q.trim().length >= 2 ? q.trim() : '', tipo: tab, limite: 100 })}`), [tab, q]);
   const [edit, setEdit] = useState(null);
   const [hist, setHist] = useState(null);

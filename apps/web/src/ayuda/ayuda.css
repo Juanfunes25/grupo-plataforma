@@ -1,0 +1,19 @@
+.ay-fab { position: fixed; right: 12px; bottom: 84px; z-index: 40; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--borde-fuerte); background: var(--panel-2); color: var(--texto); display: grid; place-items: center; box-shadow: var(--sombra-2); }
+.ay-fab:hover { border-color: var(--acento-vivo); }
+@media (min-width: 901px) { .ay-fab { bottom: 18px; } }
+@media print { .ay-fab { display: none; } }
+.ay-hoja-velo { position: fixed; inset: 0; z-index: 90; background: var(--velo); display: flex; align-items: flex-end; justify-content: center; }
+.ay-hoja { width: min(560px, 100%); max-height: 86vh; overflow: auto; background: var(--panel); border: 1px solid var(--borde); border-radius: var(--r-xl) var(--r-xl) 0 0; padding: 18px 18px 26px; display: grid; gap: 12px; box-shadow: var(--sombra); }
+@media (min-width: 720px) { .ay-hoja-velo { align-items: center; } .ay-hoja { border-radius: var(--r-xl); } }
+.ay-hoja-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ay-hoja ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.ay-pasos { margin: 0; padding-left: 22px; display: grid; gap: 8px; } .ay-pasos li::marker { color: var(--acento-vivo); font-weight: 700; }
+.ay-puntos { display: flex; gap: 6px; justify-content: center; } .ay-puntos i { width: 8px; height: 8px; border-radius: 50%; background: var(--panel-3); } .ay-puntos i.on { background: var(--acento-vivo); }
+.ay-pie { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.ay-pagina { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 18px; align-items: start; }
+.ay-indice { position: sticky; top: 12px; display: grid; gap: 4px; }
+.ay-indice a { padding: 8px 10px; border-radius: var(--r-s); color: var(--tenue); min-height: 40px; display: flex; align-items: center; } .ay-indice a:hover { background: var(--panel-2); color: var(--texto); }
+.ay-seccion { scroll-margin-top: 16px; display: grid; gap: 10px; }
+.ay-roles { display: flex; gap: 8px; flex-wrap: wrap; }
+.ay-aviso { background: var(--aviso-fondo); color: var(--aviso-texto); padding: 8px 12px; border-radius: var(--r-s); font-size: var(--t-s); }
+@media (max-width: 800px) { .ay-pagina { grid-template-columns: 1fr; } .ay-indice { position: static; grid-auto-flow: column; overflow-x: auto; } .ay-indice a { white-space: nowrap; } }

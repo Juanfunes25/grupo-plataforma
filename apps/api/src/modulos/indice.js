@@ -17,15 +17,20 @@ import { rutasRinv } from './rinv/rutas.js';
 import { rutasDocumentos } from './documentos/rutas.js';
 import { rutasTablero } from './tablero/rutas.js';
 import { rutasBusqueda } from './busqueda/rutas.js';
-import { rutasReportesProgramados } from './reportes-programados/rutas.js';
 import { rutasMensajeria } from './mensajeria/rutas.js';
 import { rutasCompras } from './compras/rutas.js';
+import { rutasFiscalAsistente } from './fiscal/rutas.js';
+import { rutasSistema } from './salud/rutas.js';
+import { rutasCrm } from './crm/rutas.js';
+import { rutasPlanilla } from './planilla/rutas.js';
+
 /** Cada módulo expone rutas bajo /api/<modulo>. Aquí se montan todos. */
 export function montarModulos(router, deps) {
   router.use('/admin', rutasAdmin(deps));
   router.use('/pos', rutasPos(deps));
   router.use('/inv', rutasInv(deps));
   router.use('/rrhh', rutasRrhh(deps));
+  router.use('/planilla', rutasPlanilla(deps));
   router.use('/fin', rutasFin(deps));
   router.use('/terceros', rutasTerceros(deps));
   router.use('/grupo', rutasGrupo(deps));
@@ -39,9 +44,11 @@ export function montarModulos(router, deps) {
   router.use('/rep', rutasRep(deps));
   router.use('/rinv', rutasRinv(deps));
   router.use('/documentos', rutasDocumentos(deps));
+  router.use('/crm', rutasCrm(deps));
   router.use('/tablero', rutasTablero(deps));
   router.use('/busqueda', rutasBusqueda(deps));
-  router.use('/reportes-programados', rutasReportesProgramados(deps));
   router.use('/mensajeria', rutasMensajeria(deps));
   router.use('/compras', rutasCompras(deps));
+  router.use('/fiscal', rutasFiscalAsistente(deps));
+  router.use('/sistema', rutasSistema(deps));
 }

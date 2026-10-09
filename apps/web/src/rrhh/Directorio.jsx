@@ -4,6 +4,7 @@ import { get, qs } from '../api.js';
 import { fechaHN, sumarDias } from '@grupo/shared';
 import { Estado, Kpi, Tabs, useDatos } from '../ui/kit.jsx';
 import Ficha from './Ficha.jsx';
+import { qInicial } from '../busqueda/qInicial.js';
 import { DIAS, ESTADOS, TIPOS_AUSENCIA, claseEstado, claseVence, fechaCorta, iniciales, nombreDe, textoVence } from './util.js';
 
 const RUTAS = {
@@ -68,8 +69,8 @@ export function Resumen({ ruta, grupo, abrir, clave = 0 }) {
 }
 
 export function Directorio({ ruta, grupo, abrir, acciones, clave = 0 }) {
-  const [f, setF] = useState({ q: '', empresa: '', sucursal_id: '', cargo: '', estado: '', vence: '' });
-  const [qDeb, setQDeb] = useState('');
+  const [f, setF] = useState(() => ({ q: qInicial(), empresa: '', sucursal_id: '', cargo: '', estado: '', vence: '' }));
+  const [qDeb, setQDeb] = useState(qInicial);
   const d = useDatos(() => get(`${ruta}${qs({ ...f, q: qDeb })}`), [ruta, qDeb, f.empresa, f.sucursal_id, f.cargo, f.estado, f.vence, clave]);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   return (

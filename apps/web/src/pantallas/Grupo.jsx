@@ -6,6 +6,9 @@ import { BarrasH, Campo, Columnas, Estado, Kpi, Modal, Tabs, useAccion, useDatos
 import { Anillo, InformeEmpresa, ListaHallazgos } from '../ui/GerenteDigital.jsx';
 import GrupoDocumentos from '../documentos/GrupoDocumentos.jsx';
 import PanelRrhh from '../rrhh/Directorio.jsx';
+import Consolidado from '../fin/Consolidado.jsx';
+import { pedirRecorrido } from '../ayuda/recorridoEstado.js';
+import TableroGrupo from '../tablero/TableroGrupo.jsx';
 
 const PERIODOS = () => { const h = fechaHN(); return { 'Este mes': [`${h.slice(0, 8)}01`, h], '7 días': [sumarDias(h, -6), h], '30 días': [sumarDias(h, -29), h], Hoy: [h, h] }; };
 const ROLES = [['ventas', 'Ventas'], ['gerente', 'Manager'], ['admin', 'Administrador'], ['dueno', 'Dueño de la empresa'], ['cajero', 'Cajero'], ['produccion', 'Producción / cocina'], ['bodega', 'Bodega'], ['contador', 'Contador'], ['solo_lectura', 'Solo lectura']];
@@ -13,12 +16,13 @@ const rolNombre = (id) => ROLES.find((r) => r[0] === id)?.[1] ?? id;
 
 export default function Grupo() {
   const { usuario } = useSesion();
-  const [tab, setTab] = useState('resumen');
-  const tabs = [['resumen', 'Resumen'], ['gerente', 'Gerente digital'], ['finanzas', 'Finanzas del grupo'], ['alertas', 'Alertas'], ['rrhh', 'Recursos humanos'], ['documentos', 'Documentos'], ...(usuario?.es_dueno_grupo ? [['usuarios', 'Administradores y accesos']] : [])];
+  const [tab, setTab] = useState('hoy');
+  const tabs = [['hoy', 'Hoy'], ['resumen', 'Resumen del periodo'], ['gerente', 'Gerente digital'], ['finanzas', 'Finanzas del grupo'], ['alertas', 'Alertas'], ['rrhh', 'Recursos humanos'], ['documentos', 'Documentos'], ...(usuario?.es_dueno_grupo ? [['usuarios', 'Administradores y accesos']] : [])];
   return (
     <div className="pagina" style={{ maxWidth: 1360 }}>
-      <div className="encabezado-pagina"><div><h1>Dirección del grupo</h1><small>Las cuatro empresas en una sola vista. Cada empresa lleva su propio inventario y operación; aquí ves y controlas todo.</small></div></div>
+      <div className="encabezado-pagina"><div><h1>Dirección del grupo</h1><small>Las cuatro empresas en una sola vista. Cada empresa lleva su propio inventario y operación; aquí ves y controlas todo.</small></div><button className="btn chico" onClick={() => pedirRecorrido('dueno')}>Ayuda</button></div>
       <Tabs tabs={tabs} valor={tab} onCambio={setTab} />
+      {tab === 'hoy' && <TableroGrupo />}
       {tab === 'resumen' && <Resumen />}
       {tab === 'gerente' && <GerenteGrupo />}
       {tab === 'finanzas' && <Finanzas />}
@@ -114,6 +118,16 @@ function GerenteGrupo() {
 }
 
 function Finanzas() {
+  const [sub, setSub] = useState('consolidado');
+  return (
+    <>
+      <Tabs tabs={[['consolidado', 'Consolidado'], ['control', 'Gastos y entre empresas']]} valor={sub} onCambio={setSub} estilo="pildora" />
+      {sub === 'consolidado' ? <Consolidado /> : <FinanzasControl />}
+    </>
+  );
+}
+
+function FinanzasControl() {
   const [per, setPer] = useState('Este mes');
   const [desde, hasta] = PERIODOS()[per];
   const res = useDatos(() => get(`/grupo/resumen${qs({ desde, hasta })}`), [desde, hasta]);

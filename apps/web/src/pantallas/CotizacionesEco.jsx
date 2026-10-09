@@ -5,7 +5,8 @@ import { useSesion } from '../sesion.jsx';
 import { Campo, Cargando, ErrorCaja, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
 import CotizacionEditor from '../eco/CotizacionEditor.jsx';
 import AvisoSinStock from '../eco/AvisoSinStock.jsx';
-import { abrirDocumento, enlaceCorreo } from '../eco/documento.js';
+import { abrirDocumento } from '../eco/documento.js';
+import EnviarCorreo from '../mensajeria/EnviarCorreo.jsx';
 import { fechaCorta, num } from '../eco/util.js';
 import { imprimirTicket, verPdf } from '../lib/documentos.js';
 import '../eco/eco.css';
@@ -72,6 +73,7 @@ function Detalle({ id, aviso, onAviso, onVolver, onEditar }) {
   const [plan, setPlan] = useState(null);
   const [pago, setPago] = useState({ forma_pago_id: '', monto: '', referencia: '' });
   const [sinStock, setSinStock] = useState(null);   // faltantes pendientes de confirmar
+  const [correoAbierto, setCorreoAbierto] = useState(false);
   const d = useDatos(async () => {
     const [c, formas] = await Promise.all([get(`/eco/cotizaciones/${id}`), get('/eco/formas-pago')]);
     setPago((p) => ({ ...p, forma_pago_id: p.forma_pago_id || formas.find((f) => f.tipo === 'efectivo')?.id || formas[0]?.id, monto: c.pendiente > 0 ? c.pendiente : '' }));
@@ -114,14 +116,7 @@ function Detalle({ id, aviso, onAviso, onVolver, onEditar }) {
     const datos = await ejecutar(() => get(`/eco/cotizaciones/${c.id}/documento`));
     if (datos && datos !== true && !abrirDocumento(datos)) avisar('El navegador bloqueó la ventana. Permite las ventanas emergentes para imprimir.', 'mal');
   };
-  const enviar = async () => {
-    const r = await ejecutar(() => post(`/eco/cotizaciones/${c.id}/enviar`, {}));
-    if (!r || r === true) return;
-    if (r.enviado) { onAviso('Enviada por correo'); d.recargar(); return; }
-    // El servidor aún no envía correo: se abre el del usuario con el mensaje listo y la cotización queda «enviada».
-    avisar(`No se pudo enviar automáticamente: ${r.motivo}. Abrí tu correo: adjunta el PDF (Imprimir → Guardar como PDF).`, 'mal');
-    if (c.email) { await post(`/eco/cotizaciones/${c.id}/enviar`, { solo_marcar: true }).catch(() => {}); window.location.href = enlaceCorreo(c, contexto?.empresa?.nombre ?? 'EcoStone'); d.recargar(); }
-  };
+  const enviar = () => setCorreoAbierto(true);
   const motivo = (texto, ruta, ok) => { const m = window.prompt(texto); if (m) hacer(() => post(`/eco/cotizaciones/${c.id}/${ruta}`, { motivo: m }), ok); };
 
   return (
@@ -206,6 +201,7 @@ function Detalle({ id, aviso, onAviso, onVolver, onEditar }) {
           )}
         </div>
       )}
+      {correoAbierto && <EnviarCorreo titulo="Enviar cotización por correo" documento={`Cotización #${c.numero}${c.proyecto ? ` · ${c.proyecto}` : ''} · ${lempiras(c.total)}`} correo={c.email ?? ''} ruta={`/eco/cotizaciones/${c.id}/enviar`} onCerrar={() => setCorreoAbierto(false)} onListo={() => d.recargar()} />}
       {sinStock && <AvisoSinStock faltantes={sinStock.faltantes} onCancelar={() => setSinStock(null)} onContinuar={() => { setSinStock(null); facturar(true); }} />}
     </div>
   );

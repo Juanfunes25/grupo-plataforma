@@ -51,6 +51,7 @@ async function abrirPg({ databaseUrl }) {
       }
     },
     close: () => pool.end(),
+    stats: () => ({ total: pool.totalCount, ociosas: pool.idleCount, esperando: pool.waitingCount, maximo: 10 }),
   };
 }
 

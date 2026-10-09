@@ -33,7 +33,7 @@ export function rutasCatalogo({ db }) {
   // Todo lo que la caja necesita en UNA llamada (se cachea offline en el frontend).
   r.get('/', requierePermiso('pos:vender', 'pos:catalogo', 'pos:reportes'), async (req, res) => {
     const eid = req.ctx.empresa.id;
-    const [cats, prods, pg, grupos, mods, fp, suc, pe, cfg, top] = await Promise.all([
+    const [cats, prods, pg, grupos, mods, fp, suc, pe, cfg, top, dirs] = await Promise.all([
       db.query('select id, nombre, color, orden from pos.categorias where empresa_id = $1 and activo order by orden, nombre', [eid]),
       db.query(`select id, codigo, codigo_barras, nombre, descripcion, categoria_id, precio, impuesto_tasa, exento, tipo, unidad, unidad_venta, color, imagen, tiempo_prep_min, disponible, es_piedra, m2_por_caja, favorito
                   from pos.productos where empresa_id = $1 and activo order by orden, nombre`, [eid]),
@@ -49,6 +49,7 @@ export function rutasCatalogo({ db }) {
       db.query(`select d.producto_id from pos.detalle_venta d join pos.ventas v on v.id = d.venta_id
                  where v.empresa_id = $1 and v.estado = 'pagada' and v.fecha_emision > now() - interval '30 days'
                  group by d.producto_id order by count(distinct v.id) desc, sum(d.cantidad) desc limit 8`, [eid]),
+      db.query('select id, direccion from core.sucursales where empresa_id = $1', [eid]),
     ]);
     const c = cfg.rows[0]?.valor ?? {};
     res.json({
@@ -57,7 +58,9 @@ export function rutasCatalogo({ db }) {
       grupos: grupos.rows.map((g) => ({ ...g, modificadores: mods.rows.filter((m) => m.grupo_id === g.id) })),
       mas_vendidos: top.rows.map((x) => x.producto_id),
       formas_pago: fp.rows,
-      sucursales: suc,
+      sucursales: suc.map((s) => ({ ...s, direccion: dirs.rows.find((d) => d.id === s.id)?.direccion ?? null })),
+      // Datos para el encabezado del comprobante que la caja arma SIN conexión (el de la factura lo arma el servidor).
+      empresa: { codigo: req.ctx.empresa.codigo, nombre: req.ctx.empresa.nombre, razon_social: req.ctx.empresa.razon_social, rtn: req.ctx.empresa.rtn ?? null, direccion: req.ctx.empresa.direccion ?? null, telefono: req.ctx.empresa.telefono ?? null },
       // Estado del CAI por sucursal. Una sucursal SIN entrada aquí no tiene punto de emisión activo (no puede facturar).
       fiscal: Object.fromEntries(pe.rows.map((p) => {
         const e = estadoPunto({ ...p, fecha_limite_emision: p.fecha_limite_emision ? String(p.fecha_limite_emision).slice(0, 10) : null });

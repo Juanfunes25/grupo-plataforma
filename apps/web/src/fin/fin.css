@@ -1,0 +1,95 @@
+/* Finanzas del grupo y Compras: solo lo que el kit no trae. Tablas y tarjetas se ven bien desde 360 px. */
+.fin-barra { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+.fin-barra label { display: grid; gap: 4px; font-size: var(--t-xs); color: var(--tenue); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.fin-barra input, .fin-barra select { width: auto; min-width: 140px; }
+@media (max-width: 640px) { .fin-barra label { flex: 1 1 140px; } .fin-barra input, .fin-barra select { width: 100%; } }
+
+.fin-nota { color: var(--tenue); font-size: var(--t-s); line-height: 1.45; max-width: 80ch; }
+.fin-neg { color: var(--peligro-texto); }
+.fin-pos { color: var(--ok-texto); }
+tr.fin-total td { background: var(--panel-2); font-weight: 700; }
+tr.fin-sub td { color: var(--tenue); }
+tr.fin-separador td { background: var(--panel-2); font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .07em; color: var(--tenue); font-weight: 700; }
+
+/* Barra apilada (antigüedad de saldos) */
+.fin-apilada { display: flex; height: 22px; border-radius: 99px; overflow: hidden; background: var(--panel-3); }
+.fin-apilada i { display: block; height: 100%; min-width: 3px; transition: flex-grow .4s var(--ritmo); }
+.fin-leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: var(--t-s); margin-top: 8px; }
+.fin-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.fin-leyenda b { font-variant-numeric: tabular-nums; }
+.fin-punto { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+.fin-c1 { background: #2e9e8f; } .fin-c2 { background: #c9a227; } .fin-c3 { background: #d9822b; } .fin-c4 { background: #c0443f; }
+
+/* Gráfica de flujo: dos barras por periodo */
+.fin-flujo { display: flex; gap: 10px; align-items: flex-end; overflow-x: auto; padding: 6px 2px 4px; min-height: 190px; -webkit-overflow-scrolling: touch; }
+.fin-flujo-grupo { flex: 1 0 54px; display: grid; gap: 6px; justify-items: center; }
+.fin-flujo-barras { display: flex; align-items: flex-end; gap: 4px; height: 140px; }
+.fin-flujo-barras i { display: block; width: 18px; border-radius: 5px 5px 0 0; min-height: 2px; }
+.fin-flujo-barras i.e { background: #2e9e8f; } .fin-flujo-barras i.s { background: #c5603c; }
+.fin-flujo-grupo small { color: var(--tenue); font-size: var(--t-xs); white-space: nowrap; }
+.fin-flujo-grupo b { font-size: var(--t-xs); font-variant-numeric: tabular-nums; }
+
+/* Presupuesto */
+.fin-pres-barra { height: 8px; border-radius: 99px; background: var(--panel-3); overflow: hidden; min-width: 70px; }
+.fin-pres-barra i { display: block; height: 100%; border-radius: 99px; background: var(--ok); }
+.fin-pres-barra i.riesgo { background: var(--aviso); } .fin-pres-barra i.excedido { background: var(--peligro); } .fin-pres-barra i.bajo { background: var(--aviso); }
+.fin-input-num { max-width: 130px; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Tarjetas por empresa en Dirección */
+.fin-empresa { border-top: 4px solid var(--c, var(--acento)); }
+.fin-mini { display: grid; gap: 2px; }
+.fin-mini small { color: var(--tenue); }
+.fin-mini b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+
+/* Compras */
+.cmp-estado-borrador { background: var(--panel-3); }
+.cmp-lineas { display: grid; gap: 8px; }
+.cmp-linea { display: grid; grid-template-columns: minmax(0, 1fr) 96px 120px 110px 40px; gap: 8px; align-items: center; padding: 8px; border: 1px solid var(--borde); border-radius: var(--r-m); background: var(--panel-2); }
+.cmp-linea .nom { min-width: 0; display: grid; gap: 1px; overflow-wrap: anywhere; }
+.cmp-linea .nom small { color: var(--tenue); }
+.cmp-linea input { min-height: 40px; text-align: right; font-variant-numeric: tabular-nums; }
+.cmp-linea .imp { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .cmp-linea { grid-template-columns: 1fr 1fr; }
+  .cmp-linea .nom { grid-column: 1 / -1; }
+  .cmp-linea .imp { grid-column: 1 / 2; text-align: left; }
+  .cmp-linea .quitar { justify-self: end; }
+}
+.cmp-buscar-lista { display: grid; gap: 4px; max-height: 240px; overflow: auto; border: 1px solid var(--borde); border-radius: var(--r-m); padding: 4px; background: var(--panel); }
+.cmp-buscar-lista button { text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: var(--r-s); display: flex; justify-content: space-between; gap: 10px; min-height: 40px; align-items: center; }
+.cmp-buscar-lista button:hover { background: var(--panel-2); }
+.cmp-buscar-lista small { color: var(--tenue); white-space: nowrap; }
+.cmp-precio-item { border: 1px solid var(--borde); border-radius: var(--r-m); background: var(--panel); padding: 12px 14px; display: grid; gap: 8px; }
+.cmp-precio-cab { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
+.cmp-var-sube { color: var(--peligro-texto); } .cmp-var-baja { color: var(--ok-texto); }
+.cmp-mejor { background: var(--ok-fondo); }
+.cmp-prog { height: 6px; border-radius: 99px; background: var(--panel-3); overflow: hidden; min-width: 60px; } .cmp-prog i { display: block; height: 100%; background: var(--ok); }
+
+/* Documento imprimible de la orden de compra */
+.oc-velo { position: fixed; inset: 0; z-index: 80; background: var(--velo); overflow: auto; padding: 14px; }
+.oc-barra { max-width: 820px; margin: 0 auto 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.oc-hoja { max-width: 820px; margin: 0 auto; background: #fff; color: #1a1a1a; padding: 34px 38px; border-radius: 6px; font-size: 14px; line-height: 1.45; box-shadow: var(--sombra); }
+.oc-hoja h1 { font-size: 22px; margin: 0; color: #111; letter-spacing: .02em; }
+.oc-hoja h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #666; margin: 0 0 4px; }
+.oc-cab { display: flex; justify-content: space-between; gap: 20px; border-bottom: 3px solid var(--color, #333); padding-bottom: 12px; margin-bottom: 16px; }
+.oc-cab .num { text-align: right; }
+.oc-cab .num b { font-size: 24px; display: block; }
+.oc-datos { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 16px; }
+.oc-hoja table { font-size: 13px; }
+.oc-hoja th { background: #f1efeb; color: #444; border-bottom: 1px solid #ccc; position: static; }
+.oc-hoja td { border-bottom: 1px solid #e4e1db; }
+.oc-tot { margin-left: auto; width: min(100%, 300px); margin-top: 10px; }
+.oc-tot div { display: flex; justify-content: space-between; padding: 3px 0; }
+.oc-tot .g { border-top: 2px solid #333; font-weight: 700; font-size: 16px; margin-top: 4px; padding-top: 6px; }
+.oc-firmas { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; margin-top: 54px; text-align: center; font-size: 12px; color: #555; }
+.oc-firmas div { border-top: 1px solid #333; padding-top: 4px; }
+.oc-borrador { color: #b4532f; font-weight: 700; letter-spacing: .08em; }
+@media (max-width: 640px) { .oc-hoja { padding: 18px 14px; } .oc-datos { grid-template-columns: 1fr; } .oc-hoja table { display: block; overflow-x: auto; } .oc-firmas { grid-template-columns: 1fr; gap: 34px; } }
+@media print {
+  body * { visibility: hidden !important; }
+  .oc-velo, .oc-velo * { visibility: visible !important; }
+  .oc-velo { position: absolute; inset: 0; background: #fff; padding: 0; overflow: visible; }
+  .oc-barra { display: none !important; }
+  .oc-hoja { box-shadow: none; border-radius: 0; max-width: none; padding: 0; }
+  @page { margin: 14mm; }
+}

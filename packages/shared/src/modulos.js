@@ -39,13 +39,14 @@ export const MODULOS = {
   dashboard:    { nav: 'Negocio',   nombre: 'Dashboard',          descripcion: 'Ventas y números del día',                permiso: 'pos:reportes',   ruta: 'dashboard',    icono: 'dashboard' },
   gerente:      { nav: 'Negocio',   nombre: 'Gerente digital',    descripcion: 'Análisis de tus números con recomendaciones', permiso: 'gerente:ver', ruta: 'gerente',     icono: 'gerente' },
   reportes:     { nav: 'Negocio',   nombre: 'Reportes',           descripcion: 'Ventas por producto, forma de pago, cajero…', permiso: 'pos:reportes', ruta: 'reportes',    icono: 'reportes' },
-  reportes_prog:{ nav: 'Negocio',   nombre: 'Reportes por correo', descripcion: 'Programa reportes diarios o semanales en Excel o PDF', permiso: 'reportes:programar', ruta: 'reportes-programados', icono: 'reportes' },
   catalogo:     { nav: 'Negocio',   nombre: 'Catálogo',           descripcion: 'Productos, precios y modificadores',      permiso: 'pos:catalogo',   ruta: 'catalogo',     icono: 'catalogo' },
   clientes:     { nav: 'Negocio',   nombre: 'Clientes',           descripcion: 'Clientes y proveedores del grupo',        permiso: 'clientes:ver',   ruta: 'terceros',     icono: 'clientes' },
   cobranza:     { nav: 'Negocio',   nombre: 'Cobranza',           descripcion: 'Cuentas por cobrar, antigüedad, promesas y estados de cuenta', permiso: 'cobranza:ver', ruta: 'cobranza', icono: 'dinero' },
   caja_chica:   { nav: 'Negocio',   nombre: 'Caja chica',         descripcion: 'Entradas y salidas de efectivo',          permiso: 'pos:caja',       ruta: 'caja-chica',   icono: 'dinero' },
   inventario:   { nav: 'Negocio',   nombre: 'Inventario',         descripcion: 'Insumos, recetas, compras y mermas',      permiso: 'inv:ver',        ruta: 'inventario',   icono: 'inventario' },
   rrhh:         { nav: 'Negocio',   nombre: 'Personal',           descripcion: 'Empleados, asistencia y vacaciones',      permiso: 'rrhh:ver',       ruta: 'personal',     icono: 'usuarios' },
+  planilla:     { nav: 'Negocio',   nombre: 'Planilla',           descripcion: 'Sueldos, IHSS, RAP, ISR, décimos y boletas de pago', permiso: 'rrhh:sensible', ruta: 'planilla',   icono: 'dinero' },
+  inv_unificado:{ nav: 'Negocio',   nombre: 'Inventario unificado', descripcion: 'Existencias, alertas, conteos, traslados y kardex', permiso: 'inv:ver', ruta: 'inventario-unificado', icono: 'inventario' },
   finanzas:     { nav: 'Negocio',   nombre: 'Finanzas',           descripcion: 'Resultados, flujo de caja, por cobrar y pagar, presupuesto', permiso: 'fin:ver',        ruta: 'finanzas',     icono: 'dinero' },
   compras:      { nav: 'Negocio',   nombre: 'Compras',            descripcion: 'Proveedores, órdenes de compra, precios y reorden', permiso: 'compras:ver', ruta: 'compras',      icono: 'inventario' },
   // Control
@@ -54,6 +55,7 @@ export const MODULOS = {
   cai:          { nav: 'Control',   nombre: 'CAI / Emisión',      descripcion: 'CAI y puntos de emisión',                 permiso: 'pos:fiscal',     ruta: 'cai',          icono: 'impresora' },
   usuarios:     { nav: 'Control',   nombre: 'Usuarios',           descripcion: 'Usuarios, roles y accesos',               permiso: 'admin:usuarios', ruta: 'usuarios',     icono: 'usuarios' },
   sucursales:   { nav: 'Control',   nombre: 'Sucursales',         descripcion: 'Sucursales y datos de la empresa',        permiso: 'admin:empresa',  ruta: 'sucursales',   icono: 'sucursales' },
+  estado:       { nav: 'Control',   nombre: 'Estado del sistema', descripcion: 'Salud, errores, caídas y copia exportable',  permiso: 'sistema:ver',    ruta: 'estado',       icono: 'escudo' },
   documentos:   { nav: 'Control',   nombre: 'Documentos',         descripcion: 'Contratos, permisos ARSA, registros sanitarios y más', permiso: 'doc:ver',       ruta: 'documentos',   icono: 'escudo' },
   // Ajustes
   impresora:    { nav: 'Ajustes',   nombre: 'Impresora',          descripcion: 'Ticket y prueba de impresión',            permiso: 'pos:vender',     ruta: 'impresora',    icono: 'impresora' },
@@ -65,15 +67,15 @@ export const MODULOS = {
 
 // Qué módulos "de base" se derivan de un módulo encendido en core.empresa_modulos.
 export const MODULOS_DERIVADOS = {
-  pos: ['pos', 'facturas', 'cierres', 'dashboard', 'reportes', 'reportes_prog', 'catalogo', 'clientes', 'caja_chica', 'gerente', 'cai'],
+  pos: ['pos', 'facturas', 'cierres', 'dashboard', 'reportes', 'catalogo', 'clientes', 'caja_chica', 'gerente', 'cai'],
   kds: ['kds'],
-  inventario: ['inventario'],
-  rrhh: ['rrhh'],
+  inventario: ['inventario', 'inv_unificado'],
+  rrhh: ['rrhh', 'planilla'],
   finanzas: ['finanzas'],
   compras: ['compras'],
-  fabrica: ['piedra', 'cot_eco', 'prod_registrar', 'prod_ordenes', 'prod_recetas', 'prod_insumos', 'prod_inventario', 'prod_trazabilidad', 'prod_reporte'],
-  distribuidora: ['cot_dis', 'dis_salidas', 'dis_catalogo', 'dis_inventario'],
-  reposicion: ['rep_tablero', 'rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_mantenimiento'],
+  fabrica: ['piedra', 'cot_eco', 'prod_registrar', 'prod_ordenes', 'prod_recetas', 'prod_insumos', 'prod_inventario', 'prod_trazabilidad', 'prod_reporte', 'inv_unificado'],
+  distribuidora: ['cot_dis', 'dis_salidas', 'dis_catalogo', 'dis_inventario', 'inv_unificado'],
+  reposicion: ['rep_tablero', 'rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_mantenimiento', 'inv_unificado'],
   antifraude: ['antifraude'],      // solo Italo y Origen; EcoStone y DISERCO no lo usan
   cotizaciones: ['cotizaciones'],
   cobranza: ['cobranza'],          // cobranza: EcoStone y DISERCO
@@ -81,7 +83,7 @@ export const MODULOS_DERIVADOS = {
 // Empresas de fábrica/distribuidora tienen su propio catálogo e inventario: se ocultan los genéricos.
 export const MODULOS_OCULTOS_POR = { reposicion: ['inventario'], fabrica: ['catalogo', 'inventario', 'caja_chica'], distribuidora: ['catalogo', 'inventario', 'caja_chica'] };
 // Siempre presentes (según permiso) en cualquier empresa.
-export const MODULOS_SIEMPRE = ['admin', 'usuarios', 'sucursales', 'bitacora', 'impresora', 'documentos', 'ayuda'];
+export const MODULOS_SIEMPRE = ['admin', 'usuarios', 'sucursales', 'bitacora', 'impresora', 'documentos', 'ayuda', 'estado'];
 
 /** Módulos visibles para un usuario en una empresa. */
 export function modulosVisibles(modulosEmpresa, permisos) {

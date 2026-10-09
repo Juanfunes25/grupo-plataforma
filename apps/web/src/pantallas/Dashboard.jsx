@@ -4,6 +4,7 @@ import { useSesion } from '../sesion.jsx';
 import { EncabezadoPagina, Estado, Kpi, descargarCsv, useDatos } from '../ui/kit.jsx';
 import { BarraH, BarrasV, COLOR_FORMA, Leyenda, Variacion, colorSerie } from '../cierres/graficas.jsx';
 import { L, entero, fechaCorta, hora12, hoyHn, primerDiaMes, ATAJOS } from '../cierres/formato.js';
+import TableroEmpresa from '../tablero/TableroEmpresa.jsx';
 import '../cierres/cierres.css';
 
 const ATAJOS_DASH = ATAJOS.filter((a) => ['Hoy', 'Esta semana', 'Este mes'].includes(a.etiqueta));
@@ -20,7 +21,8 @@ export default function Dashboard() {
 
   return (
     <div className="pagina">
-      <EncabezadoPagina titulo="Dashboard" descripcion={`Ventas y números · ${aplicado.desde} al ${aplicado.hasta}`}
+      <TableroEmpresa />
+      <EncabezadoPagina titulo="Análisis por periodo" descripcion={`Ventas y números · ${aplicado.desde} al ${aplicado.hasta}`}
         acciones={<button className="btn chico" onClick={() => d.recargar()} disabled={d.cargando} aria-label="Actualizar datos">{d.cargando ? 'Actualizando…' : 'Actualizar'}</button>} />
       <div className="tarjeta" style={{ display: 'grid', gap: 12 }}>
         <div className="atajos" role="group" aria-label="Periodos rápidos">{ATAJOS_DASH.map((a) => { const r = a.calcular(); const on = r.desde === aplicado.desde && r.hasta === aplicado.hasta; return <button key={a.etiqueta} className={`btn chico${on ? ' primario' : ''}`} aria-pressed={on} onClick={() => consultar({ ...f, ...r })}>{a.etiqueta}</button>; })}</div>

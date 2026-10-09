@@ -5,6 +5,7 @@ import { ContenidoUsuarios } from './Usuarios.jsx';
 import { ContenidoEmpresa, ContenidoSucursales } from './Sucursales.jsx';
 import { ContenidoCai } from './Cai.jsx';
 import { ContenidoBitacora } from './Bitacora.jsx';
+import { ContenidoCorreo } from '../mensajeria/Correo.jsx';
 
 // Administración reúne en pestañas lo mismo que tienen por separado Usuarios, Sucursales, CAI / Emisión y Bitácora
 // (cada pantalla exporta su contenido; aquí no se repite lógica).
@@ -14,6 +15,7 @@ export default function Admin({ inicial }) {
     ...(puede('admin:usuarios') ? [['usuarios', 'Usuarios y accesos']] : []),
     ...(puede('admin:empresa') ? [['sucursales', 'Sucursales'], ['empresa', 'Datos de la empresa']] : []),
     ...(puede('pos:fiscal') ? [['fiscal', 'Facturación (CAI)']] : []),
+    ...(puede('admin:usuarios') ? [['correo', 'Correo y avisos']] : []),
     ...(puede('auditoria:ver') ? [['auditoria', 'Bitácora']] : []),
   ];
   const [tab, setTab] = useState(tabs.some((t) => t[0] === inicial) ? inicial : tabs[0]?.[0]);
@@ -25,6 +27,7 @@ export default function Admin({ inicial }) {
       {tab === 'sucursales' && <ContenidoSucursales />}
       {tab === 'empresa' && <ContenidoEmpresa />}
       {tab === 'fiscal' && <ContenidoCai />}
+      {tab === 'correo' && <ContenidoCorreo />}
       {tab === 'auditoria' && <ContenidoBitacora />}
     </div>
   );

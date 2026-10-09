@@ -5,7 +5,7 @@ import { Campo, Kpi, Modal, useAccion } from '../ui/kit.jsx';
 import { colorDe } from '../ui/sucursales.js';
 import './cotizaciones.css';
 import {
-  CLASE_ESTADO, CONFIRMADOS, DIAS, ETIQUETA_ESTADO, ITEMS_CHECKLIST, MESES, claveFecha, enlaceCorreo, enlaceGoogleCalendar, enlaceWhatsApp,
+  CLASE_ESTADO, CONFIRMADOS, DIAS, ETIQUETA_ESTADO, ITEMS_CHECKLIST, MESES, claveFecha, enlaceGoogleCalendar, enlaceWhatsApp,
   fechaLarga, hoyClave, horaCorta, numCot,
 } from './reglas.js';
 
@@ -38,7 +38,7 @@ export function ModalAceptar({ cotizacion: c, sucursales, sucursalIdDefecto, onC
 }
 
 // ── Ficha de control del evento: lista de control, reprogramación, anticipo y notas ─────────
-export function ModalEvento({ cotizacion, sucursales, empresaNombre, onCerrar, onActualizada, onAceptar, onFacturar, onDocumento, onEditar, puedeFacturar }) {
+export function ModalEvento({ cotizacion, sucursales, empresaNombre, onCerrar, onActualizada, onAceptar, onFacturar, onDocumento, onCorreo, onEditar, puedeFacturar }) {
   const c = cotizacion;
   const [f, setF] = useState({ fecha: c.fecha_evento ?? '', hora: c.hora_evento?.slice(0, 5) ?? '', lugar: c.lugar ?? '', anticipo: String(c.anticipo || 0), notas: c.notas_seguimiento ?? '' });
   const [ejecutar, ocupado] = useAccion();
@@ -116,7 +116,7 @@ export function ModalEvento({ cotizacion, sucursales, empresaNombre, onCerrar, o
           <label className="fila" style={{ flexDirection: 'row', color: 'var(--texto)' }}><input type="checkbox" checked={Boolean(c.realizado)} disabled={ocupado} onChange={(e) => guardar({ realizado: e.target.checked })} /> El evento ya se realizó</label>
         </>
       )}
-      {c.email_cliente && !facturada && <div><a className="btn chico" href={enlaceCorreo(c, empresaNombre)}>Abrir en mi correo</a></div>}
+      {!facturada && onCorreo && <div><button className="btn chico" onClick={() => onCorreo(c)}>Enviar por correo</button></div>}
     </Modal>
   );
 }

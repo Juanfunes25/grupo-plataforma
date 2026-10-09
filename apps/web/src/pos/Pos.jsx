@@ -2,30 +2,39 @@ import AvisoRecepcion from '../rep/AvisoRecepcion.jsx';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AvisoSinStock from '../eco/AvisoSinStock.jsx';
-import { MOTIVOS_DESCARTE, MOTIVOS_REIMPRESION, OPCIONES_DESCUENTO, UMBRAL_RTN_OBLIGATORIO, calcularTotales, identidadValida, lempiras, nombreCortoSucursal, requiereRtn as faltaRtn } from '@grupo/shared';
+import { MOTIVOS_DESCARTE, MOTIVOS_REIMPRESION, OPCIONES_DESCUENTO, UMBRAL_RTN_OBLIGATORIO, calcularTotales, formatearTicketProvisional, identidadValida, lempiras, nombreCortoSucursal, requiereRtn as faltaRtn, uuidCliente } from '@grupo/shared';
 import { get, patch, post, put, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Cargando, ErrorCaja, Modal, useAccion, useAviso, vibrar } from '../ui/kit.jsx';
 import Icono from '../ui/Icono.jsx';
 import { colorSucursal } from '../lib/coloresSucursal.js';
-import { imprimirTicket, leerConfigImpresora, verPdf } from '../lib/documentos.js';
+import { imprimirLineas, imprimirTicket, leerConfigImpresora, verPdf } from '../lib/documentos.js';
 import { registrarEvento } from '../lib/eventos.js';
 import { useCambiosVentas, useCatalogoVivo } from '../lib/enVivo.js';
 import OpcionesModal from './OpcionesModal.jsx';
 import PesoModal from './PesoModal.jsx';
-import CantidadEntera from '../ui/CantidadEntera.jsx';
+import CantidadModal from './CantidadModal.jsx';
 import CobroModal from './CobroModal.jsx';
+import CobroEfectivoModal from './CobroEfectivoModal.jsx';
 import ClienteModal from './ClienteModal.jsx';
 import AbiertasModal from './AbiertasModal.jsx';
 import MotivoModal from './MotivoModal.jsx';
+import AyudaAtajos from './AyudaAtajos.jsx';
+import ColaModal from './ColaModal.jsx';
+import { ATAJOS } from './atajos.js';
+import { cola, codigoCaja, sincronizarAhora, useResumenCola } from './colaLocal.js';
 import { CerrarTurno, MovimientoCaja } from './TurnoPanel.jsx';
 import './pos.css';
+import './pos-mostrador.css';
 
 let contador = 0;
 const nuevaLinea = (producto, extra = {}) => ({ key: ++contador, producto, cantidad: 1, opciones: [], notas: null, descuento_porcentaje: 0, ...extra });
 const vacio = () => ({ id: null, ticket: null, nombre_orden: '', tipo_orden: 'aqui', cliente: null, tercera_edad: { nombre: '', identidad: '' }, nota: '', lineas: [] });
 const cacheKey = (e, s) => `grupo.catalogo.${e}.${s}`;
 const normalizar = (t) => String(t ?? '').trim().toLowerCase();
+const redondear = (n) => Math.round(n * 100) / 100;
+const esCampo = (el) => Boolean(el && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable));
+const MSG_SIN_TARJETA = 'Sin conexión solo se puede cobrar en efectivo: la tarjeta y la transferencia necesitan validarse en el momento.';
 
 // Un lector de código de barras "teclea" el código muy rápido y termina con Enter. Se busca primero coincidencia EXACTA de
 // código de barras o código interno: así el escaneo nunca agrega un producto parecido por error.
@@ -36,12 +45,13 @@ const buscarPorCodigo = (productos, codigo) => {
 };
 
 export default function Pos() {
-  const { contexto, sucursal, puede, modulos, elegirSucursal } = useSesion();
+  const { contexto, sucursal, puede, modulos, elegirSucursal, usuario } = useSesion();
   const avisar = useAviso();
   const navegar = useNavigate();
   const [ejecutar, ocupado] = useAccion();
+  const resumenCola = useResumenCola();
   const [cat, setCat] = useState(null);
-  const [offline, setOffline] = useState(false);
+  const [offline, setOffline] = useState(false);       // el servidor no responde: se trabaja con el catálogo guardado y las ventas van a la cola
   const [enLinea, setEnLinea] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
   const [error, setError] = useState('');
   const [verOrden, setVerOrden] = useState(false);       // solo pantallas angostas: la orden se abre sobre el catálogo
@@ -50,7 +60,7 @@ export default function Pos() {
   const [orden, setOrden] = useState(vacio);
   const [catActiva, setCatActiva] = useState('todas');
   const [busca, setBusca] = useState('');
-  const [agotados, setAgotados] = useState(false);
+  const [modoEdicion, setModoEdicion] = useState(null);  // null | 'agotado' | 'favorito' (encargados)
   const [modal, setModal] = useState(null);            // {tipo, ...}
   const [recibo, setRecibo] = useState(null);
   const [errCobro, setErrCobro] = useState('');
@@ -58,14 +68,18 @@ export default function Pos() {
   const [abiertas, setAbiertas] = useState(0);
   const [toast, setToast] = useState('');
   const [avisoStock, setAvisoStock] = useState(null);   // fábricas: faltan existencias, pide confirmación
+  const [puedeDeshacer, setPuedeDeshacer] = useState(false);
 
   const empresa = contexto.empresa.codigo;
+  const sinRed = !enLinea || offline;
 
   // Referencias: el autoguardado corre en un temporizador, así que lee SIEMPRE lo último desde aquí (no del estado de su cierre).
   const ordenRef = useRef(orden); ordenRef.current = orden;
   const sucursalRef = useRef(sucursal); sucursalRef.current = sucursal;
   const catRef = useRef(cat); catRef.current = cat;
+  const sinRedRef = useRef(sinRed); sinRedRef.current = sinRed;
   const ventaIdRef = useRef(null);
+  const idCobroRef = useRef(null);                    // id de esta venta: el mismo en el cobro normal y en el reintento sin conexión (jamás se factura dos veces)
   const colaRef = useRef(Promise.resolve());
   const descartadaRef = useRef(false);
   const timerRef = useRef(null);
@@ -74,6 +88,11 @@ export default function Pos() {
   const ultimaRef = useRef(null);
   const buscadorRef = useRef(null);
   const toastRef = useRef(null);
+  // Historial para «Deshacer» (Ctrl+Z): fotos anteriores de las líneas de ESTA orden.
+  const histRef = useRef([]);
+  const prevLineasRef = useRef(orden.lineas);
+  const reinicioHistRef = useRef(false);
+  const deshaciendoRef = useRef(false);
 
   const mostrarToast = (t) => { setToast(t); clearTimeout(toastRef.current); toastRef.current = setTimeout(() => setToast(''), 1400); };
 
@@ -88,7 +107,7 @@ export default function Pos() {
   const cargarTurno = useCallback(async () => {
     if (!sucursal) return;
     try { const r = await get(`/pos/turno/actual${qs({ sucursal_id: sucursal.id })}`); setTurno(r.turno); setResumenTurno(r.resumen ?? null); }
-    catch { setTurno(null); }
+    catch { setTurno((t) => (t === undefined ? null : t)); }
   }, [sucursal]);
   const contarAbiertas = useCallback(async () => {
     if (!sucursal) return;
@@ -102,10 +121,16 @@ export default function Pos() {
   // Sincronización en vivo (consulta liviana cada pocos segundos): un precio nuevo o un "se acabó" marcado en otra caja aparece solo,
   // igual que una orden guardada o cobrada en otra caja.
   useCatalogoVivo(cargarCatalogo, { activo: !offline });
-  useCambiosVentas(sucursal?.id, contarAbiertas, { cada: 8000, activo: Boolean(sucursal) });
+  useCambiosVentas(sucursal?.id, contarAbiertas, { cada: 8000, activo: Boolean(sucursal) && !offline });
+  // Sin conexión: cada 10 s se vuelve a preguntar al servidor; en cuanto contesta se sale solo del modo local.
+  useEffect(() => {
+    if (!offline) return undefined;
+    const id = setInterval(() => { cargarCatalogo(); }, 10_000);
+    return () => clearInterval(id);
+  }, [offline, cargarCatalogo]);
 
   useEffect(() => {
-    const on = () => { setEnLinea(true); if (ordenRef.current.lineas.length) guardarEnCola().catch(() => {}); };
+    const on = () => { setEnLinea(true); cargarCatalogo(); cargarTurno(); if (ordenRef.current.lineas.length) guardarEnCola().catch(() => {}); };
     const off = () => setEnLinea(false);
     window.addEventListener('online', on); window.addEventListener('offline', off);
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
@@ -121,7 +146,7 @@ export default function Pos() {
       elegirSucursal(sucPrevia.current);
       return;
     }
-    if (nueva !== sucPrevia.current) { ventaIdRef.current = null; setOrden(vacio()); setAbiertas(0); }
+    if (nueva !== sucPrevia.current) { ventaIdRef.current = null; idCobroRef.current = null; reinicioHistRef.current = true; setOrden(vacio()); setAbiertas(0); }
     sucPrevia.current = nueva;
   }, [sucursal?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -134,10 +159,31 @@ export default function Pos() {
     })), orden.cliente, 0), [orden.lineas, orden.cliente]);
 
   const gruposDe = (p) => (cat?.grupos ?? []).filter((g) => p.grupo_ids.includes(g.id));
-  const productos = useMemo(() => {
+
+  // Vista del catálogo: buscando → coincidencias; «Todo» → Favoritos y Más vendidos arriba y luego todo; una categoría → sus productos.
+  const vista = useMemo(() => {
+    const todos = cat?.productos ?? [];
     const q = normalizar(busca);
-    return (cat?.productos ?? []).filter((p) => (q ? normalizar(p.nombre).includes(q) || normalizar(p.codigo).includes(q) || normalizar(p.codigo_barras).includes(q) : catActiva === 'todas' || p.categoria_id === catActiva));
+    const porId = new Map(todos.map((p) => [p.id, p]));
+    const favoritos = todos.filter((p) => p.favorito);
+    const masIds = (cat?.mas_vendidos ?? []).filter((id) => porId.has(id));
+    const mas = masIds.map((id) => porId.get(id));
+    if (q) return { secciones: [{ id: 'busqueda', titulo: null, prods: todos.filter((p) => normalizar(p.nombre).includes(q) || normalizar(p.codigo).includes(q) || normalizar(p.codigo_barras).includes(q)) }], favoritos, mas };
+    if (catActiva === 'fav') return { secciones: [{ id: 'fav', titulo: null, prods: favoritos }], favoritos, mas };
+    if (catActiva === 'mas') return { secciones: [{ id: 'mas', titulo: null, prods: mas }], favoritos, mas };
+    if (catActiva === 'todas') {
+      const masSinFav = mas.filter((p) => !p.favorito);
+      const conArriba = favoritos.length > 0 || masSinFav.length > 0;
+      return { secciones: [
+        ...(favoritos.length ? [{ id: 'fav', titulo: '★ Favoritos', prods: favoritos }] : []),
+        ...(masSinFav.length ? [{ id: 'mas', titulo: 'Más vendidos', prods: masSinFav }] : []),
+        { id: 'todos', titulo: conArriba ? 'Todos los productos' : null, prods: todos },
+      ], favoritos, mas };
+    }
+    return { secciones: [{ id: 'cat', titulo: null, prods: todos.filter((p) => p.categoria_id === catActiva) }], favoritos, mas };
   }, [cat, catActiva, busca]);
+  const hayResultados = vista.secciones.some((s) => s.prods.length > 0);
+  const resultadoBusqueda = busca.trim() ? (buscarPorCodigo(cat?.productos ?? [], busca) ?? vista.secciones[0]?.prods[0] ?? null) : null;
 
   const umbral = cat?.config?.umbral_rtn ?? UMBRAL_RTN_OBLIGATORIO;
   const hayTerceraEdad = orden.lineas.some((l) => l.descuento_porcentaje === 25);
@@ -152,6 +198,7 @@ export default function Pos() {
   const bloqueoFiscal = sinPunto || Boolean(fiscal?.agotado || fiscal?.vencido);
   const hayLineas = orden.lineas.length > 0;
   const cobroBloqueado = !hayLineas || bloqueoFiscal || necesitaRtn || faltaCarne || cobrando || ocupado;
+  const hayPiedra = orden.lineas.some((l) => l.producto.es_piedra);
 
   // ── Guardado automático de la orden como "abierta" (la recupera Órdenes abiertas aunque se cierre la pantalla) ──
   const cuerpoOrden = (o, sucId) => ({
@@ -176,7 +223,10 @@ export default function Pos() {
       pendienteRef.current = false;
       setError('');
       return ventaIdRef.current;
-    } catch (e) { setError(e.message); throw e; }
+    } catch (e) {
+      if (e.codigo === 'sin_red') { setOffline(true); throw e; }   // sin conexión no es un error: la orden sigue en pantalla y se cobra en modo local
+      setError(e.message); throw e;
+    }
   }
   // Encola cada guardado en serie: nunca corren dos a la vez (dos órdenes duplicadas).
   function guardarEnCola() {
@@ -200,11 +250,24 @@ export default function Pos() {
     if (orden.lineas.length === 0) { vaciarEnServidor(); return undefined; }
     descartadaRef.current = false;
     pendienteRef.current = true;
-    timerRef.current = setTimeout(() => { guardarEnCola().catch(() => { setTimeout(() => guardarEnCola().catch(() => {}), 2000); }); }, 700);
+    if (sinRedRef.current) return undefined;     // sin conexión la orden vive en pantalla; al volver la señal se guarda sola
+    timerRef.current = setTimeout(() => { guardarEnCola().catch(() => { if (!sinRedRef.current) setTimeout(() => guardarEnCola().catch(() => {}), 2000); }); }, 700);
     return () => clearTimeout(timerRef.current);
   }, [orden.lineas, orden.cliente, orden.tipo_orden, orden.nombre_orden, orden.tercera_edad, orden.nota]); // eslint-disable-line react-hooks/exhaustive-deps
   // Al salir de la pantalla no se pierde lo último que se tocó.
-  useEffect(() => () => { if (pendienteRef.current) guardarEnCola().catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { if (pendienteRef.current && !sinRedRef.current) guardarEnCola().catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Historial de la orden (Deshacer) ──────────────────────────────────────
+  useEffect(() => {
+    if (deshaciendoRef.current) { deshaciendoRef.current = false; prevLineasRef.current = orden.lineas; return; }
+    if (reinicioHistRef.current) { reinicioHistRef.current = false; histRef.current = []; prevLineasRef.current = orden.lineas; setPuedeDeshacer(false); return; }
+    if (prevLineasRef.current !== orden.lineas) {
+      histRef.current.push(prevLineasRef.current);
+      if (histRef.current.length > 30) histRef.current.shift();
+      prevLineasRef.current = orden.lineas;
+      setPuedeDeshacer(true);
+    }
+  }, [orden.lineas]);
 
   // ── Líneas de la orden ──────────────────────────────────────────────────
   const agregar = useCallback((p, extra) => {
@@ -219,16 +282,22 @@ export default function Pos() {
     });
     mostrarToast(`+ ${p.nombre}`);
   }, []);
-  const tocar = (p) => {
+  const tocar = (p, cantidad = 1) => {
     vibrar(10);
-    if (agotados) {
+    if (modoEdicion === 'agotado') {
       ejecutar(async () => { await patch(`/pos/catalogo/productos/${p.id}/disponible`, { disponible: !p.disponible }); await cargarCatalogo(); }, p.disponible ? `${p.nombre}: marcado como agotado` : `${p.nombre}: disponible de nuevo`);
       return;
     }
+    if (modoEdicion === 'favorito') {
+      ejecutar(async () => { await patch(`/pos/catalogo/productos/${p.id}/favorito`, { favorito: !p.favorito }); await cargarCatalogo(); }, p.favorito ? `${p.nombre}: ya no es favorito` : `${p.nombre}: ahora es favorito`);
+      return;
+    }
     if (!p.disponible) { avisar(`${p.nombre} está agotado`, 'mal'); return; }
+    if (sinRedRef.current && p.es_piedra) { avisar('La piedra no se vende sin conexión: no se puede verificar la existencia. Espera a que vuelva el internet.', 'mal'); return; }
     // Con grupos OBLIGATORIOS (ej. tamaño) se pregunta; si todo es opcional se agrega directo y los extras se piden tocando la línea.
     if (gruposDe(p).some((g) => g.min_sel > 0)) setModal({ tipo: 'opciones', producto: p });
     else if (p.unidad !== 'unidad' && !p.es_piedra) setModal({ tipo: 'peso', producto: p });
+    else if (cantidad > 1) agregar(p, { cantidad });
     else agregar(p);
   };
 
@@ -238,7 +307,7 @@ export default function Pos() {
   useEffect(() => {
     const f = (e) => {
       const el = document.activeElement;
-      if ((el && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable)) || modal || recibo || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (esCampo(el) || modal || recibo || e.ctrlKey || e.altKey || e.metaKey) return;
       const ahora = Date.now();
       if (ahora - buffer.current.t > 80) buffer.current.txt = '';
       buffer.current.t = ahora;
@@ -259,25 +328,28 @@ export default function Pos() {
   // facturarlo: cada quitada queda en la bitácora.
   const registrarQuitado = (l, cantidad) => {
     if (!l || cantidad <= 0) return;
-    registrarEvento('orden.quitar_producto', { producto: l.producto.nombre, cantidad, monto: Math.round(Number(l.producto.precio) * cantidad * 100) / 100, orden_id: ventaIdRef.current ?? '', quedan_en_orden: orden.lineas.length }, sucursal?.id);
+    registrarEvento('orden.quitar_producto', { producto: l.producto.nombre, cantidad, monto: Math.round(Number(l.producto.precio) * cantidad * 100) / 100, orden_id: ventaIdRef.current ?? '', quedan_en_orden: ordenRef.current.lineas.length }, sucursal?.id);
   };
   const cambiarCant = (key, d) => {
-    const l = orden.lineas.find((x) => x.key === key);
+    const l = ordenRef.current.lineas.find((x) => x.key === key);
     if (d < 0) registrarQuitado(l, -d);
     setOrden((o) => ({ ...o, lineas: o.lineas.map((x) => (x.key === key ? { ...x, cantidad: Math.round((x.cantidad + d) * 1000) / 1000 } : x)).filter((x) => x.cantidad > 0) }));
   };
-  const fijarCantidad = (key, valor) => {
-    const cantidad = Math.max(1, Math.floor(Number(valor) || 1));
-    const l = orden.lineas.find((x) => x.key === key);
-    if (l && cantidad < l.cantidad) registrarQuitado(l, l.cantidad - cantidad);
+  // Cantidad escrita (teclado en pantalla o físico). Por peso admite 3 decimales; unidades y cajas de piedra, solo enteros.
+  const fijarCantidad = (key, valor, decimal = false) => {
+    const n = decimal ? Math.round(Number(valor) * 1000) / 1000 : Math.floor(Number(valor) || 1);
+    const cantidad = Math.min(999, Math.max(decimal ? 0.001 : 1, n));
+    const l = ordenRef.current.lineas.find((x) => x.key === key);
+    if (l && cantidad < l.cantidad) registrarQuitado(l, redondear(l.cantidad - cantidad));
     setOrden((o) => ({ ...o, lineas: o.lineas.map((x) => (x.key === key ? { ...x, cantidad } : x)) }));
   };
   const quitar = (key) => {
-    registrarQuitado(orden.lineas.find((x) => x.key === key), orden.lineas.find((x) => x.key === key)?.cantidad ?? 0);
-    setOrden((o) => ({ ...o, lineas: o.lineas.filter((l) => l.key !== key) }));
+    const l = ordenRef.current.lineas.find((x) => x.key === key);
+    registrarQuitado(l, l?.cantidad ?? 0);
+    setOrden((o) => ({ ...o, lineas: o.lineas.filter((x) => x.key !== key) }));
   };
   const fijarDescuento = (key, pct) => {
-    const l = orden.lineas.find((x) => x.key === key);
+    const l = ordenRef.current.lineas.find((x) => x.key === key);
     if (l && pct > 0) registrarEvento('orden.descuento', { producto: l.producto.nombre, cantidad: l.cantidad, porcentaje: pct }, sucursal?.id);
     setOrden((o) => ({ ...o, lineas: o.lineas.map((x) => (x.key === key ? { ...x, descuento_porcentaje: pct } : x)) }));
   };
@@ -290,14 +362,30 @@ export default function Pos() {
     copia.splice(i + 1, 0, { ...o.lineas[i], key: ++contador, cantidad: 1, descuento_porcentaje: 0 });
     return { ...o, lineas: copia };
   });
+  // Deshacer: vuelve a la foto anterior de las líneas. Lo que desaparece por deshacer también queda en la bitácora como producto quitado.
+  const deshacer = () => {
+    const h = histRef.current;
+    if (!h.length) { mostrarToast('Nada que deshacer'); return; }
+    const previa = h.pop();
+    for (const l of ordenRef.current.lineas) {
+      const p = previa.find((x) => x.key === l.key);
+      const quitado = p ? l.cantidad - p.cantidad : l.cantidad;
+      if (quitado > 0) registrarQuitado(l, quitado);
+    }
+    deshaciendoRef.current = true;
+    setOrden((o) => ({ ...o, lineas: previa }));
+    setPuedeDeshacer(h.length > 0);
+    mostrarToast('Deshecho');
+  };
 
   // ── Nueva / descartar / en espera / recuperar ────────────────────────────
   const reiniciar = () => {
     clearTimeout(timerRef.current); pendienteRef.current = false;
-    ventaIdRef.current = null; setOrden(vacio()); setError(''); setErrCobro('');
+    ventaIdRef.current = null; idCobroRef.current = null; reinicioHistRef.current = true;
+    setOrden(vacio()); setError(''); setErrCobro(''); setBusca('');
     setTimeout(() => buscadorRef.current?.focus(), 50);
   };
-  const nueva = () => { if (hayLineas) setModal({ tipo: 'descartar' }); else reiniciar(); };
+  const nueva = () => { if (ordenRef.current.lineas.length) setModal({ tipo: 'descartar' }); else reiniciar(); };
   const descartarConMotivo = async (motivo) => {
     descartadaRef.current = true;
     const id = ventaIdRef.current;
@@ -306,6 +394,8 @@ export default function Pos() {
     contarAbiertas();
   };
   const dejarEnEspera = async () => {
+    if (sinRedRef.current) { avisar('Sin conexión no se puede dejar la orden en espera: se guarda en el servidor. Cóbrala en efectivo o espera la señal.', 'mal'); return; }
+    if (!ordenRef.current.lineas.length) return;
     const r = await ejecutar(() => guardarEnCola());
     if (r) { avisar(`Orden #${ordenRef.current.ticket ?? ''} guardada en espera`); reiniciar(); contarAbiertas(); }
   };
@@ -317,7 +407,7 @@ export default function Pos() {
     const porId = new Map(cat.productos.map((p) => [p.id, p]));
     const lineas = v.lineas.filter((l) => porId.has(l.producto_id)).map((l) => nuevaLinea(porId.get(l.producto_id), { cantidad: Number(l.cantidad), opciones: l.opciones, notas: l.notas, descuento_porcentaje: Number(l.descuento_porcentaje) }));
     if (lineas.length < v.lineas.length) avisar('Algún producto de esa orden ya no está en el catálogo y no se cargó.', 'mal');
-    descartadaRef.current = false; omitirGuardadoRef.current = true;
+    descartadaRef.current = false; omitirGuardadoRef.current = true; reinicioHistRef.current = true; idCobroRef.current = null;
     ventaIdRef.current = v.id;
     setOrden({
       id: v.id, ticket: v.ticket_dia, nombre_orden: v.nombre_orden ?? '', tipo_orden: v.tipo_orden, nota: v.notas ?? '',
@@ -330,49 +420,161 @@ export default function Pos() {
   const repetirUltima = () => {
     const u = ultimaRef.current;
     if (!u) return;
-    omitirGuardadoRef.current = false;
+    omitirGuardadoRef.current = false; reinicioHistRef.current = true; idCobroRef.current = null;
     setOrden({ ...vacio(), cliente: u.cliente, lineas: u.lineas.map((l) => ({ ...l, key: ++contador })) });
     setRecibo(null);
     mostrarToast('Pedido repetido: revisa y cobra');
   };
 
   // ── Cobro ────────────────────────────────────────────────────────────────
+  const cierreDeVenta = (venta) => {
+    ultimaRef.current = { cliente: ordenRef.current.cliente, lineas: ordenRef.current.lineas };
+    pendienteRef.current = false; ventaIdRef.current = null; idCobroRef.current = null; reinicioHistRef.current = true;
+    setModal(null); setOrden(vacio()); setBusca('');
+    setRecibo(venta); setVerOrden(false);
+  };
+
+  /**
+   * SIN CONEXIÓN: la venta se cobra en efectivo, se entrega un comprobante PROVISIONAL (OFF-xxxx-0001, NO es factura) y queda en la cola
+   * local con su id. El número fiscal real lo asigna el servidor al sincronizar (nunca se repite ni se salta); ver docs/POS-SIN-CONEXION.md.
+   */
+  const cobrarSinConexion = async (pagos) => {
+    const efectivoId = cat.formas_pago.find((f) => f.tipo === 'efectivo')?.id;
+    if (!pagos.every((p) => p.forma_pago_id === efectivoId)) { setErrCobro(MSG_SIN_TARJETA); setError(MSG_SIN_TARJETA); return; }
+    if (hayPiedra) { const m = 'La piedra no se vende sin conexión: no se puede verificar la existencia. Quita la piedra o espera a que vuelva el internet.'; setErrCobro(m); setError(m); return; }
+    setCobrando(true); setErrCobro(''); setError('');
+    try {
+      clearTimeout(timerRef.current);
+      const o = ordenRef.current, suc = sucursalRef.current;
+      const recibido = redondear(pagos.reduce((s, p) => s + p.monto, 0));
+      const total = totales.total;
+      const id = idCobroRef.current ?? (idCobroRef.current = uuidCliente());
+      const numero = await cola().siguienteNumero(codigoCaja());
+      const fecha = new Date();
+      const { columnas, autoImprimir } = leerConfigImpresora();
+      const ticket = formatearTicketProvisional({
+        empresa: cat.empresa ?? contexto.empresa, sucursal: cat.sucursales.find((x) => x.id === suc.id) ?? suc, cajero: usuario?.nombre, cliente: o.cliente, numero, fecha, totales, recibido, cambio: Math.max(0, redondear(recibido - total)),
+        lineas: o.lineas.map((l) => ({ nombre: l.producto.nombre, cantidad: l.cantidad, opciones: l.opciones, notas: l.notas })),
+        borrador: fiscal?.borrador !== false,
+      }, columnas);
+      await cola().encolar({
+        id_cliente: id, ...(ventaIdRef.current ? { orden_id: ventaIdRef.current } : {}), ...cuerpoOrden(o, suc.id),
+        cobrar: { pagos: pagos.map((p) => ({ forma_pago_id: p.forma_pago_id, monto: p.monto, referencia: p.referencia ?? null })) }, confirmar_sin_stock: true,
+        offline: { vendida_at: fecha.toISOString(), numero_provisional: numero, cajero_nombre: usuario?.nombre ?? null, total_cliente: total },
+      }, { empresa, resumen: { total, lineas: o.lineas.length, cajero: usuario?.nombre ?? '', provisional: numero } });
+      cierreDeVenta({ offline: true, total, cambio: Math.max(0, redondear(recibido - total)), provisional: numero, ticket, impresa: false, es_borrador_fiscal: fiscal?.borrador !== false });
+      if (autoImprimir) {
+        imprimirLineas(ticket).then(() => setRecibo((x) => (x && x.provisional === numero ? { ...x, impresa: true } : x)))
+          .catch((e) => setError(`La venta quedó guardada, pero no se pudo imprimir el comprobante: ${e.message}`));
+      }
+      if (typeof navigator !== 'undefined' && navigator.onLine) sincronizarAhora().catch(() => {});   // por si «sin conexión» era solo una falla del servidor
+    } catch (e) { setErrCobro(e.message); setError(e.message); }
+    finally { setCobrando(false); }
+  };
+
   const confirmarPago = async (pagos, confirmarSinStock = false) => {
     if (cobroBloqueado && !modal) return;
+    if (sinRedRef.current) { await cobrarSinConexion(pagos); return; }
+    const efectivoId = cat.formas_pago.find((f) => f.tipo === 'efectivo')?.id;
+    const soloEfectivo = pagos.every((p) => p.forma_pago_id === efectivoId);
     setCobrando(true); setErrCobro(''); setError('');
     try {
       clearTimeout(timerRef.current);
       const id = await guardarEnCola();            // el total cobrado es SIEMPRE el que ve el cajero
       if (!id) throw new Error('No se pudo guardar la orden antes de cobrar');
-      const venta = await post(`/pos/ventas/${id}/cobrar`, confirmarSinStock ? { pagos, confirmar_sin_stock: true } : { pagos });
-      ultimaRef.current = { cliente: orden.cliente, lineas: orden.lineas };
-      pendienteRef.current = false; ventaIdRef.current = null;
-      setModal(null); setOrden(vacio());
-      const r = { ...venta, impresa: false };
-      setRecibo(r); setVerOrden(false);
+      const idCobro = idCobroRef.current ?? (idCobroRef.current = uuidCliente());
+      const venta = await post(`/pos/ventas/${id}/cobrar`, { pagos, id_cliente: idCobro, ...(confirmarSinStock ? { confirmar_sin_stock: true } : {}) }, { espera: 20_000 });
+      cierreDeVenta({ ...venta, impresa: false });
       cargarTurno(); contarAbiertas();
       if (leerConfigImpresora().autoImprimir) {
         imprimirTicket(venta.id).then(() => setRecibo((x) => (x && x.id === venta.id ? { ...x, impresa: true } : x)))
           .catch((e) => setError(`La factura se emitió, pero no se pudo imprimir: ${e.message}`));
       }
     } catch (e) {
-      if (e.codigo === 'SIN_STOCK' && e.faltantes?.length) { setErrCobro(''); setError(''); setAvisoStock({ faltantes: e.faltantes, pagos, bloqueante: cat?.config?.permitir_sin_stock !== true }); }
+      if (e.codigo === 'sin_red') {
+        setOffline(true);
+        if (soloEfectivo) { setCobrando(false); await cobrarSinConexion(pagos); return; }   // el mismo id evita facturar dos veces si el servidor sí alcanzó a cobrar
+        const m = 'Se perdió la conexión mientras se cobraba con tarjeta. Antes de volver a cobrar revisa en Facturas si la orden quedó cobrada.';
+        setErrCobro(m); setError(m);
+      } else if (e.codigo === 'SIN_STOCK' && e.faltantes?.length) { setErrCobro(''); setError(''); setAvisoStock({ faltantes: e.faltantes, pagos, bloqueante: cat?.config?.permitir_sin_stock !== true }); }
       else { setErrCobro(e.message); setError(e.message); }
     } finally { setCobrando(false); }
   };
-  // Un solo toque: Efectivo y Tarjeta cobran de inmediato el total exacto. Dividir pagos / transferencia / cambio van en "Más formas de pago".
+  // Un solo toque: Efectivo y Tarjeta cobran de inmediato el total exacto. Con cambio / dividir pagos / transferencia: ventanas aparte.
   const pagoInstantaneo = (tipo) => {
     const f = cat.formas_pago.find((x) => x.tipo === tipo);
     if (!f) { avisar(`Esta empresa no tiene forma de pago "${tipo}" activa`, 'mal'); return; }
     if (cobroBloqueado) return;
+    if (tipo !== 'efectivo' && sinRedRef.current) { avisar(MSG_SIN_TARJETA, 'mal'); return; }
     confirmarPago([{ forma_pago_id: f.id, monto: totales.total }]);
+  };
+  const cobrarEfectivoRecibido = (recibido) => {
+    const f = cat.formas_pago.find((x) => x.tipo === 'efectivo');
+    if (!f) { avisar('Esta empresa no tiene forma de pago "efectivo" activa', 'mal'); return; }
+    confirmarPago([{ forma_pago_id: f.id, monto: recibido }]);
+  };
+  const abrirEfectivo = () => { if (!cobroBloqueado) { setErrCobro(''); setModal({ tipo: 'efectivo' }); } };
+  const abrirMasPagos = () => {
+    if (!hayLineas || bloqueoFiscal || faltaCarne || cobrando) return;
+    if (sinRedRef.current) { avisar(MSG_SIN_TARJETA, 'mal'); return; }
+    setErrCobro(''); setModal({ tipo: 'cobro' });
   };
 
   const imprimirRecibo = async (razon) => {
+    if (recibo?.offline) {
+      const lineas = recibo.impresa ? ['*** COPIA ***', ...recibo.ticket] : recibo.ticket;
+      const r = await ejecutar(() => imprimirLineas(lineas));
+      if (r !== null) setRecibo((x) => ({ ...x, impresa: true }));
+      return;
+    }
     const r = await ejecutar(() => imprimirTicket(recibo.id, { reimpresion: Boolean(razon), razon }));
     if (r !== null) setRecibo((x) => ({ ...x, impresa: true }));
     setModal(null);
   };
+
+  // Cerrar la caja con ventas sin sincronizar dejaría el cuadre incompleto: primero se manda todo.
+  const intentarCerrarCaja = async () => {
+    if (resumenCola.total > 0) {
+      const r = await ejecutar(() => sincronizarAhora());
+      const pend = r && r !== true ? r.pendientes + r.revisar : resumenCola.total;
+      if (pend > 0) { avisar(`No se puede cerrar la caja: hay ${pend} venta(s) hecha(s) sin conexión que aún no llegan al servidor.`, 'mal'); setModal({ tipo: 'cola' }); return; }
+    }
+    setModal({ tipo: 'cerrar' });
+  };
+
+  // ── Atajos de teclado ────────────────────────────────────────────────────
+  // Se registra en cada render para leer siempre el estado de ahora (igual que el lector de código de barras).
+  useEffect(() => {
+    if (!cat) return undefined;
+    const f = (e) => {
+      if (modal || recibo || avisoStock) return;
+      const enCampo = esCampo(document.activeElement);
+      if (e.ctrlKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'z') {
+        if (enCampo && document.activeElement === buscadorRef.current && busca) return;   // dentro del texto, Ctrl+Z deshace el texto
+        e.preventDefault(); deshacer(); return;
+      }
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      const accion = {
+        F1: () => setModal({ tipo: 'ayuda' }), F2: () => pagoInstantaneo('efectivo'), F3: () => pagoInstantaneo('tarjeta'), F4: abrirEfectivo,
+        F6: abrirMasPagos, F7: () => setModal({ tipo: 'abiertas' }), F8: dejarEnEspera, F9: () => setModal({ tipo: 'cliente' }),
+      }[e.key];
+      if (accion) { e.preventDefault(); accion(); return; }
+      if (e.key === 'Escape') {
+        if (enCampo && busca) { setBusca(''); e.preventDefault(); return; }
+        if (modoEdicion) { setModoEdicion(null); return; }
+        if (ordenRef.current.lineas.length) { e.preventDefault(); nueva(); }
+        return;
+      }
+      if (enCampo) return;
+      const ult = ordenRef.current.lineas[ordenRef.current.lineas.length - 1];
+      if (e.key === '/') { e.preventDefault(); buscadorRef.current?.focus(); }
+      else if (ult && (e.key === '+' || e.key === '=') && ult.producto.unidad === 'unidad') { e.preventDefault(); cambiarCant(ult.key, 1); }
+      else if (ult && (e.key === '-' || e.key === '_') && (ult.producto.unidad === 'unidad' || ult.producto.es_piedra)) { e.preventDefault(); cambiarCant(ult.key, -1); }
+      else if (ult && e.key === '*') { e.preventDefault(); setModal({ tipo: 'cantidad', key: ult.key }); }
+    };
+    window.addEventListener('keydown', f);
+    return () => window.removeEventListener('keydown', f);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error && !cat) return <div className="pagina"><ErrorCaja error={error} /></div>;
   if (!cat || !sucursal) return <Cargando texto="Preparando la caja…" />;
@@ -381,6 +583,31 @@ export default function Pos() {
   const catsOrdenadas = cat.categorias;
   const puedeFacturas = modulos.some((m) => m.ruta === 'facturas');
   const otrasAbiertas = Math.max(0, abiertas - (orden.id ? 1 : 0));
+  const cantidadTotal = orden.lineas.reduce((n, l) => n + (Number(l.cantidad) || 0), 0);
+  const catalogoOrdenado = vista.secciones;
+
+  const buscarEnter = () => {
+    const m = /^(\d{1,3})\s*[*xX]\s*(.+)$/.exec(busca.trim());
+    const texto = m ? m[2] : busca;
+    const lista = m ? (cat.productos.filter((p) => { const q = normalizar(texto); return normalizar(p.nombre).includes(q) || normalizar(p.codigo).includes(q) || normalizar(p.codigo_barras).includes(q); })) : null;
+    const p = buscarPorCodigo(cat.productos, texto) ?? (lista ? lista[0] : vista.secciones[0]?.prods[0]);
+    if (p) { tocar(p, m ? Math.min(999, Number(m[1])) : 1); setBusca(''); } else if (busca.trim()) mostrarToast(`"${busca.trim()}" no encontrado`);
+  };
+
+  const ficha = (p, seccion) => {
+    const c = cat.categorias.find((x) => x.id === p.categoria_id)?.color;
+    const resaltado = resultadoBusqueda?.id === p.id && seccion === 'busqueda';
+    return (
+      <button key={`${seccion}-${p.id}`} className={`pos-prod ${p.disponible ? '' : 'agotado'}${resaltado ? ' primero' : ''}${modoEdicion ? ' editando' : ''}`} style={{ '--cc': c || 'var(--acento)' }} onClick={() => tocar(p)}>
+        {p.favorito && <span className="pos-estrella" aria-label="Favorito">★</span>}
+        {modoEdicion === 'favorito' && !p.favorito && <span className="pos-estrella vacia" aria-hidden="true">☆</span>}
+        <span className="pn">{p.nombre}</span>
+        <span className="pp">{lempiras(p.precio)}{p.unidad !== 'unidad' ? ` / ${p.unidad}` : p.unidad_venta ? ` / ${p.unidad_venta === 'm2' ? 'm²' : p.unidad_venta}` : ''}</span>
+        {!p.disponible && <span className="chip mal">Agotado</span>}
+        {p.disponible && p.grupo_ids.length > 0 && <span className="pm">+ opciones</span>}
+      </button>
+    );
+  };
 
   return (
     <div className="pos">
@@ -390,49 +617,64 @@ export default function Pos() {
         <div className="pos-barra">
           <div className="fila" style={{ gap: 6 }}>
             {turno && <span className="chip ok">Caja desde {new Date(turno.abierto_at).toLocaleTimeString('es-HN', { timeZone: 'America/Tegucigalpa', hour: '2-digit', minute: '2-digit' })}</span>}
-            {fiscal?.borrador && <span className="chip aviso" title="Sin CAI real: las facturas no tienen validez fiscal">Modo borrador</span>}
-            {offline && <span className="chip mal">Sin conexión · catálogo guardado</span>}
+            {fiscal?.borrador && <span className="chip aviso" title="Sin CAI real: las facturas no tienen validez fiscal">BORRADOR · sin valor fiscal</span>}
+            {sinRed && <span className="chip mal" title="El catálogo está guardado en esta caja; las ventas en efectivo se guardan y se mandan solas al volver el internet">Sin conexión · modo local</span>}
+            {resumenCola.total > 0 && (
+              <button className={`chip pos-chip-cola ${resumenCola.revisar ? 'mal' : 'aviso'}`} onClick={() => setModal({ tipo: 'cola' })}>
+                {resumenCola.sincronizando ? 'Sincronizando…' : `${resumenCola.total} venta${resumenCola.total === 1 ? '' : 's'} por sincronizar${resumenCola.revisar ? ` · ${resumenCola.revisar} por revisar` : ''}`}
+              </button>
+            )}
           </div>
           <span className="sep" style={{ flex: 1 }} />
-          <button className="btn chico" onClick={() => setModal({ tipo: 'abiertas' })}>Abiertas{otrasAbiertas > 0 && <span className="chip aviso">{otrasAbiertas}</span>}</button>
-          {turno && <button className="btn chico peligro" onClick={() => setModal({ tipo: 'cerrar' })}>Cerrar caja</button>}
+          {puede('pos:catalogo') && !sinRed && (
+            <>
+              <button className={`btn chico${modoEdicion === 'favorito' ? ' primario' : ''}`} aria-pressed={modoEdicion === 'favorito'} onClick={() => setModoEdicion((m) => (m === 'favorito' ? null : 'favorito'))} title="Marca los productos favoritos para todas las cajas">★ Favoritos</button>
+              <button className={`btn chico${modoEdicion === 'agotado' ? ' primario' : ''}`} aria-pressed={modoEdicion === 'agotado'} onClick={() => setModoEdicion((m) => (m === 'agotado' ? null : 'agotado'))} title="Marca productos como agotados">Agotados</button>
+            </>
+          )}
+          <button className="btn chico" onClick={() => setModal({ tipo: 'abiertas' })} disabled={sinRed} title={sinRed ? 'Requiere conexión' : 'F7'}>Abiertas{otrasAbiertas > 0 && <span className="chip aviso">{otrasAbiertas}</span>}</button>
+          <button className="btn chico fantasma" onClick={() => setModal({ tipo: 'ayuda' })} title="Atajos del teclado (F1)" aria-label="Ayuda de atajos"><kbd>F1</kbd> Ayuda</button>
+          {turno && <button className="btn chico peligro" onClick={intentarCerrarCaja}>Cerrar caja</button>}
         </div>
 
-        {!enLinea && <div className="aviso-caja mal">Sin conexión: lo que armes se guarda cuando vuelva el internet. No se puede cobrar sin conexión.</div>}
+        {sinRed && <div className="aviso-caja mal" role="status">Sin conexión: puedes seguir vendiendo en efectivo. Se entrega un comprobante provisional y la factura se emite sola cuando vuelva el internet. No se puede cobrar con tarjeta ni vender piedra.</div>}
+        {modoEdicion && <div className="aviso-caja" role="status">{modoEdicion === 'favorito' ? 'Toca un producto para marcarlo (o quitarlo) de Favoritos. Esc para salir.' : 'Toca un producto para marcarlo agotado (o disponible de nuevo). Esc para salir.'}</div>}
 
-        <input ref={buscadorRef} className="pos-buscar" placeholder="Buscar o escanear… (Enter agrega)" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar producto"
-          onKeyDown={(e) => {
-            if (e.key !== 'Enter') return;
-            const p = buscarPorCodigo(cat.productos, busca) ?? productos[0];
-            if (p) { tocar(p); setBusca(''); } else if (busca.trim()) mostrarToast(`"${busca.trim()}" no encontrado`);
-          }} />
-        {agotados && <div className="aviso-caja">Toca un producto para marcarlo agotado (o disponible de nuevo).</div>}
+        <input ref={buscadorRef} className="pos-buscar" placeholder="Buscar o escanear…  (Enter agrega · 3*jugo agrega 3 · / para volver aquí)" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar producto"
+          onKeyDown={(e) => { if (e.key === 'Enter') buscarEnter(); }} />
         <div className="pos-cuerpo">
         <div className="pos-cats" aria-label="Categorías">
           <button className={catActiva === 'todas' ? 'on' : ''} onClick={() => setCatActiva('todas')}>Todo</button>
+          {vista.favoritos.length > 0 && <button className={`cat-especial${catActiva === 'fav' ? ' on' : ''}`} onClick={() => setCatActiva('fav')}>★ Favoritos</button>}
+          {vista.mas.length > 0 && <button className={`cat-especial${catActiva === 'mas' ? ' on' : ''}`} onClick={() => setCatActiva('mas')}>Más vendidos</button>}
           {catsOrdenadas.map((c) => <button key={c.id} className={catActiva === c.id ? 'on' : ''} onClick={() => setCatActiva(c.id)} style={{ '--cc': c.color || 'var(--acento)' }}>{c.nombre}</button>)}
         </div>
-        <div className="pos-grid">
-          {productos.map((p) => {
-            const c = cat.categorias.find((x) => x.id === p.categoria_id)?.color;
-            return (
-              <button key={p.id} className={`pos-prod ${p.disponible ? '' : 'agotado'}`} style={{ '--cc': c || 'var(--acento)' }} onClick={() => tocar(p)}>
-                <span className="pn">{p.nombre}</span>
-                <span className="pp">{lempiras(p.precio)}{p.unidad !== 'unidad' ? ` / ${p.unidad}` : p.unidad_venta ? ` / ${p.unidad_venta === 'm2' ? 'm²' : p.unidad_venta}` : ''}</span>
-                {!p.disponible && <span className="chip mal">Agotado</span>}
-                {p.disponible && p.grupo_ids.length > 0 && <span className="pm">+ opciones</span>}
-              </button>
-            );
-          })}
-          {productos.length === 0 && <div className="vacio" style={{ gridColumn: '1/-1' }}>{cat.productos.length === 0 ? 'Aún no hay productos. Agrégalos en Catálogo.' : 'Sin productos que coincidan.'}</div>}
+        <div className="pos-productos">
+          {catalogoOrdenado.map((s) => (s.prods.length > 0 || s.id === 'todos') && (
+            <section key={s.id} className="pos-seccion">
+              {s.titulo && <h3 className="pos-seccion-titulo">{s.titulo}</h3>}
+              <div className="pos-grid">{s.prods.map((p) => ficha(p, s.id))}</div>
+            </section>
+          ))}
+          {!hayResultados && (
+            <div className="vacio pos-vacio">
+              {cat.productos.length === 0 ? 'Aún no hay productos. Agrégalos en Catálogo.'
+                : busca.trim() ? <>No hay productos que coincidan con «{busca.trim()}».<br /><small>Revisa la escritura, prueba otra palabra o escanea el código de barras.</small><br /><button className="btn chico" onClick={() => { setBusca(''); buscadorRef.current?.focus(); }}>Borrar búsqueda</button></>
+                : catActiva === 'fav' ? <>Todavía no hay favoritos.<br /><small>Un encargado los marca con el botón «★ Favoritos» de arriba.</small></>
+                : catActiva === 'mas' ? <>Aún no hay ventas suficientes para calcular los más vendidos.</>
+                : 'Esta categoría no tiene productos.'}
+            </div>
+          )}
         </div>
         </div>
-        <small className="tenue">{productos.length} producto{productos.length === 1 ? '' : 's'} · el lector de código de barras funciona en cualquier momento</small>
+        <div className="pos-atajos-tira" aria-label="Atajos del teclado">
+          {ATAJOS.filter((a) => a.corta).map((a) => <span key={a.teclas}><kbd>{a.teclas}</kbd> {a.corta}</span>)}
+        </div>
       </div>
 
       {!verOrden && (
         <button className="pos-barra-orden" onClick={() => setVerOrden(true)}>
-          <span className="bo-cant">{orden.lineas.reduce((n, l) => n + (Number(l.cantidad) || 0), 0)}</span>
+          <span className="bo-cant">{cantidadTotal}</span>
           <span className="bo-txt">{hayLineas ? 'Ver orden y cobrar' : 'Orden vacía'}</span>
           <b className="num bo-total">{lempiras(totales.total)}</b>
         </button>
@@ -451,7 +693,7 @@ export default function Pos() {
           </div>
         )}
 
-        <div className="pos-wz-total-art">Total de artículos: <b>{orden.lineas.reduce((n, l) => n + (Number(l.cantidad) || 0), 0)}</b></div>
+        <div className="pos-wz-total-art">Total de artículos: <b>{cantidadTotal}</b></div>
         <div className="pos-wz-info">
           <div className="pos-wz-fila"><label>Orden</label><div className="pos-wz-val">{orden.id ? `#${orden.ticket}` : 'Nueva'}<button className="btn chico" style={{ marginLeft: 'auto' }} onClick={() => setOrden((o) => ({ ...o, tipo_orden: o.tipo_orden === 'aqui' ? 'llevar' : 'aqui' }))}>{orden.tipo_orden === 'aqui' ? 'Aquí' : 'Para llevar'}</button></div></div>
           <div className="pos-wz-fila"><label>Cliente</label>
@@ -469,7 +711,13 @@ export default function Pos() {
 
         <div className="pos-lineas pos-wz-tabla">
           <div className="pos-wz-th"><span>Producto</span><span>Cantidad</span><span>Precio</span><span>Monto</span><span /></div>
-          {!hayLineas && <div className="vacio">Toca un producto para empezar.</div>}
+          {!hayLineas && (
+            <div className="vacio pos-orden-vacia">
+              <b>Orden vacía</b>
+              <span>Toca un producto, busca por nombre o escanea un código de barras.</span>
+              <small>Con teclado: Enter agrega · F1 muestra todos los atajos</small>
+            </div>
+          )}
           {orden.lineas.map((l) => {
             const i = orden.lineas.indexOf(l);
             const t = totales.lineas[i];
@@ -486,7 +734,7 @@ export default function Pos() {
                 </div>
                 <div className="pos-wz-cant">
                   <button onClick={() => cambiarCant(l.key, -1)} aria-label="Menos" disabled={!unidad}>−</button>
-                  {piedra ? <CantidadEntera botones={false} value={l.cantidad} min={1} max={999} ariaLabel={`Cajas de ${l.producto.nombre}`} onChange={(v) => v !== '' && fijarCantidad(l.key, v)} style={{ flexWrap: 'nowrap' }} /> : unidad ? <input type="number" inputMode="numeric" min="1" value={l.cantidad} aria-label={`Cantidad de ${l.producto.nombre}`} onChange={(e) => fijarCantidad(l.key, e.target.value)} /> : <b className="num">{l.cantidad}</b>}
+                  <button className="pos-cant-valor num" onClick={() => setModal({ tipo: 'cantidad', key: l.key })} aria-label={`Cantidad de ${l.producto.nombre}: ${l.cantidad}. Tocar para escribir otra`}>{l.cantidad}</button>
                   <button onClick={() => cambiarCant(l.key, 1)} aria-label="Más" disabled={!unidad}>+</button>
                 </div>
                 <div className="num der">{lempiras(t.precio_unitario).replace('L ', '')}</div>
@@ -519,19 +767,21 @@ export default function Pos() {
 
         <div className="pos-acciones-fila">
           <button className="btn" onClick={nueva}>Nueva</button>
-          <button className="btn" onClick={() => setModal({ tipo: 'abiertas' })}>Abiertas{otrasAbiertas > 0 ? ` (${otrasAbiertas})` : ''}</button>
-          <button className="btn" disabled={!hayLineas || ocupado} onClick={dejarEnEspera}>En espera</button>
+          <button className="btn" disabled={!puedeDeshacer} onClick={deshacer} title="Ctrl+Z">↶ Deshacer</button>
+          <button className="btn" disabled={!hayLineas || ocupado || sinRed} onClick={dejarEnEspera} title="F8">En espera</button>
+          <button className="btn" disabled={sinRed} onClick={() => setModal({ tipo: 'abiertas' })} title="F7">Abiertas{otrasAbiertas > 0 ? ` (${otrasAbiertas})` : ''}</button>
           {puedeFacturas && <button className="btn" onClick={() => navegar(`/${empresa}/facturas`)}>Facturas</button>}
         </div>
 
         {/* Efectivo y Tarjeta en extremos opuestos con un hueco ancho en medio: un toque mal apuntado cae en el vacío, nunca en el botón de al lado. */}
         <div className="pos-botones-cobro">
-          <button className="boton-cobro efectivo" disabled={cobroBloqueado} onClick={() => pagoInstantaneo('efectivo')}><Icono n="dinero" tam={24} />EFECTIVO</button>
+          <button className="boton-cobro efectivo" disabled={cobroBloqueado} onClick={() => pagoInstantaneo('efectivo')}><Icono n="dinero" tam={24} />EFECTIVO<kbd>F2</kbd></button>
           <span className="pos-cobro-separador" aria-hidden="true" />
-          <button className="boton-cobro tarjeta" disabled={cobroBloqueado} onClick={() => pagoInstantaneo('tarjeta')}><Icono n="pos" tam={24} />TARJETA</button>
+          <button className="boton-cobro tarjeta" disabled={cobroBloqueado || sinRed} title={sinRed ? 'No disponible sin conexión' : undefined} onClick={() => pagoInstantaneo('tarjeta')}><Icono n="pos" tam={24} />TARJETA<kbd>F3</kbd></button>
         </div>
         {cobrando && <small className="centro">Procesando…</small>}
-        <button className="btn" disabled={!hayLineas || bloqueoFiscal || faltaCarne || cobrando} onClick={() => { setErrCobro(''); setModal({ tipo: 'cobro' }); }}>Más formas de pago (dividir, transferencia, cambio)</button>
+        <button className="btn grande pos-btn-recibido" disabled={cobroBloqueado} onClick={abrirEfectivo}>Efectivo recibido y cambio <kbd>F4</kbd></button>
+        <button className="btn" disabled={!hayLineas || bloqueoFiscal || faltaCarne || cobrando || sinRed} onClick={abrirMasPagos}>Más formas de pago (dividir, transferencia) <kbd>F6</kbd></button>
       </aside>
 
       {modal?.tipo === 'opciones' && (
@@ -561,12 +811,21 @@ export default function Pos() {
           </Modal>
         );
       })()}
+      {modal?.tipo === 'cantidad' && (() => {
+        const l = orden.lineas.find((x) => x.key === modal.key);
+        if (!l) return null;
+        const decimal = !(l.producto.unidad === 'unidad' || l.producto.es_piedra);
+        return <CantidadModal producto={l.producto} inicial={l.cantidad} decimal={decimal} onCerrar={() => setModal(null)} onListo={(n) => { fijarCantidad(l.key, n, decimal); setModal(null); }} />;
+      })()}
       {modal?.tipo === 'peso' && <PesoModal producto={modal.producto} onCerrar={() => setModal(null)} onListo={(n) => { agregar(modal.producto, { cantidad: n }); setModal(null); }} />}
       {modal?.tipo === 'cliente' && <ClienteModal actual={orden.cliente} puedeCrear={puede('clientes:editar')} onCerrar={() => setModal(null)} onElegir={(c) => { setOrden((o) => ({ ...o, cliente: c })); setModal(null); }} />}
       {modal?.tipo === 'abiertas' && <AbiertasModal sucursalId={sucursal.id} actualId={orden.id} onCerrar={() => setModal(null)} onElegir={abrirOrden} />}
       {modal?.tipo === 'movimiento' && <MovimientoCaja sucursal={sucursal} onCerrar={() => setModal(null)} onListo={() => { setModal(null); cargarTurno(); }} />}
-      {modal?.tipo === 'cerrar' && <CerrarTurno sucursal={sucursal} turno={turno} resumen={resumenTurno} onCerrar={() => setModal(null)} onCerrado={() => { setModal(null); setTurno(null); reiniciar(); cargarTurno(); }} />}
+      {modal?.tipo === 'cerrar' && <CerrarTurno sucursal={sucursal} turno={turno} resumen={resumenTurno} empresa={contexto.empresa} cajero={usuario?.nombre} onCerrar={() => setModal(null)} onCerrado={() => { setModal(null); setTurno(null); reiniciar(); cargarTurno(); }} />}
+      {modal?.tipo === 'efectivo' && <CobroEfectivoModal total={totales.total} ocupado={cobrando} error={errCobro} sinConexion={sinRed} onCerrar={() => setModal(null)} onCobrar={cobrarEfectivoRecibido} />}
       {modal?.tipo === 'cobro' && <CobroModal total={totales.total} formas={cat.formas_pago} cliente={orden.cliente} ocupado={cobrando} error={errCobro} requiereRtn={necesitaRtn} avisoRtn={sinRtn && !rtnBloquea} umbralRtn={umbral} onCerrar={() => setModal(null)} onCobrar={confirmarPago} />}
+      {modal?.tipo === 'ayuda' && <AyudaAtajos onCerrar={() => setModal(null)} />}
+      {modal?.tipo === 'cola' && <ColaModal puedeDescartar={puede('pos:anular')} sucursalId={sucursal.id} onCerrar={() => setModal(null)} />}
       {modal?.tipo === 'descartar' && (
         <MotivoModal titulo="Descartar la orden" texto="¿Por qué se descarta esta orden? Los productos se pierden y queda registrado." opciones={MOTIVOS_DESCARTE} etiquetaBoton="Descartar orden" peligro
           onCerrar={() => setModal(null)} onListo={descartarConMotivo} />
@@ -574,20 +833,29 @@ export default function Pos() {
 
       {avisoStock && <AvisoSinStock faltantes={avisoStock.faltantes} bloqueante={avisoStock.bloqueante} onCancelar={() => setAvisoStock(null)} onContinuar={() => { const p = avisoStock.pagos; setAvisoStock(null); confirmarPago(p, true); }} />}
       {recibo && (
-        <Modal titulo={recibo.es_borrador_fiscal ? 'Orden registrada' : 'Factura emitida'} onCerrar={() => { setRecibo(null); buscadorRef.current?.focus(); }} tam="angosto"
-          pie={<><button className="btn" onClick={() => repetirUltima()}>Repetir pedido</button><button className="btn primario grande" autoFocus onClick={() => { setRecibo(null); buscadorRef.current?.focus(); }}>Nueva venta</button></>}>
+        <Modal titulo={recibo.offline ? 'Venta guardada sin conexión' : recibo.es_borrador_fiscal ? 'Orden registrada' : 'Factura emitida'} onCerrar={() => { setRecibo(null); buscadorRef.current?.focus(); }} tam="angosto"
+          pie={<><button className="btn" onClick={() => repetirUltima()}>Repetir pedido</button><button className="btn primario grande" autoFocus onClick={() => { setRecibo(null); buscadorRef.current?.focus(); }}>Nueva venta (Enter)</button></>}>
           <div className="centro" style={{ display: 'grid', gap: 6 }}>
             <div className="kpi acento"><div className="etq">Total</div><div className="val">{lempiras(recibo.total)}</div></div>
-            <div className="kpi" style={{ borderColor: recibo.cambio > 0 ? 'var(--ok)' : undefined }}><div className="etq">Cambio a entregar</div><div className="val" style={{ color: recibo.cambio > 0 ? 'var(--ok)' : undefined, fontSize: '2.6rem' }}>{lempiras(recibo.cambio ?? 0)}</div></div>
-            <small>Orden #{recibo.ticket_dia}{recibo.nombre_orden ? ` · ${recibo.nombre_orden}` : ''} · {recibo.cliente?.nombre ?? 'Consumidor Final'}</small>
-            <small className="num">Factura {recibo.numero_factura}</small>
-            {recibo.es_borrador_fiscal && <span className="chip aviso" style={{ justifySelf: 'center' }}>Sin validez fiscal (CAI pendiente)</span>}
+            <div className="kpi" style={{ borderColor: recibo.cambio > 0 ? 'var(--ok)' : undefined }}><div className="etq">Cambio a entregar</div><div className="val" style={{ color: recibo.cambio > 0 ? 'var(--ok)' : undefined, fontSize: '3.2rem' }}>{lempiras(recibo.cambio ?? 0)}</div></div>
+            {recibo.offline ? (
+              <>
+                <small className="num">Comprobante provisional {recibo.provisional}</small>
+                <div className="aviso-caja">No es factura: la factura se emite sola cuando vuelva el internet ({resumenCola.total} venta{resumenCola.total === 1 ? '' : 's'} por sincronizar).</div>
+              </>
+            ) : (
+              <>
+                <small>Orden #{recibo.ticket_dia}{recibo.nombre_orden ? ` · ${recibo.nombre_orden}` : ''} · {recibo.cliente?.nombre ?? 'Consumidor Final'}</small>
+                <small className="num">Factura {recibo.numero_factura}</small>
+              </>
+            )}
+            {recibo.es_borrador_fiscal && <span className="chip aviso" style={{ justifySelf: 'center' }}>BORRADOR · sin valor fiscal</span>}
             {recibo.aviso_rtn && <div className="aviso-caja mal">{recibo.aviso_rtn}</div>}
             {recibo.faltantes_inventario?.length > 0 && <div className="aviso-caja mal">Se facturó sin existencia suficiente: {recibo.faltantes_inventario.map((f) => f.producto).join(', ')}. Revisa el inventario.</div>}
           </div>
           <div className="fila" style={{ justifyContent: 'center' }}>
-            <button className="btn" disabled={ocupado} onClick={() => (recibo.impresa ? setModal({ tipo: 'reimprimir' }) : imprimirRecibo())}><Icono n="impresora" tam={16} /> {recibo.impresa ? 'Reimprimir ticket' : 'Imprimir ticket'}</button>
-            <button className="btn" onClick={() => verPdf(recibo.id).catch((e) => avisar(e.message, 'mal'))}>Ver PDF</button>
+            <button className="btn" disabled={ocupado} onClick={() => (recibo.impresa && !recibo.offline ? setModal({ tipo: 'reimprimir' }) : imprimirRecibo())}><Icono n="impresora" tam={16} /> {recibo.impresa ? 'Reimprimir ticket' : 'Imprimir ticket'}</button>
+            {!recibo.offline && <button className="btn" onClick={() => verPdf(recibo.id).catch((e) => avisar(e.message, 'mal'))}>Ver PDF carta</button>}
           </div>
         </Modal>
       )}

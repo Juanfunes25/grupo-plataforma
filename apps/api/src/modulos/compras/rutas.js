@@ -74,6 +74,7 @@ export function rutasCompras({ db }) {
         subtotal: Number(x.subtotal), isv: Number(x.isv), total: Number(x.total), total_lps: Number(x.total_lps), tipo_cambio: Number(x.tipo_cambio) })),
       pagos: pagos.rows.map((p) => ({ ...p, fecha: String(p.fecha).slice(0, 10), monto_lps: Number(p.monto_lps) })),
       pagado_lps: pagado, saldo_lps: Math.max(0, saldo),
+      empresa: (({ nombre, razon_social, rtn, direccion, ciudad, telefono, correo, color }) => ({ nombre, razon_social, rtn, direccion, ciudad, telefono, correo, color }))(req.ctx.empresa),
     };
   }
 

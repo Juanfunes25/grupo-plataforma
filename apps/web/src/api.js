@@ -16,18 +16,22 @@ export class ErrorApi extends Error {
   constructor(mensaje, status, codigo) { super(mensaje); this.status = status; this.codigo = codigo; }
 }
 
-export async function api(ruta, { metodo = 'GET', cuerpo, empresa, sinSesion = false } = {}) {
+export async function api(ruta, { metodo = 'GET', cuerpo, empresa, sinSesion = false, espera = 0 } = {}) {
   const s = almacen.leer();
   const headers = { 'content-type': 'application/json', 'x-dispositivo': idDispositivo() };   // antifraude: qué equipo es
   if (!sinSesion && s?.token) headers.authorization = `Bearer ${s.token}`;
   const emp = empresa !== undefined ? empresa : empresaActiva;   // null = sin encabezado de empresa
   if (emp && emp !== 'grupo') headers['x-empresa'] = emp;
   let r;
+  // `espera` (ms): tope para peticiones de la caja. Con la red «a medias» (hay wifi pero no internet) un fetch puede quedarse colgado
+  // minutos; así el cobro cae pronto al modo sin conexión en vez de dejar al cliente esperando.
+  const ctl = espera > 0 && typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const reloj = ctl ? setTimeout(() => ctl.abort(), espera) : null;
   try {
-    r = await fetch(`/api${ruta}`, { method: metodo, headers, body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo) });
+    r = await fetch(`/api${ruta}`, { method: metodo, headers, signal: ctl?.signal, body: cuerpo === undefined ? undefined : JSON.stringify(cuerpo) });
   } catch {
     throw new ErrorApi('Sin conexión con el servidor. Revisa tu internet.', 0, 'sin_red');
-  }
+  } finally { if (reloj) clearTimeout(reloj); }
   let datos = null;
   try { datos = await r.json(); } catch { /* sin cuerpo */ }
   if (!r.ok) {

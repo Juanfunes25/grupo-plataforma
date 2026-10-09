@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Icono from './Icono.jsx';
+import { useBusquedaGlobal } from '../busqueda/useBusqueda.js';
 
 const sinTildes = (t) => String(t ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -9,11 +10,13 @@ export default function Paleta({ opciones, onCerrar }) {
   const [sel, setSel] = useState(0);
   const lista = useRef(null);
   const previo = useRef(document.activeElement);
-  const filtradas = useMemo(() => {
+  const remoto = useBusquedaGlobal(q);   // facturas, clientes, productos, empleados y documentos (API /api/busqueda)
+  const locales = useMemo(() => {
     const t = sinTildes(q).trim();
     if (!t) return opciones;
     return opciones.filter((o) => t.split(/\s+/).every((p) => sinTildes(`${o.nombre} ${o.detalle ?? ''} ${o.grupo ?? ''}`).includes(p)));
   }, [q, opciones]);
+  const filtradas = useMemo(() => [...locales, ...remoto.opciones], [locales, remoto.opciones]);
   useEffect(() => { setSel(0); }, [q]);
   useEffect(() => () => { try { previo.current?.focus?.({ preventScroll: true }); } catch { /* */ } }, []);
   useEffect(() => { lista.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' }); }, [sel, filtradas]);
@@ -31,11 +34,12 @@ export default function Paleta({ opciones, onCerrar }) {
       <div className="paleta" role="dialog" aria-modal="true" aria-label="Buscar módulo" onKeyDown={teclas}>
         <div className="paleta-entrada">
           <Icono n="lupa" tam={20} />
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar módulo o acción…" aria-label="Buscar módulo o acción" role="combobox" aria-expanded="true" aria-controls="paleta-lista" aria-activedescendant={filtradas[sel] ? `paleta-${filtradas[sel].id}` : undefined} autoComplete="off" />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar facturas, clientes, productos, módulos…" aria-label="Buscar en toda la plataforma" role="combobox" aria-expanded="true" aria-controls="paleta-lista" aria-activedescendant={filtradas[sel] ? `paleta-${filtradas[sel].id}` : undefined} autoComplete="off" />
           <kbd>Esc</kbd>
         </div>
         <div className="paleta-lista" id="paleta-lista" role="listbox" ref={lista}>
-          {filtradas.length === 0 && <div className="vacio">Nada coincide con «{q}».</div>}
+          {filtradas.length === 0 && <div className="vacio">{remoto.cargando ? 'Buscando…' : `Nada coincide con «${q}».`}</div>}
+          {filtradas.length > 0 && remoto.cargando && <div className="paleta-grupo">Buscando facturas, clientes y más…</div>}
           {filtradas.map((o, i) => {
             const cab = o.grupo !== ultimoGrupo ? o.grupo : null; ultimoGrupo = o.grupo;
             return (

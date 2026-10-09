@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { lempiras, horaHN } from '@grupo/shared';
+import { lempiras, horaHN, formatearCierreTurno } from '@grupo/shared';
 import { post } from '../api.js';
 import { Campo, Modal, useAccion } from '../ui/kit.jsx';
+import { imprimirLineas, leerConfigImpresora } from '../lib/documentos.js';
 
 export function AbrirTurno({ sucursal, puede, onAbierto }) {
   const [fondo, setFondo] = useState('');
@@ -44,7 +45,7 @@ export function MovimientoCaja({ sucursal, onCerrar, onListo }) {
   );
 }
 
-export function CerrarTurno({ sucursal, turno, resumen, onCerrar, onCerrado }) {
+export function CerrarTurno({ sucursal, turno, resumen, empresa, cajero, onCerrar, onCerrado }) {
   const [contado, setContado] = useState('');
   const [obs, setObs] = useState('');
   const [resultado, setResultado] = useState(null);
@@ -57,6 +58,8 @@ export function CerrarTurno({ sucursal, turno, resumen, onCerrar, onCerrado }) {
   if (resultado) {
     const t = resultado.turno, rs = resultado.resumen;
     const dif = t.diferencia;
+    // Cierre imprimible en la térmica de la caja (mismo ancho de papel que la factura); el cajero lo firma y lo guarda con el dinero.
+    const imprimir = () => ejecutar(() => imprimirLineas(formatearCierreTurno({ empresa: empresa ?? {}, sucursal, cajero, turno: t, resumen: rs }, leerConfigImpresora().columnas), { logo: false }));
     return (
       <Modal titulo="Turno cerrado" onCerrar={onCerrado}>
         <div className={`aviso-caja ${dif === 0 ? 'ok' : dif < 0 ? 'mal' : ''}`}>
@@ -71,7 +74,10 @@ export function CerrarTurno({ sucursal, turno, resumen, onCerrar, onCerrado }) {
           <tr><td>Efectivo contado</td><td className="der num">{lempiras(t.efectivo_contado)}</td></tr>
           <tr><td><b>Diferencia</b></td><td className="der num"><b>{lempiras(dif)}</b></td></tr>
         </tbody></table>
-        <button className="btn primario" onClick={onCerrado}>Listo</button>
+        <div className="fila">
+          <button className="btn" disabled={ocupado} onClick={imprimir}>Imprimir cierre de caja</button>
+          <button className="btn primario" onClick={onCerrado}>Listo</button>
+        </div>
       </Modal>
     );
   }

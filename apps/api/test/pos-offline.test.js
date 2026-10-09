@@ -164,7 +164,7 @@ test('venta sin conexión sobre una orden que ya estaba guardada como abierta: s
     cobrar: { pagos: pagoEf(300) }, offline: { vendida_at: new Date().toISOString(), numero_provisional: 'OFF-TEST-0021' } });
   assert.equal(r.status, 201, JSON.stringify(r.body));
   assert.equal(r.body.id, orden.id);
-  assert.equal(r.body.lineas[0].cantidad, '3');
+  assert.equal(Number(r.body.lineas[0].cantidad), 3);
   assert.equal(Number(r.body.total), 225);
   assert.equal((await caja.get('/api/pos/ventas?estado=abierta')).body.length, 0);
   // si otra caja ya la había cobrado, se rechaza sin duplicar

@@ -1,7 +1,7 @@
 // Finanzas de UNA empresa (empresa activa): estado de resultados por sucursal, flujo de caja, por cobrar, por pagar,
 // presupuesto, abonos, conciliación entre empresas y Excel. El consolidado del grupo vive en fin/consolidado.js.
 import { z } from 'zod';
-import { fechaHN, sumarDias } from '@grupo/shared';
+import { fechaHN } from '@grupo/shared';
 import { requierePermiso } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
 import { conflicto, malaPeticion, noEncontrado, prohibido, uuid, validar, fechaISO } from '../../lib/http.js';
@@ -28,7 +28,7 @@ export function montarFinExtra(r, { db, ctxMgr }, resultadosEmpresa) {
   const rango = z.object({ desde: fechaISO.optional(), hasta: fechaISO.optional() });
 
   r.get('/estado-resultados', ver, async (req, res) => {
-    const f = rango.parse(req.query);
+    const f = validar(rango, req.query);
     res.json(await estadoResultados(db, resultadosEmpresa, { empresaId: emp(req), sucursalIds: req.ctx.sucursalIds, ...rangoPorDefecto(f) }));
   });
 
@@ -179,5 +179,4 @@ export function montarFinExtra(r, { db, ctxMgr }, resultadosEmpresa) {
     enviarLibro(res, await libroExcel({ titulo, subtitulo: `${req.ctx.empresa.nombre} · ${f.reporte === 'presupuesto' ? (f.mes ?? hoy.slice(0, 7)) : `${desde} a ${hasta}`} · generado ${hoy}`, hojas }), `${nombre}-${req.ctx.empresa.codigo}.xlsx`);
   });
 
-  return { agruparAuto, rangoPorDefecto, sumarDias };
 }

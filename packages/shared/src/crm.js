@@ -17,7 +17,7 @@ export function bucketAntiguedad(dias) {
 /** Antigüedad de UN saldo: días desde la aprobación del documento (sin días de crédito). */
 export function antiguedadDe({ fecha_documento }, hoy) {
   const dias = Math.max(0, diasEntre(fecha_documento, hoy));
-  return { fecha_vencimiento: String(fecha_documento).slice(0, 10), dias_atraso: dias, vencido: dias > 0, bucket: bucketAntiguedad(dias) };
+  return { dias_atraso: dias, vencido: dias > 30, bucket: bucketAntiguedad(dias) };
 }
 
 /** [{ saldo, bucket }] → { '0-30': n, …, total }. */

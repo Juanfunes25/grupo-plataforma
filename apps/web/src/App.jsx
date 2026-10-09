@@ -6,6 +6,7 @@ import Acceso from './pantallas/Acceso.jsx';
 import Layout from './pantallas/Layout.jsx';
 import Hub from './pantallas/Hub.jsx';
 import { Cargando } from './ui/kit.jsx';
+import Sincronizador from './pos/Sincronizador.jsx';   // manda las ventas hechas sin conexión cuando vuelve la señal
 
 const Pos = lazy(() => import('./pos/Pos.jsx'));
 const Cocina = lazy(() => import('./pantallas/Cocina.jsx'));
@@ -49,23 +50,25 @@ const CosteoGelato = lazy(() => import('./pantallas/CosteoGelato.jsx'));
 const InventarioGelato = lazy(() => import('./pantallas/InventarioGelato.jsx'));
 const Incidencias = lazy(() => import('./pantallas/Incidencias.jsx'));
 const Mantenimiento = lazy(() => import('./pantallas/Mantenimiento.jsx'));
+const Cobranza = lazy(() => import('./crm/Cobranza.jsx'));
 const Documentos = lazy(() => import('./pantallas/Documentos.jsx'));
 const Impresora = lazy(() => import('./pantallas/Impresora.jsx'));
+const Ayuda = lazy(() => import('./ayuda/Ayuda.jsx'));
 const MiApp = lazy(() => import('./pantallas/MiApp.jsx'));
 
-const PANTALLAS = { pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, terceros: Terceros, admin: Admin, gerente: Gerente,
+const PANTALLAS = { cobranza: Cobranza, pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, terceros: Terceros, admin: Admin, gerente: Gerente,
   facturas: Facturas, cierres: Cierres, 'caja-chica': CajaChica, reportes: Reportes, dashboard: Dashboard, antifraude: Antifraude, bitacora: Bitacora,
   cai: Cai, usuarios: Usuarios, sucursales: Sucursales, cotizaciones: Cotizaciones, impresora: Impresora,
   piedra: Piedra, 'registrar-produccion': RegistrarProduccion, produccion: Fabricacion, recetas: Recetas, insumos: Insumos, 'inventario-piedra': InventarioPiedra,
   trazabilidad: Trazabilidad, 'reporte-produccion': ReporteProduccion, salidas: Salidas, productos: ProductosDis, 'inventario-d': InventarioDis,
   gelato: TableroGelato, pesaje: PesajeGelato, despacho: DespachoGelato, 'gelato-produccion': ProduccionGelato, consumo: ConsumoGelato, 'gelato-costeo': CosteoGelato,
-  'gelato-inventario': InventarioGelato, incidencias: Incidencias, mantenimiento: Mantenimiento, documentos: Documentos };
+  'gelato-inventario': InventarioGelato, incidencias: Incidencias, mantenimiento: Mantenimiento, documentos: Documentos, ayuda: Ayuda };
 
 function Protegida({ children }) {
   const s = useSesion();
   if (s.cargando && !s.yo) return <Cargando texto="Entrando…" />;
   if (!s.autenticado) return <Navigate to="/" replace />;
-  return children;
+  return <>{children}<Sincronizador /></>;
 }
 
 function Modulo() {

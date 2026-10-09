@@ -9,6 +9,8 @@ import Ficha from '../documentos/Ficha.jsx';
 import ZonaArchivos from '../documentos/ZonaArchivos.jsx';
 
 /** Documentos de la empresa activa: contratos, permisos (ARSA, alcaldía…), registros sanitarios, pólizas… con vencimientos. */
+import { qInicial } from '../busqueda/qInicial.js';
+
 export default function Documentos() {
   const { puede, sucursales, contexto } = useSesion();
   const avisar = useAviso();
@@ -16,7 +18,7 @@ export default function Documentos() {
   const [tab, setTab] = useState('docs');
   const resumen = useDatos(() => get('/documentos/resumen'), []);
   const tiposD = useDatos(() => get('/documentos/tipos'), []);
-  const [filtros, setFiltros] = useState({ q: '', tipo: '', sucursal_id: '', estado: 'activos', vence_en: '' });
+  const [filtros, setFiltros] = useState({ q: qInicial(), tipo: '', sucursal_id: '', estado: 'activos', vence_en: '' });
   const [vista, setVista] = useState('tipos');
   const [abierto, setAbierto] = useState(null);       // id de la ficha
   const [form, setForm] = useState(null);             // { doc? , inicial? }

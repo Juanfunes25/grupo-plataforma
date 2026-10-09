@@ -41,18 +41,13 @@ export async function datosEstadoCuenta(q, { empresa, terceroId, hoy = fechaHN()
     d.pagado = r2(d.pagos.reduce((s, p) => s + p.monto, 0));
     const p = pend.get(clave(d.origen, d.documento_id));
     d.saldo = p ? p.saldo : r2(Math.max(0, d.total - d.pagado));
-    d.vencimiento = p?.fecha_vencimiento ?? null; d.dias_atraso = p?.dias_atraso ?? 0; d.bucket = p?.bucket ?? null; d.vencido = p?.vencido ?? false;
+    d.dias_atraso = p?.dias_atraso ?? 0; d.bucket = p?.bucket ?? null; d.vencido = p?.vencido ?? false;
   }
   docs.sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
   const saldo = r2(docs.reduce((s, d) => s + d.saldo, 0));
-  const cred = pendientes[0];
-  const limite = cred?.limite_credito ?? (empresa.modulos.includes('fabrica')
-    ? Number((await q.query('select limite_credito from eco.cliente_ext where tercero_id = $1', [terceroId])).rows[0]?.limite_credito ?? 0)
-    : Number((await q.query('select limite_credito from crm.credito_cliente where empresa_id = $1 and tercero_id = $2', [empresa.id, terceroId])).rows[0]?.limite_credito ?? 0));
   return {
     fecha: hoy, empresa: e, cliente: t, documentos: docs,
     resumen: { documentos: docs.length, total: r2(docs.reduce((s, d) => s + d.total, 0)), pagado: r2(docs.reduce((s, d) => s + d.pagado, 0)), saldo, antiguedad: sumarPorBucket(pendientes), vencido: r2(pendientes.filter((p) => p.vencido).reduce((s, p) => s + p.saldo, 0)) },
-    credito: { limite, usado: saldo, excede: limite > 0 && saldo > limite },
     hay_borrador: docs.some((d) => d.factura_borrador),
   };
 }
@@ -91,7 +86,6 @@ tr.doc td { background: #fafaf9; } .mal { color: #b91c1c; } .ok { color: #166534
 <div class="total">Saldo pendiente: <b class="${d.resumen.saldo > 0 ? 'mal' : 'ok'}">${lempiras(d.resumen.saldo)}</b></div>
 <h2>Antigüedad del saldo</h2>
 <div class="edades">${BUCKETS_ANTIGUEDAD.map((b) => `<div><span class="mut">${b} días</span><b>${lempiras(a[b])}</b></div>`).join('')}<div><span class="mut">Total</span><b>${lempiras(a.total)}</b></div></div>
-${d.credito.limite > 0 ? `<p class="mut">Límite de crédito: ${lempiras(d.credito.limite)}${d.credito.excede ? ' · <b class="mal">el saldo excede el límite</b>' : ''}</p>` : ''}
 ${d.hay_borrador ? '<div class="aviso">Algunas facturas de este estado de cuenta fueron emitidas en modo BORRADOR (etapa de pruebas, sin CAI): no tienen valor fiscal.</div>' : ''}
 <p class="pie">Generado el ${fmtFecha(d.fecha)}. Si encuentra alguna diferencia, comuníquese con ${esc(d.empresa.telefono || d.empresa.correo || 'la empresa')}.</p>
 </body></html>`;

@@ -11,6 +11,7 @@ import { BarraInferior, HojaMas, MenuQuiosco } from '../ui/NavApp.jsx';
 import { Campo, Cargando, Modal, useAccion, useAviso } from '../ui/kit.jsx';
 import { post } from '../api.js';
 import Vigilancia from '../antifraude/Vigilancia.jsx';
+import AyudaGlobal from '../ayuda/AyudaGlobal.jsx';
 import ContadorAlertas from '../antifraude/ContadorAlertas.jsx';
 import LimiteError from '../ui/LimiteError.jsx';
 
@@ -163,6 +164,7 @@ export default function Layout({ children, esGrupo = false }) {
           onCerrar={() => setMas(false)} onCambiarEmpresa={() => nav('/')} onClave={() => setCambiando(true)} onSalir={salir} />}
         {quiosco === 'si' && <button className="quiosco-boton no-print" onClick={() => setMenuQuiosco(true)} aria-label="Opciones del modo quiosco"><Icono n="mas" tam={20} /></button>}
         {menuQuiosco && <MenuQuiosco base="/grupo" onCerrar={() => setMenuQuiosco(false)} />}
+        <AyudaGlobal base="/grupo" />
         {cambiando && <CambiarClave onCerrar={() => setCambiando(false)} onListo={() => { setCambiando(false); salir(); }} />}
       </div>
     );
@@ -181,7 +183,7 @@ export default function Layout({ children, esGrupo = false }) {
       <a className="saltar no-print" href="#contenido">Saltar al contenido</a>
       <header className="barra-movil no-print">
         <Link to={base} className="marca-mini" aria-label={`Inicio de ${ctx.empresa.nombre}`}><Logo codigo={ctx.empresa.logo || ctx.empresa.codigo} color={color} /></Link>
-        <div className="titulo-movil"><b>{activo?.nombre ?? ctx.empresa.nombre}</b>{(sinCabecera || s.sucursales.length <= 1) && <small>{ctx.empresa.nombre}{sucActual ? ` · ${sucActual.nombre}` : ''}</small>}</div>
+        <div className="titulo-movil"><b className="t-modulo">{activo?.nombre ?? ctx.empresa.nombre}</b><small className="t-empresa">{s.sucursales.length === 1 && sucActual ? (sucActual.nombre.toLowerCase().includes(ctx.empresa.nombre.toLowerCase()) ? sucActual.nombre : `${ctx.empresa.nombre} · ${sucActual.nombre}`) : ctx.empresa.nombre}</small></div>
         {s.sucursales.length > 1 && <select value={s.sucursalId ?? ''} onChange={(e) => s.elegirSucursal(e.target.value)} aria-label="Sucursal activa">{s.sucursales.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}</select>}
         <button className="btn fantasma icono" onClick={() => setPaleta(true)} aria-label="Buscar módulo"><Icono n="lupa" tam={22} /></button>
         {!conNavInf && <button className="btn fantasma icono solo-angosto" onClick={() => setMas(true)} aria-label="Más opciones y módulos"><Icono n="menu" tam={22} /></button>}
@@ -260,6 +262,7 @@ export default function Layout({ children, esGrupo = false }) {
       {quiosco === 'si' && <button className="quiosco-boton no-print" onClick={() => setMenuQuiosco(true)} aria-label="Opciones del modo quiosco"><Icono n="mas" tam={20} /></button>}
       {menuQuiosco && <MenuQuiosco base={base} onCerrar={() => setMenuQuiosco(false)} />}
       <Vigilancia base={base} />
+      <AyudaGlobal base={base} />
       {paleta && <Paleta opciones={opcionesPaleta} onCerrar={() => setPaleta(false)} />}
       {cambiando && <CambiarClave onCerrar={() => setCambiando(false)} onListo={() => { setCambiando(false); salir(); }} />}
     </div>

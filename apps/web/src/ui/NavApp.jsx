@@ -23,7 +23,7 @@ export function BarraInferior({ base, accesos, activoRuta, onMas, masAbierto }) 
         );
       })}
       <button className={`nav-item${masAbierto ? ' activo' : ''}`} onClick={() => { vibrar(8); onMas(); }} aria-haspopup="dialog" aria-expanded={masAbierto}>
-        <span className="nav-ico"><Icono n="mas" tam={22} /></span><span className="nav-txt">Más</span>
+        <span className="nav-ico"><Icono n="menu" tam={22} /></span><span className="nav-txt">Más</span>
       </button>
     </nav>
   );

@@ -40,14 +40,25 @@ export function ProveedorSesion({ children }) {
       const real = codigo && codigo !== 'grupo' && base.empresas.some((e) => e.codigo === codigo) ? codigo : base.empresas[0]?.codigo;
       fijarEmpresa(real);
       const completo = real ? await get('/auth/yo', { empresa: real }) : base;
+      try { localStorage.setItem(`grupo.yo.${real}`, JSON.stringify(completo)); } catch { /* sin caché */ }   // para abrir la caja SIN conexión
       setYo(completo);
       const k = `grupo.sucursal.${real}`;
       let sid = null;
       try { sid = localStorage.getItem(k); } catch { /* */ }
       const lista = completo.contexto?.sucursales ?? [];
       setSucursalId(lista.find((s) => s.id === sid)?.id ?? lista[0]?.id ?? null);
-    } catch {
-      /* 401 ya dispara cierre de sesión */
+    } catch (e) {
+      /* 401 ya dispara cierre de sesión. Sin red (status 0): se abre con la última sesión conocida de esta empresa, para poder seguir vendiendo. */
+      if (e?.status === 0) {
+        const cod = codigo && codigo !== 'grupo' ? codigo : almacen.leer()?.empresa;
+        let c = null; try { c = JSON.parse(localStorage.getItem(`grupo.yo.${cod}`) || 'null'); } catch { /* */ }
+        if (c?.contexto) {
+          fijarEmpresa(cod); setYo(c);
+          let sid = null; try { sid = localStorage.getItem(`grupo.sucursal.${cod}`); } catch { /* */ }
+          const lista = c.contexto.sucursales ?? [];
+          setSucursalId(lista.find((x) => x.id === sid)?.id ?? lista[0]?.id ?? null);
+        }
+      }
     } finally { setCargando(false); }
   }, []);
 

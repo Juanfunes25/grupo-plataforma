@@ -21,12 +21,14 @@ export async function guardarConfigFiscal(q, empresaId, parcial) {
 }
 
 /**
- * Modo vigente de la empresa. Si el asistente nunca se usó se deduce de los puntos de emisión
- * (algún CAI real activo = real), así lo que ya funcionaba sigue igual.
+ * Modo de la empresa. «real» solo cuando el asistente declaró la puesta en vivo (en_vivo); mientras tanto es «prueba»,
+ * aunque alguna sucursal ya tenga un CAI real cargado (entonces se marca «en preparación»: esa sucursal ya emite con valor fiscal).
  */
-export function modoDe(cfgFiscal, puntos) {
-  if (cfgFiscal.modo === 'real' || cfgFiscal.modo === 'prueba') return { modo: cfgFiscal.modo, declarado: true };
-  return { modo: puntos.some((p) => p.activo !== false && !p.es_borrador) ? 'real' : 'prueba', declarado: false };
+export function modoDe(cfgFiscal, sucursales) {
+  const facturan = sucursales.filter((s) => FACTURA.has(s.tipo) && s.pe_id);
+  const reales = facturan.filter((s) => !s.es_borrador).length;
+  const modo = cfgFiscal.en_vivo === true ? 'real' : 'prueba';
+  return { modo, sucursales_con_cai_real: reales, sucursales_que_facturan: facturan.length, en_preparacion: modo === 'prueba' && reales > 0 };
 }
 
 /** Nivel de una alerta: «critica» si ya no se puede facturar o falta muy poco; «aviso» si hay que ir pidiendo el CAI nuevo. */
@@ -143,10 +145,11 @@ export async function verificarEmpresa(db, empresa, { hoy = fechaHN() } = {}) {
   if (sinCajero.length) probU.push(`nadie puede cobrar en: ${sinCajero.map((s) => s.nombre).join(', ')}`);
   nuevo('usuarios', 'Usuarios listos', probU.length ? 'falta' : 'ok', probU.length ? `Falta: ${probU.join('; ')}.` : 'Hay quien administre y quien cobre en cada sucursal.', { pestana: 'usuarios' });
 
+  const modo = modoDe(cfg, sucs);
   const faltan = items.filter((i) => i.bloquea).length;
   const porConfirmar = items.filter((i) => i.estado === 'manual').length;
   return {
-    empresa: emp, sucursales: sucs, config: cfg, items, alertas,
+    empresa: emp, sucursales: sucs, config: cfg, items, alertas, ...modo,
     faltan, por_confirmar: porConfirmar,
     listo_para_real: faltan === 0 && porConfirmar === 0,
   };

@@ -79,6 +79,11 @@ export function rutasFiscal({ db }) {
       const ant = (await q.query('select * from pos.puntos_emision where id = $1 and empresa_id = $2 for update', [id, req.ctx.empresa.id])).rows[0];
       if (!ant) throw noEncontrado();
       const nuevo = { ...ant, ...Object.fromEntries(Object.entries(b).filter(([, v]) => v !== undefined)) };
+      // Con la empresa declarada «en vivo» (Asistente fiscal) una sucursal no vuelve sola a borrador: se regresa a modo prueba desde el asistente.
+      if (b.es_borrador === true && !ant.es_borrador) {
+        const cfgF = (await q.query(`select valor from core.config where empresa_id = $1 and clave = 'fiscal'`, [req.ctx.empresa.id])).rows[0]?.valor ?? {};
+        if (cfgF.en_vivo === true) throw conflicto('La empresa está en modo REAL. Para volver a borrador, regresa toda la empresa a modo PRUEBA desde el Asistente fiscal.');
+      }
       for (const k of ['punto_emision_codigo', 'punto_venta_codigo', 'tipo_documento_codigo']) if (typeof nuevo[k] === 'string') nuevo[k] = nuevo[k].trim();
       if (b.cai !== undefined) nuevo.cai = b.cai ? normalizarCai(b.cai) : null;
       if (b.correlativo_desde !== undefined && b.correlativo_actual === undefined && ant.es_borrador) nuevo.correlativo_actual = b.correlativo_desde;

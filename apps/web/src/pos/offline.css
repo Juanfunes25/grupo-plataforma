@@ -1,0 +1,6 @@
+/* POS sin conexión: píldora global, panel de la cola y avisos */
+.cola-pildora { position: fixed; left: 12px; bottom: 12px; z-index: 55; padding: 8px 14px; border-radius: 999px; background: var(--aviso-fondo); border: 1px solid var(--aviso); color: var(--aviso-texto); font-weight: 700; font-size: .85rem; box-shadow: var(--sombra-2); pointer-events: none; }
+.cola-pildora.mal { background: var(--peligro-fondo); border-color: var(--peligro); color: var(--peligro-texto); }
+.cola-fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--borde); border-radius: 10px; background: var(--panel-2); }
+.cola-fila.revisar { border-color: var(--peligro); background: var(--peligro-fondo); }
+.cola-error { color: var(--peligro-texto); }

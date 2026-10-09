@@ -56,6 +56,13 @@ tr.clic:active td { background: var(--panel-3); }
   .barra-movil .titulo-movil { flex: 1; min-width: 0; display: grid; line-height: 1.1; }
   .barra-movil .titulo-movil b { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-size: 1.3rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .barra-movil .titulo-movil small { font-size: .7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Si la pantalla ya trae su propio título (h1), el encabezado muestra la empresa y la tienda en vez de repetirlo. */
+  .app-shell:has(.contenido h1) .barra-movil .t-modulo { display: none; }
+  .app-shell:has(.contenido h1) .barra-movil .t-empresa { font: 600 1.2rem/1.1 'Barlow Condensed', 'Inter', sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--texto); }
+  .barra-movil select { max-width: 38vw; }
+  .grupo-shell .barra { position: sticky; top: 0; z-index: 20; min-height: calc(54px + env(safe-area-inset-top)); padding-bottom: 6px; flex-wrap: nowrap; background: color-mix(in srgb, var(--fondo) 92%, transparent); backdrop-filter: blur(10px); }
+  .grupo-shell .barra .btn, .grupo-shell .barra .usuario-chip, .grupo-shell .barra .sep { display: none; }
+  .grupo-shell .barra .marca { flex: 1 1 auto; }
   .barra-movil .btn.icono { width: 44px; padding: 0; flex: none; }
   /* El menú lateral deslizable ya no se usa en pantallas angostas: lo reemplaza la hoja «Más». */
   .sidebar, .sidebar-velo, .menu-flotante { display: none !important; }

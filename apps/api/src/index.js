@@ -6,7 +6,6 @@ import { sembrarSiVacio } from './modulos/rinv/siembra.js';
 import { sembrarCatalogoItaloSiVacio } from './db/italo-catalogo.js';
 import { sembrarEcostoneSiVacio } from './db/ecostone-datos.js';
 import { iniciarMensajeria } from './modulos/mensajeria/planificador.js';
-import { iniciarProgramadorReportes } from './modulos/reportes-programados/programador.js';
 
 const config = leerConfig();
 validarConfig(config);
@@ -29,8 +28,6 @@ const app = crearApp({ db, config });
 
 // Correo y avisos (cola de envíos, resumen diario y alertas por correo): temporizador interno, sin cron externo.
 iniciarMensajeria({ db, config });
-// Reportes programados por correo (diarios/semanales): temporizador interno + tabla de ejecuciones, idempotente por día.
-iniciarProgramadorReportes({ db });
 const servidor = app.listen(config.puerto, () => console.log(`[api] escuchando en :${config.puerto}`));
 
 const cerrar = async () => { servidor.close(); await db.close().catch(() => {}); process.exit(0); };

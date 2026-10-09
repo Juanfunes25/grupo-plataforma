@@ -5,6 +5,7 @@ import { useSesion } from '../sesion.jsx';
 import { Campo, Modal, Vacio, descargarCsv, useAccion, useAviso } from '../ui/kit.jsx';
 import Icono from '../ui/Icono.jsx';
 import MotivoModal from '../pos/MotivoModal.jsx';
+import EnviarCorreo from '../mensajeria/EnviarCorreo.jsx';
 import { colorSucursal } from '../lib/coloresSucursal.js';
 import { descargarPdf, imprimirTicket, verPdf } from '../lib/documentos.js';
 import { registrarEvento } from '../lib/eventos.js';
@@ -29,10 +30,12 @@ const PRESETS = () => {
   return [['Hoy', hoy, hoy], ['Ayer', sumarDias(hoy, -1), sumarDias(hoy, -1)], ['7 días', sumarDias(hoy, -6), hoy], ['Este mes', `${hoy.slice(0, 8)}01`, hoy]];
 };
 
+import { qInicial } from '../busqueda/qInicial.js';
+
 export default function Facturas() {
   const { sucursales, sucursal, puede, contexto } = useSesion();
   const avisar = useAviso();
-  const [filtros, setFiltros] = useState({ sucursal_id: '', desde: '', hasta: '', q: '' });
+  const [filtros, setFiltros] = useState({ sucursal_id: '', desde: '', hasta: '', q: qInicial() });
   const [cajero, setCajero] = useState('');
   const [forma, setForma] = useState('');
   const [soloAnuladas, setSoloAnuladas] = useState(false);
@@ -134,6 +137,7 @@ function DetalleFactura({ id, sucursales, puede, avisar, onCerrar, onCambio }) {
   const [v, setV] = useState(null);
   const [error, setError] = useState('');
   const [motivo, setMotivo] = useState(null);          // 'reimprimir' | 'anular'
+  const [correoAbierto, setCorreoAbierto] = useState(false);
   const { modulos, contexto, usuario } = useSesion();
   const usaNc = Boolean(contexto?.usar_notas_credito);   // el negocio hoy no usa notas de crédito (core.config pos.usar_notas_credito)
   const [aut, setAut] = useState({ email: '', password: '' });
@@ -204,6 +208,7 @@ function DetalleFactura({ id, sucursales, puede, avisar, onCerrar, onCambio }) {
             ? <button className="btn" disabled={ocupado} onClick={() => (v.impresiones > 0 ? setMotivo('reimprimir') : imprimirOriginal())}><Icono n="impresora" tam={16} /> {v.impresiones > 0 ? 'Reimprimir ticket' : 'Imprimir ticket'}</button> : null}
           <button className="btn" onClick={() => verPdf(v.id).catch((e) => avisar(e.message, 'mal'))}>Ver PDF</button>
           <button className="btn" onClick={() => descargarPdf(v.id, `factura-${v.numero_factura}.pdf`).catch((e) => avisar(e.message, 'mal'))}>Descargar PDF</button>
+          {vigente && <button className="btn" onClick={() => setCorreoAbierto(true)}>Enviar por correo</button>}
         </div>
 
         {usaNc && v.notas_credito.length > 0 && (
@@ -234,6 +239,7 @@ function DetalleFactura({ id, sucursales, puede, avisar, onCerrar, onCambio }) {
           </div>
         )}
       </Modal>
+      {correoAbierto && <EnviarCorreo titulo="Enviar factura por correo" documento={`Factura ${v.numero_factura ?? `orden #${v.ticket_dia}`} por ${lempiras(v.total)}`} correo={v.cliente?.correo ?? ''} ruta={`/pos/ventas/${v.id}/correo`} borrador={Boolean(v.es_borrador_fiscal)} onCerrar={() => setCorreoAbierto(false)} />}
       {motivo === 'reimprimir' && <MotivoModal titulo="Reimprimir ticket" texto="Saldrá marcado como COPIA. Indica el motivo (queda en la bitácora)." opciones={MOTIVOS_REIMPRESION} etiquetaBoton="Reimprimir" ocupado={ocupado} onCerrar={() => setMotivo(null)} onListo={reimprimir} />}
       {motivo === 'anular' && <MotivoModal titulo="Anular factura" texto={`Se anulará ${v.numero_factura} por ${lempiras(v.total)}. Esto no se puede deshacer.`} opciones={MOTIVOS_ANULACION} etiquetaBoton="Anular factura" peligro ocupado={ocupado} onCerrar={() => setMotivo(null)} onListo={anular}
         bloqueado={pideDueno && !(aut.email.trim() && aut.password)}

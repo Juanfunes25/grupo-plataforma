@@ -6,7 +6,8 @@ import { Campo, Cargando, ErrorCaja, Modal, Tabs, useAccion, useAviso, useConfir
 import Calendario, { Estado, ModalAceptar, ModalEvento } from '../cotizaciones/Calendario.jsx';
 import Formulario from '../cotizaciones/Formulario.jsx';
 import { abrirDocumento } from '../cotizaciones/documento.js';
-import { ETIQUETA_ESTADO, enlaceCorreo, horaCorta, numCot } from '../cotizaciones/reglas.js';
+import { ETIQUETA_ESTADO, horaCorta, numCot } from '../cotizaciones/reglas.js';
+import EnviarCorreo from '../mensajeria/EnviarCorreo.jsx';
 import '../cotizaciones/cotizaciones.css';
 
 const FORMAS = [['efectivo', 'Efectivo'], ['tarjeta', 'Tarjeta'], ['transferencia', 'Transferencia']];
@@ -84,16 +85,8 @@ export default function Cotizaciones() {
     const datos = await ejecutar(() => get(`/cotizaciones/${c.id}/documento`));
     if (datos && datos !== true && !abrirDocumento(datos)) avisar('El navegador bloqueó la ventana. Permite las ventanas emergentes para imprimir.', 'mal');
   };
-  const enviar = async (c) => {
-    try { await post(`/cotizaciones/${c.id}/enviar`); avisar(`Cotización enviada a ${c.email_cliente}`); d.recargar(); }
-    catch (e) {
-      if (e.codigo === 'correo_pendiente') {
-        // Envío automático pendiente de configurar: se abre el correo del usuario con el asunto y el texto listos.
-        avisar('El envío automático está pendiente de configurar. Abrí tu correo: adjunta el PDF (Imprimir → Guardar como PDF).', 'mal');
-        window.location.href = enlaceCorreo(c, empresaNombre);
-      } else avisar(e.message, 'mal');
-    }
-  };
+  const [correoDe, setCorreoDe] = useState(null);   // cotización que se está enviando por correo (Gmail, con PDF adjunto)
+  const enviar = (c) => setCorreoDe(c);
 
   return (
     <div className="pagina">
@@ -134,7 +127,7 @@ export default function Cotizaciones() {
                       <button className="btn chico" onClick={() => setAbierta(c)}>Abrir</button>
                       {!facturada && c.estado !== 'rechazada' && puedeFacturar && <button className="btn chico primario" onClick={() => setFacturando(c)}>Facturar</button>}
                       <button className="btn chico" onClick={() => documento(c)}>Ver PDF</button>
-                      {c.email_cliente && !facturada && <button className="btn chico" onClick={() => enviar(c)}>Enviar por correo</button>}
+                      {!facturada && <button className="btn chico" onClick={() => enviar(c)}>Enviar por correo</button>}
                       {c.estado === 'borrador' && <button className="btn chico peligro" onClick={() => eliminar(c)}>Eliminar</button>}
                     </div></td>
                   </tr>
@@ -150,10 +143,12 @@ export default function Cotizaciones() {
       {form && <Formulario cotizacion={form.id ? form : null} sucursales={sucursales} sucursalIdDefecto={sucursalId} onCerrar={() => setForm(null)} onGuardada={(c) => { setForm(null); d.recargar(); if (form.id) setAbierta(c); }} />}
       {abiertaFresca && !aceptando && !facturando && (
         <ModalEvento cotizacion={abiertaFresca} sucursales={sucursales} empresaNombre={empresaNombre} puedeFacturar={puedeFacturar}
-          onCerrar={() => setAbierta(null)} onActualizada={reemplazar} onAceptar={setAceptando} onFacturar={(c) => setFacturando(c)} onDocumento={documento} onEditar={(c) => { setAbierta(null); setForm(c); }} />
+          onCerrar={() => setAbierta(null)} onActualizada={reemplazar} onAceptar={setAceptando} onFacturar={(c) => setFacturando(c)} onDocumento={documento} onCorreo={enviar} onEditar={(c) => { setAbierta(null); setForm(c); }} />
       )}
       {aceptando && <ModalAceptar cotizacion={aceptando} sucursales={sucursales} sucursalIdDefecto={sucursalId} onCerrar={() => setAceptando(null)}
         onAceptada={(c) => { setAceptando(null); avisar(`Cotización #${numCot(c)} aceptada y agendada en el calendario`); reemplazar(c); }} />}
+      {correoDe && <EnviarCorreo titulo="Enviar cotización por correo" documento={`Cotización #${numCot(correoDe)} · ${correoDe.nombre_evento} · ${lempiras(correoDe.total)}`} correo={correoDe.email_cliente ?? ''} ruta={`/cotizaciones/${correoDe.id}/enviar`}
+        onCerrar={() => setCorreoDe(null)} onListo={() => d.recargar()} />}
       {facturando && <ModalFacturar c={facturando} sucursales={sucursales} sucursalIdDefecto={sucursalId} onCerrar={() => setFacturando(null)}
         onFacturada={(r) => { setFacturando(null); setAbierta(null); avisar(`Factura ${r.factura.numero_factura} emitida${r.factura.es_borrador ? ' (sin validez fiscal: CAI pendiente)' : ''}`); d.recargar(); }} />}
     </div>

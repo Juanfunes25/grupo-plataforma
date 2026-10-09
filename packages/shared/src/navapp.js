@@ -5,9 +5,9 @@ import { inicioGelato } from './gelato.js';
 
 // [id de módulo, etiqueta corta, ícono]. El orden es la prioridad.
 const PRINCIPALES = [
-  ['rep_tablero', 'Tablero', 'dashboard'], ['pos', 'Facturar', 'pos'], ['rep_despacho', 'Despacho', 'pos'], ['rep_pesaje', 'Pesaje', 'inventario'],
+  ['rep_tablero', 'Tablero', 'dashboard'], ['pos', 'Facturar', 'pos'], ['rep_despacho', 'Despacho', 'sucursales'], ['rep_pesaje', 'Pesaje', 'inventario'],
   ['prod_registrar', 'Producción', 'cocina'], ['rep_produccion', 'Producción', 'cocina'], ['dis_salidas', 'Salidas', 'inventario'],
-  ['cot_eco', 'Cotizar', 'catalogo'], ['cot_dis', 'Cotizar', 'catalogo'], ['cotizaciones', 'Cotizar', 'catalogo'], ['kds', 'Cocina', 'cocina'], ['prod_ordenes', 'Órdenes', 'reloj'],
+  ['cot_eco', 'Cotizar', 'reportes'], ['cot_dis', 'Cotizar', 'reportes'], ['cotizaciones', 'Cotizar', 'reportes'], ['kds', 'Cocina', 'cocina'], ['prod_ordenes', 'Órdenes', 'reloj'],
 ];
 const SECUNDARIOS = [
   ['antifraude', 'Alertas', 'escudo', true], ['dashboard', 'Números', 'dashboard'], ['cierres', 'Cierre', 'dinero'],

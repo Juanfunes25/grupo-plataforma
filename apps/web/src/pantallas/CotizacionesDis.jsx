@@ -8,6 +8,7 @@ import AvisoSinStock from '../diserco/AvisoSinStock.jsx';
 import { abrirVentana, escribirDocumento } from '../diserco/documento.js';
 import { aBase64, descargarArchivo } from '../diserco/archivos.js';
 import { imprimirTicket, verPdf } from '../lib/documentos.js';
+import EnviarCorreo from '../mensajeria/EnviarCorreo.jsx';
 import '../diserco/diserco.css';
 
 const ESTADOS = [['', 'Todas'], ['borrador,enviada', 'Por aprobar'], ['aprobada', 'Aprobadas (por cobrar)'], ['facturada', 'Cobradas y facturadas'], ['rechazada,anulada', 'Cerradas']];
@@ -109,6 +110,7 @@ function Detalle({ id, aviso, onAviso, onVolver, onEditar }) {
   const [error, setError] = useState('');
   const [avisoStock, setAvisoStock] = useState(null);
   const [salidas, setSalidas] = useState([]);
+  const [correoAbierto, setCorreoAbierto] = useState(false);
   const gerencia = puede('pos:anular');
   const vende = puede('cotizaciones:ver');
   const cobra = puede('pos:vender');
@@ -143,17 +145,7 @@ function Detalle({ id, aviso, onAviso, onVolver, onEditar }) {
     const w = abrirVentana();
     try { escribirDocumento(w ?? window.open('', '_blank'), await get(`/diserco/cotizaciones/${c.id}/documento`)); } catch (e) { w?.close(); setError(e.message); }
   }
-  async function correo() {
-    const email = window.prompt('¿A qué correo la enviamos?', c.email || c.cliente_email || '');
-    if (!email) return;
-    try { const r = await post(`/diserco/cotizaciones/${c.id}/correo`, { email }); onAviso(`Enviada a ${r.a}`); await cargar(); }
-    catch (e) {
-      if (e.codigo === 'correo_pendiente') {
-        setError(`${e.message}`);
-        window.location.href = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(`Cotización ${c.codigo} — DISERCO`)}&body=${encodeURIComponent(`Adjunto la cotización ${c.codigo} (total ${lempiras(c.total)}).`)}`;
-      } else setError(e.message);
-    }
-  }
+  const correo = () => setCorreoAbierto(true);
   const bajar = (ruta, nombre) => descargarArchivo(ruta, nombre).catch((e) => setError(e.message));
 
   if (!c) return <div className="pagina"><div className="tarjeta">{error ? <div className="aviso-caja mal">{error}</div> : 'Cargando…'}</div></div>;
@@ -165,6 +157,7 @@ function Detalle({ id, aviso, onAviso, onVolver, onEditar }) {
 
   return (
     <div className="pagina">
+      {correoAbierto && <EnviarCorreo titulo="Enviar cotización por correo" documento={`Cotización ${c.codigo} · ${lempiras(c.total)}`} correo={c.email || c.cliente_email || ''} ruta={`/diserco/cotizaciones/${c.id}/correo`} onCerrar={() => setCorreoAbierto(false)} onListo={() => cargar()} />}
       {avisoStock && <AvisoSinStock faltantes={avisoStock} onCancelar={() => setAvisoStock(null)} onContinuar={() => { setAvisoStock(null); cobrar(true); }} />}
       {error && <div className="aviso-caja mal" onClick={() => setError('')}>{error}</div>}
       {aviso && <div className="aviso-caja ok" onClick={() => onAviso('')}>{aviso}</div>}
@@ -180,7 +173,7 @@ function Detalle({ id, aviso, onAviso, onVolver, onEditar }) {
           <button className="btn" onClick={() => bajar(`/diserco/cotizaciones/${c.id}/excel`, `cotizacion-${c.codigo}.xlsx`)}>Descargar Excel</button>
           {c.tiene_original && <button className="btn" onClick={() => bajar(`/diserco/cotizaciones/${c.id}/excel-original`, `cotizacion-${c.codigo}-original.xlsx`)}>Excel original</button>}
           {abierta && vende && <button className="btn" onClick={() => onEditar(c)}>Editar</button>}
-          {vende && <button className="btn" disabled={ocupado} onClick={correo}>Enviar por correo</button>}
+          {vende && <button className="btn" onClick={correo}>Enviar por correo</button>}
           {abierta && vende && !c.vencida && <button className="btn primario" disabled={ocupado} onClick={() => hacer(() => accion('aprobar'), 'Cotización aprobada: ya se puede cobrar y facturar')}>✔ Aprobar</button>}
           {abierta && vende && <button className="btn peligro" onClick={() => { const motivo = window.prompt('Motivo del rechazo:'); if (motivo) hacer(() => accion('rechazar', { motivo }), 'Cotización rechazada'); }}>Rechazar</button>}
           {['aprobada', 'facturada'].includes(c.estado) && gerencia && <button className="btn peligro" onClick={() => { const motivo = window.prompt('Motivo de la anulación:'); if (motivo) hacer(() => accion('anular', { motivo }), 'Cotización anulada'); }}>Anular</button>}

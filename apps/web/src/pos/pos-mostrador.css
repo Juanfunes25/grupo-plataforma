@@ -1,0 +1,63 @@
+/* POS de mostrador: favoritos / más vendidos, teclado numérico, efectivo con cambio grande, atajos y sin conexión.
+   Se suma a pos.css (estilo WizPOS) sin cambiarlo. Solo usa los tokens del tema (var(--…)). */
+
+/* Secciones del catálogo */
+.pos-productos { min-width: 0; display: grid; gap: 12px; align-content: start; }
+.pos-seccion { display: grid; gap: 6px; }
+.pos-seccion-titulo { margin: 4px 2px 0; font-size: .95rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--tenue); }
+.pos-cuerpo .pos-productos .pos-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.pos-cuerpo .pos-cats button.cat-especial { background: #f2c14b; color: #2b1a00; }
+.pos-cuerpo .pos-cats button.cat-especial.on { background: #d9a21f; }
+.pos-prod { position: relative; }
+.pos-estrella { position: absolute; top: 6px; left: 8px; font-size: 1.05rem; color: #ffd34d; text-shadow: 0 1px 2px rgba(0, 0, 0, .5); line-height: 1; }
+.pos-estrella.vacia { color: rgba(255, 255, 255, .55); }
+/* El producto que se agregará con Enter al buscar */
+.pos-cuerpo .pos-prod.primero { outline: 3px solid #ffd34d; outline-offset: -3px; }
+.pos-cuerpo .pos-prod.editando { animation: pos-edit 1.4s ease-in-out infinite; }
+@keyframes pos-edit { 50% { filter: brightness(1.2); } }
+@media (prefers-reduced-motion: reduce) { .pos-cuerpo .pos-prod.editando { animation: none; } }
+.pos-vacio { padding: 28px 12px; line-height: 1.7; }
+.pos-orden-vacia { display: grid; gap: 6px; padding: 28px 14px; text-align: center; justify-items: center; }
+.pos-orden-vacia b { font-size: 1.15rem; color: var(--texto); }
+.pos-chip-cola { border: 0; cursor: pointer; font-weight: 700; }
+
+/* Cantidad como botón grande (abre el teclado numérico) */
+.pos-wz-cant .pos-cant-valor { width: auto; min-width: 44px; padding: 0 6px; font-size: 1.05rem; font-weight: 800; background: var(--panel); }
+.pos-cant-grande { font-size: 3rem !important; }
+
+/* Teclado numérico en pantalla */
+.pos-teclado button { min-height: 72px; font-size: 1.9rem; }
+.pos-teclado .tk-aux { font-size: 1.5rem; color: var(--tenue); }
+@media (pointer: coarse) { .pos-teclado button { min-height: 84px; } }
+
+/* Efectivo recibido y cambio */
+.pos-efectivo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.pos-efectivo-izq, .pos-efectivo-der { display: grid; gap: 10px; align-content: start; }
+.pos-cambio .val { font-size: 3.6rem; }
+.pos-cambio.ok { border-color: var(--ok); background: var(--ok-fondo); }
+.pos-billetes { display: flex; flex-wrap: wrap; gap: 8px; }
+.pos-billetes .btn { flex: 1 1 90px; min-height: 56px; font-weight: 800; }
+@media (max-width: 720px) { .pos-efectivo { grid-template-columns: 1fr; } .pos-cambio .val { font-size: 3rem; } }
+
+/* Botones de cobro con su atajo */
+kbd { display: inline-block; font: 700 .72rem/1 'Inter', sans-serif; padding: 3px 6px; border-radius: 5px; border: 1px solid var(--borde-fuerte); background: var(--panel-3); color: var(--texto); box-shadow: 0 1px 0 rgba(0, 0, 0, .3); vertical-align: middle; }
+.boton-cobro kbd { background: rgba(0, 0, 0, .25); border-color: rgba(255, 255, 255, .35); color: #fff; margin-top: 2px; }
+.pos-btn-recibido { min-height: 56px; font-weight: 800; border-color: var(--ok); }
+.pos-btn-recibido kbd, .pos-der .btn kbd { margin-left: 8px; }
+
+/* Ayuda de atajos */
+.pos-atajos-tabla { width: 100%; border-collapse: collapse; }
+.pos-atajos-tabla td { padding: 8px 6px; border-bottom: 1px solid var(--borde); vertical-align: middle; }
+.pos-atajos-tabla td:first-child { width: 130px; white-space: nowrap; }
+
+/* Tira de atajos al pie del catálogo: solo con mouse y teclado (no estorba en celular ni tablet) */
+.pos-atajos-tira { display: none; }
+@media (hover: hover) and (pointer: fine) and (min-width: 961px) {
+  .pos-atajos-tira { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 4px 0; color: var(--tenue); font-size: .8rem; }
+}
+
+/* Tabletas: todo un poco más grande al tacto */
+@media (pointer: coarse) {
+  .pos-wz-cant .pos-cant-valor { min-width: 52px; min-height: 44px; }
+  .pos-btn-recibido { min-height: 64px; }
+}

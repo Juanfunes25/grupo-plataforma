@@ -72,7 +72,7 @@ export function montarExtras(r, { db, ctxMgr }, empresasConsolidables) {
   });
   r.put('/intercompania/:id/conciliar', requierePermiso('grupo:ver'), async (req, res) => {
     const ids = (await empresasConsolidables(req.ctx.usuario)).map((e) => e.id);
-    const { rowCount } = await db.query(`update fin.intercompania set estado = 'conciliado' where id = $1 and empresa_origen_id = any($2::uuid[]) and empresa_destino_id = any($2::uuid[])`, [validar(uuid, req.params.id), ids]);
+    const { rowCount } = await db.query(`update fin.intercompania set estado = 'conciliado', conciliado_at = now(), conciliado_por = $3 where id = $1 and estado <> 'conciliado' and empresa_origen_id = any($2::uuid[]) and empresa_destino_id = any($2::uuid[])`, [validar(uuid, req.params.id), ids, req.ctx.usuario.id]);
     if (!rowCount) throw noEncontrado();
     res.json({ ok: true });
   });

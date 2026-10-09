@@ -52,9 +52,9 @@ export const PERMISOS = {
   'admin:usuarios':   'Administrar usuarios y accesos',
   'admin:empresa':    'Administrar sucursales y datos de la empresa',
   'auditoria:ver':    'Ver la bitácora de auditoría',
+  'sistema:ver':      'Ver el estado del sistema y exportar copias de la empresa',
   'clientes:ver':     'Ver clientes y proveedores',
   'clientes:editar':  'Crear y editar clientes y proveedores',
-  'reportes:programar': 'Programar reportes por correo (diarios o semanales)',
   // Cobranza (EcoStone y DISERCO)
   'cobranza:ver':     'Ver cuentas por cobrar, antigüedad y estados de cuenta',
   'cobranza:gestionar': 'Registrar gestiones de cobro, promesas de pago y recordatorios',
@@ -64,7 +64,7 @@ const TODOS = Object.keys(PERMISOS);
 
 export const ROLES = {
   dueno:   { nombre: 'Dueño de la empresa', permisos: TODOS },
-  admin:   { nombre: 'Administrador', permisos: TODOS.filter((p) => p !== 'grupo:ver') },   // administra SU empresa; el consolidado es de dirección
+  admin:   { nombre: 'Administrador', permisos: TODOS.filter((p) => p !== 'grupo:ver' && p !== 'sistema:ver') },   // administra SU empresa; el consolidado es de dirección
   gerente: {
     nombre: 'Manager',
     permisos: ['gerente:ver', 'pos:vender', 'pos:caja', 'pos:anular', 'pos:descuento', 'pos:reimprimir', 'pos:catalogo', 'pos:reportes',
