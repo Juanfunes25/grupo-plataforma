@@ -18,7 +18,10 @@ const CREDENCIALES = { 'core.usuarios': ['password_hash'], 'core.accesos': ['pin
 // Columnas que no tienen sentido fuera de su proyecto de origen.
 const SIEMPRE_OMITIDAS = { 'core.usuarios': ['auth_user_id'] };
 // Tablas comunes a todo el grupo: se exportan completas.
-const GLOBALES = new Set(['core.usuarios', 'core.terceros']);
+// (Y las de configuración que no dependen de una empresa: parámetros de planilla, memoria de avisos, bitácora histórica de Italo.)
+// Una tabla NUEVA que no tenga empresa_id ni llave hacia una que sí lo tenga aparece en `sin_ruta_a_empresa` del manifiesto
+// y la prueba de respaldos falla: ahí se decide si es común (se agrega aquí) o si le falta su empresa_id.
+const GLOBALES = new Set(['core.usuarios', 'core.terceros', 'core.auditoria_legado', 'msg.avisos_estado', 'plan.parametros', 'plan.isr_tramos']);
 
 const q = (id) => `"${String(id).replace(/"/g, '""')}"`;
 const qn = (clave) => clave.split('.').map(q).join('.');
@@ -33,7 +36,7 @@ export async function descubrir(db) {
   const tablas = new Map();
   for (const c of cols) {
     const k = `${c.esq}.${c.tabla}`;
-    if (!tablas.has(k)) tablas.set(k, { clave: k, esq: c.esq, tabla: c.tabla, cols: [], fks: [], pk: [] });
+    if (!tablas.has(k)) tablas.set(k, { clave: k, esq: c.esq, tabla: c.tabla, cols: [], fks: [], hijos: [], pk: [] });
     tablas.get(k).cols.push({ nombre: c.col, tipo: c.tipo, udt: c.udt, def: c.def, generada: c.generada, identidad: c.identidad });
   }
   const fks = (await db.query(
@@ -44,7 +47,10 @@ export async function descubrir(db) {
        join pg_attribute a on a.attrelid = con.conrelid and a.attnum = con.conkey[1]
        join pg_attribute af on af.attrelid = con.confrelid and af.attnum = con.confkey[1]
       where con.contype = 'f' and array_length(con.conkey, 1) = 1`)).rows;
-  for (const f of fks) tablas.get(`${f.esq}.${f.tabla}`)?.fks.push({ col: f.col, ref: `${f.esq_ref}.${f.tabla_ref}`, colRef: f.col_ref });
+  for (const f of fks) {
+    tablas.get(`${f.esq}.${f.tabla}`)?.fks.push({ col: f.col, ref: `${f.esq_ref}.${f.tabla_ref}`, colRef: f.col_ref });
+    tablas.get(`${f.esq_ref}.${f.tabla_ref}`)?.hijos.push({ tabla: `${f.esq}.${f.tabla}`, col: f.col, colRef: f.col_ref });
+  }
   const pks = (await db.query(
     `select nc.nspname as esq, c.relname as tabla, a.attname as col, k.ord
        from pg_constraint con join pg_class c on c.oid = con.conrelid join pg_namespace nc on nc.oid = c.relnamespace
@@ -71,6 +77,16 @@ function donde(tablas, clave, alias, visitadas = new Set(), nivel = 0) {
     const sub = donde(tablas, f.ref, a2, new Set([...visitadas, clave]), nivel + 1);
     if (sub === undefined || sub === null) continue;
     alternativas.push(`${alias}.${q(f.col)} in (select ${a2}.${q(f.colRef)} from ${qn(f.ref)} ${a2} where ${sub})`);
+  }
+  if (!alternativas.length) {
+    // Sin camino hacia arriba: puede ser un «padre» de filas que sí son de la empresa (rrhh.personas ← empleados).
+    for (const h of t.hijos) {
+      if (h.tabla === clave || !tablas.has(h.tabla) || GLOBALES.has(h.tabla)) continue;
+      const a2 = `h${nivel + 1}`;
+      const sub = donde(tablas, h.tabla, a2, new Set([...visitadas, clave]), nivel + 1);
+      if (sub === undefined || sub === null) continue;
+      alternativas.push(`${alias}.${q(h.colRef)} in (select ${a2}.${q(h.col)} from ${qn(h.tabla)} ${a2} where ${sub})`);
+    }
   }
   return alternativas.length ? `(${alternativas.join(' or ')})` : undefined;   // undefined = sin ruta hasta una empresa
 }

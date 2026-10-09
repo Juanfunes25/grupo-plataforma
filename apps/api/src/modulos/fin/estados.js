@@ -136,8 +136,8 @@ export const BUCKETS_COBRAR = ['0-30', '31-60', '61-90', '+90'];
 export const bucketCobrar = (dias) => (dias <= 30 ? '0-30' : dias <= 60 ? '31-60' : dias <= 90 ? '61-90' : '+90');
 
 /**
- * Por cobrar = facturas a crédito (forma de pago tipo «crédito») menos sus abonos + cotizaciones aprobadas de EcoStone/DISERCO con saldo.
- * La antigüedad cuenta los días desde la factura (o desde la aprobación de la cotización).
+ * Por cobrar = facturas a crédito (forma de pago tipo «crédito») menos sus abonos + cotizaciones aprobadas de EcoStone/DISERCO con saldo
+ * (estas últimas se leen de crm.cxc, la única fuente del módulo de Cobranza). La antigüedad cuenta los días desde la factura o la aprobación.
  */
 export async function cuentasPorCobrar(q, { empresaId, sucursalIds = [], hoy }) {
   const fac = (await q.query(
@@ -158,22 +158,14 @@ export async function cuentasPorCobrar(q, { empresaId, sucursalIds = [], hoy }) 
     items.push({ tipo: 'factura', id: f.id, ref: f.numero_factura ?? 'Factura', cliente: f.cliente, cliente_id: f.cliente_id, sucursal: f.sucursal, fecha: f.fecha, vence, vencida: !!vence && vence < hoy,
       dias, total: r2(f.total), abonado: r2(f.abonado), saldo, bucket: bucketCobrar(dias) });
   }
-  const cots = [
-    ...(await q.query(
-      `select c.id, 'Cotización #' || c.numero as ref, c.nombre_cliente as cliente, c.cliente_id, coalesce(${FECHA('c.aprobada_at')}, ${FECHA('c.created_at')})::text as fecha, c.total::float8 as total,
-              coalesce((select sum(p.monto) from eco.cotizacion_pagos p where p.cotizacion_id = c.id), 0)::float8 as pagado, 'EcoStone' as origen
-         from eco.cotizaciones c where c.empresa_id = $1 and c.estado = 'aprobada' and ${SUC_NULO('c.sucursal_id', 2)}`, [empresaId, sucursalIds])).rows,
-    ...(await q.query(
-      `select c.id, 'Cotización ' || c.codigo as ref, c.nombre_cliente as cliente, c.cliente_id, coalesce(${FECHA('c.aprobada_at')}, ${FECHA('c.created_at')})::text as fecha, c.total::float8 as total,
-              coalesce((select sum(g.monto) from dis.cotizacion_pagos g where g.cotizacion_id = c.id and not g.anulado), 0)::float8 as pagado, 'DISERCO' as origen
-         from dis.cotizaciones c where c.empresa_id = $1 and c.estado = 'aprobada' and ${SUC_NULO('c.sucursal_id', 2)}`, [empresaId, sucursalIds])).rows,
-  ];
+  // Cotizaciones aprobadas con saldo: el cálculo vive una sola vez en la base (crm.cxc, módulo de Cobranza); aquí solo se lee.
+  const cots = (await q.query(
+    `select documento_id as id, documento as ref, nombre_cliente as cliente, tercero_id as cliente_id, fecha_documento::text as fecha, dias_atraso as dias, vencido,
+            total::float8 as total, pagado::float8 as pagado, saldo::float8 as saldo, bucket
+       from crm.cxc($2::date) where empresa_id = $1 and saldo > 0.004`, [empresaId, hoy])).rows;
   for (const c of cots) {
-    const saldo = r2(c.total - c.pagado);
-    if (saldo <= 0.004) continue;
-    const dias = Math.max(0, diasEntre(c.fecha, hoy));
-    items.push({ tipo: 'cotizacion', id: c.id, ref: c.ref, cliente: c.cliente, cliente_id: c.cliente_id, sucursal: null, fecha: c.fecha, vence: null, vencida: false, dias,
-      total: r2(c.total), abonado: r2(c.pagado), saldo, bucket: bucketCobrar(dias) });
+    items.push({ tipo: 'cotizacion', id: c.id, ref: c.ref, cliente: c.cliente, cliente_id: c.cliente_id, sucursal: null, fecha: c.fecha, vence: null, vencida: c.vencido, dias: c.dias,
+      total: r2(c.total), abonado: r2(c.pagado), saldo: r2(c.saldo), bucket: c.bucket });
   }
   items.sort((a, b) => b.dias - a.dias);
   return { hoy, items, ...resumirCobrar(items) };

@@ -33,6 +33,8 @@ const vacio = () => ({ id: null, ticket: null, nombre_orden: '', tipo_orden: 'aq
 const cacheKey = (e, s) => `grupo.catalogo.${e}.${s}`;
 const normalizar = (t) => String(t ?? '').trim().toLowerCase();
 const redondear = (n) => Math.round(n * 100) / 100;
+// «3*jugo» = 3 unidades de «jugo»: se separa la cantidad del texto que se busca.
+const partirBusqueda = (txt) => { const m = /^\s*(\d{1,3})\s*[*xX]\s*(\S.*)$/.exec(String(txt ?? '')); return m ? { n: Math.min(999, Number(m[1])), texto: m[2] } : { n: 1, texto: String(txt ?? '') }; };
 const esCampo = (el) => Boolean(el && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable));
 const MSG_SIN_TARJETA = 'Sin conexión solo se puede cobrar en efectivo: la tarjeta y la transferencia necesitan validarse en el momento.';
 
@@ -163,7 +165,7 @@ export default function Pos() {
   // Vista del catálogo: buscando → coincidencias; «Todo» → Favoritos y Más vendidos arriba y luego todo; una categoría → sus productos.
   const vista = useMemo(() => {
     const todos = cat?.productos ?? [];
-    const q = normalizar(busca);
+    const q = normalizar(partirBusqueda(busca).texto);
     const porId = new Map(todos.map((p) => [p.id, p]));
     const favoritos = todos.filter((p) => p.favorito);
     const masIds = (cat?.mas_vendidos ?? []).filter((id) => porId.has(id));
@@ -183,7 +185,7 @@ export default function Pos() {
     return { secciones: [{ id: 'cat', titulo: null, prods: todos.filter((p) => p.categoria_id === catActiva) }], favoritos, mas };
   }, [cat, catActiva, busca]);
   const hayResultados = vista.secciones.some((s) => s.prods.length > 0);
-  const resultadoBusqueda = busca.trim() ? (buscarPorCodigo(cat?.productos ?? [], busca) ?? vista.secciones[0]?.prods[0] ?? null) : null;
+  const resultadoBusqueda = busca.trim() ? (buscarPorCodigo(cat?.productos ?? [], partirBusqueda(busca).texto) ?? vista.secciones[0]?.prods[0] ?? null) : null;
 
   const umbral = cat?.config?.umbral_rtn ?? UMBRAL_RTN_OBLIGATORIO;
   const hayTerceraEdad = orden.lineas.some((l) => l.descuento_porcentaje === 25);
@@ -587,11 +589,9 @@ export default function Pos() {
   const catalogoOrdenado = vista.secciones;
 
   const buscarEnter = () => {
-    const m = /^(\d{1,3})\s*[*xX]\s*(.+)$/.exec(busca.trim());
-    const texto = m ? m[2] : busca;
-    const lista = m ? (cat.productos.filter((p) => { const q = normalizar(texto); return normalizar(p.nombre).includes(q) || normalizar(p.codigo).includes(q) || normalizar(p.codigo_barras).includes(q); })) : null;
-    const p = buscarPorCodigo(cat.productos, texto) ?? (lista ? lista[0] : vista.secciones[0]?.prods[0]);
-    if (p) { tocar(p, m ? Math.min(999, Number(m[1])) : 1); setBusca(''); } else if (busca.trim()) mostrarToast(`"${busca.trim()}" no encontrado`);
+    const { n, texto } = partirBusqueda(busca);
+    const p = buscarPorCodigo(cat.productos, texto) ?? vista.secciones[0]?.prods[0];
+    if (p) { tocar(p, n); setBusca(''); } else if (busca.trim()) mostrarToast(`"${busca.trim()}" no encontrado`);
   };
 
   const ficha = (p, seccion) => {

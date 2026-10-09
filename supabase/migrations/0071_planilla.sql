@@ -46,6 +46,7 @@ insert into plan.parametros (clave, grupo, nombre, valor, unidad, nota) values
   ('quincena_dias',          'general', 'Días que se pagan en una quincena completa',   15,  'días', 'La hoja del dueño paga 15 días en cada quincena (1-15 y 16-fin de mes).'),
   ('semana_dias_pago',       'general', 'Días que se pagan en una semana completa',       6,  'días', 'Planilla semanal: 6 o 7 según lo defina el dueño. Por confirmar.'),
   ('semana_inicio_dia',      'general', 'Día en que empieza la semana de pago (1 = lunes … 7 = domingo)', 1, 'día', 'La semana dura 7 días calendario desde este día.'),
+  ('semana_dia_pago',        'general', 'Día de pago de la semana (1 = lunes … 7 = domingo)', 6, 'día', 'Fecha de pago sugerida de la planilla semanal. Por confirmar con el dueño.'),
   ('horas_dia_diurna',       'general', 'Horas de la jornada (valor de la hora = salario diario ÷ horas)', 8, 'h', 'En la hoja: 440 ÷ 8 = 55 por hora.'),
   ('horas_dia_mixta',        'general', 'Horas de la jornada mixta',                     7,  'h',    NULL),
   ('horas_dia_nocturna',     'general', 'Horas de la jornada nocturna',                  6,  'h',    NULL),
@@ -100,7 +101,7 @@ create index plan_novedades_idx on plan.novedades (empresa_id, fecha);
 create index plan_novedades_emp_idx on plan.novedades (empleado_id, fecha);
 
 -- ─── Periodicidad de pago: por empresa (valor por defecto) y por empleado (excepción) ──
--- Italo y Origen pagan semanal; EcoStone y DISERCO conviven quincenal y semanal según el empleado.
+-- Italo y Origen pagan quincenal; EcoStone y DISERCO pagan semanal y también quincenal (conviven según el empleado).
 -- Una planilla es de UNA periodicidad: solo entran los empleados cuya periodicidad efectiva es esa.
 create table plan.config_empresa (
   empresa_id   uuid primary key references core.empresas(id),
@@ -109,7 +110,7 @@ create table plan.config_empresa (
   updated_at   timestamptz not null default now()
 );
 insert into plan.config_empresa (empresa_id, periodicidad)
-select id, case when codigo in ('italo','origen') then 'semanal' else 'quincena' end from core.empresas;
+select id, case when codigo in ('ecostone','diserco') then 'semanal' else 'quincena' end from core.empresas;
 
 create table plan.empleado_periodicidad (
   empleado_id  uuid primary key references rrhh.empleados(id) on delete cascade,
