@@ -219,7 +219,7 @@ test('CAI: solo quien tiene pos:fiscal; formato SAR validado; al activarlo la fa
   const tk = await dueno.get(`/api/pos/ventas/${v.body.id}/ticket`);
   const texto = tk.body.lineas.join('\n');
   assert.match(texto, /CAI: 2F4851-96A881/);
-  assert.doesNotMatch(texto, /SIN VALIDEZ FISCAL/);
+  assert.doesNotMatch(texto, /SIN VALOR FISCAL/);
   // con el CAI en uso no se puede retroceder el correlativo
   assert.equal((await dueno.put(`/api/pos/puntos-emision/${pe.id}`, { correlativo_actual: 1 })).status, 400);
 });

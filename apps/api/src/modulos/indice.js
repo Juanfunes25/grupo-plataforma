@@ -15,7 +15,11 @@ import { rutasProd } from './prod/rutas.js';
 import { rutasRep } from './rep/rutas.js';
 import { rutasRinv } from './rinv/rutas.js';
 import { rutasDocumentos } from './documentos/rutas.js';
-
+import { rutasTablero } from './tablero/rutas.js';
+import { rutasBusqueda } from './busqueda/rutas.js';
+import { rutasReportesProgramados } from './reportes-programados/rutas.js';
+import { rutasMensajeria } from './mensajeria/rutas.js';
+import { rutasCompras } from './compras/rutas.js';
 /** Cada módulo expone rutas bajo /api/<modulo>. Aquí se montan todos. */
 export function montarModulos(router, deps) {
   router.use('/admin', rutasAdmin(deps));
@@ -35,4 +39,9 @@ export function montarModulos(router, deps) {
   router.use('/rep', rutasRep(deps));
   router.use('/rinv', rutasRinv(deps));
   router.use('/documentos', rutasDocumentos(deps));
+  router.use('/tablero', rutasTablero(deps));
+  router.use('/busqueda', rutasBusqueda(deps));
+  router.use('/reportes-programados', rutasReportesProgramados(deps));
+  router.use('/mensajeria', rutasMensajeria(deps));
+  router.use('/compras', rutasCompras(deps));
 }

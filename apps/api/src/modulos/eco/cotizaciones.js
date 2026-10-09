@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { UMBRAL_RTN_OBLIGATORIO, fechaHN, sumarDias } from '@grupo/shared';
 import { requierePermiso, resolverSucursal, sucursalesPermitidas } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
+import { enviarCotizacionPorCorreo } from '../mensajeria/envios.js';
 import { ErrorHttp, conflicto, malaPeticion, noEncontrado, prohibido, uuid, validar } from '../../lib/http.js';
 import { calcularAnticipo, calcularCotizacion, dimensionarLinea, round2 } from './calculo.js';
 import { parametros } from './catalogo.js';
@@ -255,22 +256,23 @@ export function rutasCotizacionesEco({ db }) {
       empresa: { nombre: e.nombre, razon_social: e.razon_social, rtn: e.rtn, direccion: e.direccion, ciudad: e.ciudad, telefono: e.telefono, correo: e.correo, web: e.web } });
   });
 
-  // ── Correo: el servidor aún no tiene servicio de correo; se responde claro y la pantalla ofrece «Abrir en mi correo» ──
+  // ── Correo (Gmail, con el PDF adjunto). `solo_marcar` la deja como enviada sin mandar nada (se envió por otro medio) ──
   r.post('/:id/enviar', vende, async (req, res) => {
-    const b = validar(z.object({ email: z.string().trim().max(120).optional(), solo_marcar: z.boolean().optional() }), req.body ?? {});
-    const out = await db.tx(async (q) => {
-      const c = await cargar(q, req.ctx, validar(uuid, req.params.id));
-      if (!c) throw noEncontrado('Cotización no encontrada');
-      if (!ABIERTAS.includes(c.estado)) throw conflicto(`La cotización está ${c.estado}`);
-      const destino = b.email || c.email;
-      if (b.solo_marcar) {
+    const b = validar(z.object({ email: z.string().trim().max(160).optional(), mensaje: z.string().trim().max(500).optional(), solo_marcar: z.boolean().optional() }), req.body ?? {});
+    const c = await cargar(db, req.ctx, validar(uuid, req.params.id));
+    if (!c) throw noEncontrado('Cotización no encontrada');
+    if (!ABIERTAS.includes(c.estado)) throw conflicto(`La cotización está ${c.estado}`);
+    const destino = b.email || c.email;
+    if (b.solo_marcar) {
+      await db.tx(async (q) => {
         await q.query(`update eco.cotizaciones set estado = 'enviada', updated_at = now() where id = $1`, [c.id]);
         await auditar(q, req.ctx, 'cotizacion_enviada', 'cotizacion', c.id, { numero: Number(c.numero), destino: destino ?? null, enviado: false, manual: true });
-        return { enviado: false, marcada: true };
-      }
-      return { enviado: false, motivo: destino ? 'El envío automático por correo está pendiente de configurar en el servidor' : 'El cliente no tiene correo registrado', destino: destino ?? null };
-    });
-    res.json(out);
+      });
+      return res.json({ ok: false, enviado: false, marcada: true });
+    }
+    const out = await enviarCotizacionPorCorreo({ q: db, ctx: req.ctx, tipo: 'eco', cot: c, id: c.id, destino, mensaje: b.mensaje });
+    if (out.ok) await db.query(`update eco.cotizaciones set estado = 'enviada', updated_at = now() where id = $1 and estado = 'borrador'`, [c.id]);
+    res.json({ ...out, enviado: out.ok });
   });
 
   // ── Aprobación del cliente: reserva existencias y genera producción por lo que falte ──

@@ -27,6 +27,9 @@ export const dinero = z.coerce.number().finite().min(0).max(999_999_999);
 export const fechaISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'fecha inválida (YYYY-MM-DD)');
 export const textoOpc = z.string().trim().max(500).optional().nullable().transform((v) => (v ? v : null));
 
+/** Gancho opcional: el módulo de mensajería se suscribe aquí para avisar de errores graves (500) por correo. */
+export const ganchoErrores = { fn: null };
+
 /** Traduce errores de Postgres (incluidos los `raise exception` de las funciones) a respuestas HTTP. */
 export function manejadorErrores(log = console.error) {
   return (err, req, res, _next) => {
@@ -43,6 +46,7 @@ export function manejadorErrores(log = console.error) {
     if (code === '22001') return res.status(400).json({ error: 'Un texto es demasiado largo', codigo: 'dato_invalido' });
     if (code === '23514' || code === '22P02' || code === '23502' || code === '22007' || code === '22008' || code === '22021' || code === '22P05' || (typeof code === 'string' && code.startsWith('22'))) return res.status(400).json({ error: 'Datos inválidos', codigo: 'dato_invalido' });
     log(`[error] ${req.method} ${req.originalUrl}:`, err);
+    try { ganchoErrores.fn?.(req, err); } catch { /* el aviso nunca debe romper la respuesta */ }
     res.status(500).json({ error: 'Error interno del servidor' });
   };
 }

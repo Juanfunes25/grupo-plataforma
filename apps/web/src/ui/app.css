@@ -1,0 +1,180 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Experiencia «app» (Agente 1): barra inferior, hojas deslizables, transiciones, preferencias de apariencia,
+   modo quiosco, aviso de versión y pantalla «Mi dispositivo». Se carga DESPUÉS de estilos.css.
+   Pantallas angostas (≤ 900 px) = celular y tablet vertical: barra inferior. Más anchas: menú lateral.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Sensación de app: sin rebotes, sin selección accidental en los controles, sin zoom por doble toque ── */
+html { touch-action: manipulation; }
+body { overscroll-behavior-y: none; font-size: .9375rem; }
+.nav-inferior, .barra-movil, .btn, .tabs button, .mas-modulo, .nav-item, .modal-cab { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+img { -webkit-user-drag: none; }
+
+/* ── Transición suave al cambiar de pantalla ── */
+@keyframes entra-vista { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.vista { animation: entra-vista .22s var(--ritmo) both; min-height: 100%; }
+.vista:not(.cabe) { animation-fill-mode: backwards; }
+
+/* ── Retroalimentación táctil (estado :active) en tarjetas y filas tocables ── */
+.modulo:active, .empresa-card:active, tr.clic:active td, .mas-modulo:active, .mas-lista > *:active, .tarjeta.clic:active, .paleta-op:active { transform: scale(.98); }
+.modulo, .empresa-card, .tarjeta.clic, .mas-modulo { transition: transform .08s, background .12s, border-color .12s, box-shadow .12s; }
+tr.clic:active td { background: var(--panel-3); }
+.btn:active:not(:disabled) { filter: brightness(1.12); }
+.tabs button:active { background: var(--panel-3); }
+
+/* ── Barra inferior ── */
+.nav-inferior { display: none; }
+.mas-ico, .nav-ico { position: relative; display: grid; place-items: center; }
+.nav-ico .af-contador, .mas-ico .af-contador { position: absolute; top: -4px; right: -10px; }
+
+@media (max-width: 900px) {
+  .app-shell, .grupo-shell { --nav-inf: 0px; }
+  .app-shell.con-nav-inf, .grupo-shell.con-nav-inf { --nav-inf: calc(62px + env(safe-area-inset-bottom)); }
+  .nav-inferior { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; height: calc(62px + env(safe-area-inset-bottom)); padding: 0 max(4px, env(safe-area-inset-left)) env(safe-area-inset-bottom) max(4px, env(safe-area-inset-right));
+    background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--borde); box-shadow: 0 -6px 18px rgba(0, 0, 0, .14); }
+  .con-nav-inf .nav-inferior { display: grid; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; padding: 6px 2px; border: 0; background: none; color: var(--tenue); font: inherit; font-size: .72rem; font-weight: 600; letter-spacing: .01em; border-radius: var(--r-m); position: relative; transition: color .12s; }
+  .nav-item .nav-ico { width: 54px; height: 30px; border-radius: var(--r-pill); transition: background .18s var(--ritmo); }
+  .nav-item .nav-txt { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nav-item:active .nav-ico { background: var(--panel-3); transform: scale(.94); }
+  .nav-item.activo { color: var(--texto); }
+  .nav-item.activo .nav-ico { background: color-mix(in srgb, var(--acento) 30%, transparent); color: var(--acento-vivo); }
+  .nav-item.activo .nav-txt { font-weight: 700; }
+  /* El contenido deja lugar a la barra; las barras fijas de otras pantallas se suben encima de ella. */
+  .con-nav-inf .contenido, .con-nav-inf #contenido { padding-bottom: var(--nav-inf); }
+  .grupo-shell .barra { padding-top: calc(8px + env(safe-area-inset-top)); }
+  .con-nav-inf .pagina { padding-bottom: 20px; }
+  .app-shell .rep-barra-fija, .app-shell .reg-barra, .app-shell .pg-barra { bottom: var(--nav-inf); }
+  .app-shell .rep-deshacer { bottom: calc(var(--nav-inf) + 18px); }
+  .app-shell .rep-aviso-pos { bottom: calc(var(--nav-inf) + 12px); }
+  html[data-nav-inf="si"] .toasts { bottom: calc(78px + env(safe-area-inset-bottom)); }
+
+  /* Encabezado compacto: marca · título · sucursal · buscar (· Más dentro del POS) */
+  .barra-movil { min-height: calc(54px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) max(10px, env(safe-area-inset-right)) 0 max(10px, env(safe-area-inset-left)); gap: 8px; }
+  .barra-movil .marca-mini { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 10px; overflow: hidden; }
+  .barra-movil .marca-mini > *, .barra-movil .marca-mini img, .barra-movil .marca-mini svg { width: 100%; height: 100%; max-width: 34px; max-height: 34px; object-fit: contain; }
+  .barra-movil .titulo-movil { flex: 1; min-width: 0; display: grid; line-height: 1.1; }
+  .barra-movil .titulo-movil b { font-family: 'Barlow Condensed', 'Inter', sans-serif; font-size: 1.3rem; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .barra-movil .titulo-movil small { font-size: .7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .barra-movil .btn.icono { width: 44px; padding: 0; flex: none; }
+  /* El menú lateral deslizable ya no se usa en pantallas angostas: lo reemplaza la hoja «Más». */
+  .sidebar, .sidebar-velo, .menu-flotante { display: none !important; }
+}
+@media (min-width: 901px) { .nav-inferior, .barra-movil .btn.solo-angosto { display: none !important; } }
+
+/* ── Hoja «Más» y hojas deslizables (modales en pantallas angostas) ── */
+.modal-asa { display: none; }
+.mas-usuario { display: flex; align-items: center; gap: 12px; }
+.mas-usuario > span:last-child { display: grid; min-width: 0; }
+.mas-usuario strong { font-size: 1.05rem; } .mas-usuario small { text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mas-sucursal select { font-weight: 600; }
+.mas-buscar { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid var(--borde); border-radius: var(--r-pill); background: var(--panel-2); color: var(--tenue); text-align: left; }
+.mas-grupo h3 { font-family: 'Inter', sans-serif; font-size: .72rem; letter-spacing: .1em; color: var(--tenue); font-weight: 700; margin: 4px 2px 8px; }
+.mas-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.mas-modulo { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 8px; padding: 12px 6px 10px; min-height: 88px; text-align: center; font-size: .78rem; font-weight: 600; line-height: 1.2; border: 1px solid var(--borde); border-radius: var(--r-m); background: var(--panel-2); overflow-wrap: anywhere; }
+.mas-modulo .mas-ico { width: 42px; height: 42px; border-radius: 13px; background: var(--panel-3); color: var(--tenue); }
+.mas-modulo.activo { border-color: var(--acento); background: color-mix(in srgb, var(--acento) 16%, var(--panel-2)); }
+.mas-modulo.activo .mas-ico { background: color-mix(in srgb, var(--acento) 32%, transparent); color: var(--acento-vivo); }
+.mas-lista { display: grid; gap: 2px; border-top: 1px solid var(--borde); padding-top: 8px; }
+.mas-lista > a, .mas-lista > button { display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 0 8px; border: 0; background: none; border-radius: var(--r-s); font: inherit; font-weight: 500; text-align: left; width: 100%; color: var(--texto); }
+.mas-lista > a:active, .mas-lista > button:active { background: var(--panel-3); }
+.mas-lista svg { color: var(--tenue); flex: none; }
+.mas-lista .peligro { color: var(--peligro-texto); } .mas-lista .peligro svg { color: var(--peligro-texto); }
+
+@media (max-width: 700px) {
+  .velo { align-items: flex-end; padding: 0; transition: background .2s, opacity .2s; }
+  .modal, .modal.ancho, .modal.angosto { width: 100%; max-width: none; max-height: calc(100dvh - max(28px, env(safe-area-inset-top))); border-radius: 22px 22px 0 0; border-bottom: 0; animation: sube-hoja .26s var(--ritmo); will-change: transform; padding-bottom: env(safe-area-inset-bottom); }
+  .modal.hoja-mas { min-height: 52dvh; }
+  .modal-cab { padding: 22px 8px 10px 20px; touch-action: none; cursor: grab; }
+  .modal-cab::before { display: none; }
+  .modal-asa { display: block; position: absolute; top: 8px; left: 50%; width: 42px; height: 5px; margin-left: -21px; border-radius: 5px; background: var(--borde-fuerte); }
+  .modal-cab h2 { font-size: 1.3rem; }
+  .modal-cuerpo { padding: 14px 16px 18px; }
+  .modal-pie { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); box-shadow: 0 -8px 16px -10px rgba(0, 0, 0, .35); }
+  .modal-pie .btn { flex: 1 1 140px; min-height: 50px; }
+  .modal-pie .btn.primario { flex: 2 1 180px; }
+  .paleta-velo { align-items: flex-end; padding: 0; }
+  .paleta { width: 100%; border-radius: 22px 22px 0 0; max-height: 80dvh; padding-bottom: env(safe-area-inset-bottom); animation: sube-hoja .24s var(--ritmo); }
+}
+@keyframes sube-hoja { from { transform: translateY(100%); } }
+
+/* Barra de acción fija abajo en formularios largos (botón principal siempre a la mano). */
+.barra-accion { position: sticky; bottom: var(--nav-inf, 0px); z-index: 12; display: flex; gap: 10px; padding: 12px 0 calc(12px + env(safe-area-inset-bottom) * 0); margin-top: 8px; background: linear-gradient(to top, var(--fondo) 70%, transparent); }
+.barra-accion .btn { flex: 1; min-height: 52px; }
+.barra-accion .btn.primario { flex: 2; }
+
+/* ── Preferencias del dispositivo ── */
+html[data-letra="grande"] { font-size: 112.5%; }
+html[data-letra="enorme"] { font-size: 125%; }
+html[data-densidad="compacta"] .pagina { gap: 10px; padding-top: 12px; }
+html[data-densidad="compacta"] .tarjeta { padding: 10px 12px; }
+html[data-densidad="compacta"] td, html[data-densidad="compacta"] th { padding-top: 6px; padding-bottom: 6px; }
+html[data-densidad="compacta"] .modal-cuerpo { padding-top: 12px; padding-bottom: 12px; gap: 10px; }
+html[data-densidad="compacta"] .kpi { padding: 10px 12px; }
+
+/* Alto contraste (sol directo): negro/blanco puro, bordes marcados, texto sin tonos grises claros. */
+:root[data-contraste="alto"] {
+  --fondo: #000; --panel: #0b0b0b; --panel-2: #161616; --panel-3: #262626; --borde: #9a9a9a; --borde-fuerte: #d6d6d6;
+  --texto: #fff; --tenue: #e0e0e0; --foco: #ffe14d;
+  --ok-texto: #7dffb4; --peligro-texto: #ffb0b0; --aviso-texto: #ffe08a; --info-texto: #b3d4ff;
+  --ok-fondo: rgba(63, 182, 122, .28); --peligro-fondo: rgba(239, 91, 91, .28); --aviso-fondo: rgba(232, 178, 58, .28); --info-fondo: rgba(91, 155, 239, .28);
+  --velo: rgba(0, 0, 0, .86);
+}
+:root[data-contraste="alto"][data-tema="claro"] {
+  --fondo: #fff; --panel: #fff; --panel-2: #f1f1f1; --panel-3: #dcdcdc; --borde: #3d3d3d; --borde-fuerte: #000;
+  --texto: #000; --tenue: #262626; --foco: #0026d6;
+  --ok-texto: #005a2b; --peligro-texto: #8a0000; --aviso-texto: #5c3800; --info-texto: #00308a;
+  --ok-fondo: rgba(0, 120, 60, .16); --peligro-fondo: rgba(190, 0, 0, .14); --aviso-fondo: rgba(160, 100, 0, .2); --info-fondo: rgba(0, 60, 190, .14);
+  --velo: rgba(0, 0, 0, .6);
+}
+:root[data-contraste="alto"] body { font-weight: 500; }
+:root[data-contraste="alto"] .btn, :root[data-contraste="alto"] .tarjeta, :root[data-contraste="alto"] input, :root[data-contraste="alto"] select, :root[data-contraste="alto"] textarea,
+:root[data-contraste="alto"] .kpi, :root[data-contraste="alto"] .modal, :root[data-contraste="alto"] .nav-inferior { border-width: 2px; }
+:root[data-contraste="alto"] .nav-item.activo .nav-ico { background: var(--texto); color: var(--fondo); }
+:root[data-contraste="alto"] :focus-visible { outline-width: 4px; }
+
+/* ── Modo quiosco (tablet fija): sin menús ni encabezado; un botón discreto abre las opciones ── */
+.quiosco-boton { display: none; }
+html[data-quiosco="si"] .sidebar, html[data-quiosco="si"] .barra-movil, html[data-quiosco="si"] .cabecera-app, html[data-quiosco="si"] .nav-inferior, html[data-quiosco="si"] .menu-flotante, html[data-quiosco="si"] .barra { display: none !important; }
+html[data-quiosco="si"] .app-shell { grid-template-columns: minmax(0, 1fr) !important; --nav-inf: 0px !important; }
+html[data-quiosco="si"] .contenido { padding-bottom: 0 !important; }
+html[data-quiosco="si"] .quiosco-boton { display: grid; place-items: center; position: fixed; z-index: 35; top: max(6px, env(safe-area-inset-top)); right: 6px; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--borde); background: color-mix(in srgb, var(--panel) 70%, transparent); color: var(--tenue); opacity: .45; backdrop-filter: blur(6px); }
+html[data-quiosco="si"] .quiosco-boton:hover, html[data-quiosco="si"] .quiosco-boton:focus-visible, html[data-quiosco="si"] .quiosco-boton:active { opacity: 1; }
+html[data-quiosco="si"] { cursor: default; }
+
+/* ── Aviso «Hay una versión nueva» ── */
+.aviso-version { position: fixed; z-index: 120; left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100% - 24px); padding: 8px 8px 8px 16px; border-radius: var(--r-pill); background: var(--panel-3); color: var(--texto); border: 1px solid var(--borde-fuerte); box-shadow: var(--sombra); animation: sube .25s var(--ritmo); font-weight: 600; font-size: var(--t-s); }
+.aviso-version .btn { min-height: 38px; padding: 6px 16px; border-radius: var(--r-pill); }
+.aviso-version .x { background: none; border: 0; width: 34px; height: 34px; border-radius: 50%; color: var(--tenue); display: grid; place-items: center; }
+@media (max-width: 900px) { html[data-nav-inf="si"] .aviso-version { bottom: calc(76px + env(safe-area-inset-bottom)); } }
+
+/* ── Pantalla «Mi dispositivo» (/app) ── */
+.ajustes { max-width: 760px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom)); display: grid; gap: 16px; align-content: start; }
+.ajustes-cab { display: flex; align-items: center; gap: 8px; }
+.ajustes-cab h1 { flex: 1; font-size: 1.7rem; }
+.ajuste-grupo { display: grid; gap: 14px; }
+.ajuste-grupo h2 { font-size: 1.25rem; }
+.ajuste-fila { display: grid; gap: 8px; }
+.ajuste-fila > b { font-size: var(--t-m); }
+.segmentos { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; background: var(--panel-2); border: 1px solid var(--borde); border-radius: var(--r-m); }
+.segmentos.v { grid-auto-flow: row; }
+.segmentos button { min-height: 46px; padding: 6px 8px; border: 0; border-radius: var(--r-s); background: none; font-weight: 600; font-size: var(--t-s); color: var(--tenue); }
+.segmentos button[aria-pressed="true"] { background: var(--acento-btn); color: var(--acento-btn-texto); box-shadow: var(--sombra-1); }
+.ajuste-muestra { padding: 12px 14px; border-radius: var(--r-m); border: 1px dashed var(--borde-fuerte); display: grid; gap: 4px; }
+.ajuste-muestra b { font-size: 1.5rem; font-family: 'Barlow Condensed', sans-serif; }
+.pasos { margin: 0; padding-left: 1.3rem; display: grid; gap: 6px; }
+.instalar-plataforma { border: 1px solid var(--borde); border-radius: var(--r-m); background: var(--panel-2); }
+.instalar-plataforma > summary { list-style: none; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 14px; cursor: pointer; font-weight: 600; }
+.instalar-plataforma > summary::-webkit-details-marker { display: none; }
+.instalar-plataforma > summary .chip { margin-left: auto; }
+.instalar-plataforma[open] > summary { border-bottom: 1px solid var(--borde); }
+.instalar-plataforma > div { padding: 12px 14px 14px; display: grid; gap: 8px; }
+
+/* ── Lector de pantalla: texto solo para él ── */
+.solo-lector { clip-path: inset(50%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .vista, .modal, .paleta, .aviso-version, .velo { animation: none !important; }
+  .nav-item .nav-ico, .velo { transition: none !important; }
+}
+@media print { .nav-inferior, .aviso-version, .quiosco-boton { display: none !important; } }

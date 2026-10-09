@@ -33,17 +33,20 @@ const escaparHtml = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;'
  * Página HTML de un ticket de texto. @page fija el ancho real del rollo para que el navegador no agregue márgenes ni escale,
  * y la letra se calcula para que las N columnas llenen exactamente el área imprimible (Courier mide 0.6 del tamaño de letra).
  */
-export function envolverTicketHtml(texto, ancho = 48) {
+export function envolverTicketHtml(texto, ancho = 48, { logo = null } = {}) {
   const papel = ANCHOS_TICKET[ancho] ?? '80mm';
   const imprimible = IMPRIMIBLE_MM[papel];
   const fuenteMm = (imprimible / (ancho * 0.6)).toFixed(2);
+  // El logo va centrado arriba, en blanco y negro (la térmica no imprime grises) y sin romper el ticket si el archivo no existe.
+  const img = logo ? `<img class="logo" src="${escaparHtml(logo)}" alt="" onerror="this.remove()">` : '';
   return `<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><title>Ticket</title>
 <style>
   @page { size: ${papel} auto; margin: 0; }
   html, body { margin: 0; padding: 0; background: #fff; }
+  .logo { display: block; margin: 2mm auto 1mm; max-width: ${Math.round(imprimible * 0.6)}mm; max-height: 20mm; filter: grayscale(1) contrast(1.6); }
   pre { font-family: 'Courier New', Courier, monospace; font-size: ${fuenteMm}mm; line-height: 1.2; white-space: pre; width: ${imprimible}mm; margin: 0 auto; padding: 2mm 0 8mm; color: #000; overflow: hidden; }
-</style></head><body><pre>${escaparHtml(texto)}</pre></body></html>`;
+</style></head><body>${img}<pre>${escaparHtml(texto)}</pre></body></html>`;
 }
 
 /** "Inversiones Milano S de R.L. - 10 Calle" → "10 Calle": la parte que distingue una sucursal de otra. */

@@ -29,6 +29,15 @@ export function leerConfig(env = process.env) {
     supabaseAnonKey: env.SUPABASE_ANON_KEY || '',
     origenesPermitidos: (env.FRONTEND_ORIGIN || 'http://localhost:5180').split(',').map((s) => s.trim()).filter(Boolean),
     smtp: { user: env.GMAIL_USER || '', pass: env.GMAIL_APP_PASSWORD || '' },
+    // Llave con la que se cifran los secretos de la verificación en dos pasos. Si falta se usa APP_JWT_SECRET.
+    // Fíjala ANTES de rotar APP_JWT_SECRET para no perder los 2FA ya activados (docs/SEGURIDAD.md).
+    mfaKey: env.MFA_KEY || '',
+    // Versión que muestra «Estado del sistema» (commit del despliegue si la plataforma lo da).
+    version: env.APP_VERSION || env.RENDER_GIT_COMMIT || env.RAILWAY_GIT_COMMIT_SHA || env.GIT_COMMIT || '',
+    // Límite del plan de base de datos (MB) para avisar cuando se acerque (Supabase gratis = 500).
+    dbLimiteMb: num(env.DB_LIMITE_MB, 500),
+    // Caché de respuestas de lectura pesadas (catálogo, tableros). Se apaga con CACHE_API=0.
+    cacheApi: env.CACHE_API !== '0' && env.NODE_ENV !== 'test',
   };
 }
 

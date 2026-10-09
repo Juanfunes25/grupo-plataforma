@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { GRUPOS_NAV } from '@grupo/shared';
+import { GRUPOS_NAV, accesosApp } from '@grupo/shared';
 import { useSesion } from '../sesion.jsx';
 import Icono from '../ui/Icono.jsx';
 import Logo from '../ui/Logo.jsx';
 import Paleta from '../ui/Paleta.jsx';
-import { aplicarAcento, guardarTema, leerTema } from '../lib/acento.js';
+import { aplicarAcento } from '../lib/acento.js';
+import { fijarAppEmpresa, fijarColorBarra, guardarPref, temaEfectivo, usePref } from '../lib/preferencias.js';
+import { BarraInferior, HojaMas, MenuQuiosco } from '../ui/NavApp.jsx';
 import { Campo, Cargando, Modal, useAccion, useAviso } from '../ui/kit.jsx';
 import { post } from '../api.js';
 import Vigilancia from '../antifraude/Vigilancia.jsx';
@@ -45,17 +47,20 @@ function useAnchoMenor(px) {
 }
 
 function BotonTema({ clase = 'btn chico fantasma', conTexto = false }) {
-  const [tema, setTema] = useState(leerTema);
-  const cambiar = () => { const n = tema === 'claro' ? 'oscuro' : 'claro'; guardarTema(n); setTema(n); };
-  const txt = tema === 'claro' ? 'Tema oscuro' : 'Tema claro';
-  return <button className={clase} onClick={cambiar} aria-label={txt} title={txt}><Icono n={tema === 'claro' ? 'luna' : 'sol'} tam={18} />{conTexto && <span>{txt}</span>}</button>;
+  const [pref] = usePref('tema');
+  const efectivo = temaEfectivo(pref);
+  const cambiar = () => guardarPref('tema', efectivo === 'claro' ? 'oscuro' : 'claro');
+  const txt = efectivo === 'claro' ? 'Tema oscuro' : 'Tema claro';
+  return <button className={clase} onClick={cambiar} aria-label={txt} title={txt}><Icono n={efectivo === 'claro' ? 'luna' : 'sol'} tam={18} />{conTexto && <span>{txt}</span>}</button>;
 }
 
 export default function Layout({ children, esGrupo = false }) {
   const s = useSesion();
   const nav = useNavigate();
   const [cambiando, setCambiando] = useState(false);
-  const [menu, setMenu] = useState(false);
+  const [mas, setMas] = useState(false);
+  const [menuQuiosco, setMenuQuiosco] = useState(false);
+  const [quiosco] = usePref('quiosco');
   const [paleta, setPaleta] = useState(false);
   const [plegados, setPlegados] = useState(leerPlegados);
   const [modoPref, setModoPref] = useState(leerModo);
@@ -71,18 +76,13 @@ export default function Layout({ children, esGrupo = false }) {
 
   const ctx = s.contexto;
   const color = esGrupo ? '#c9a227' : ctx?.empresa?.color;
-  useEffect(() => { if (color) aplicarAcento(color); }, [color]);
+  useEffect(() => { if (color) { aplicarAcento(color); fijarColorBarra(color); } return () => fijarColorBarra(null); }, [color]);
+  const codigoApp = esGrupo ? 'grupo' : ctx?.empresa?.codigo;
+  useEffect(() => { if (codigoApp) fijarAppEmpresa(codigoApp); return () => fijarAppEmpresa(null); }, [codigoApp]);
   useEffect(() => { document.title = esGrupo ? 'Dirección · Grupo' : ctx ? `${ctx.empresa.nombre} · Grupo` : 'Grupo · Plataforma'; }, [esGrupo, ctx]);
 
-  // El menú móvil se cierra al navegar o con Escape, y bloquea el scroll del fondo mientras está abierto.
-  useEffect(() => { setMenu(false); }, [location.pathname]);
-  useEffect(() => {
-    if (!menu) return undefined;
-    const f = (e) => e.key === 'Escape' && setMenu(false);
-    window.addEventListener('keydown', f);
-    document.body.style.overflow = 'hidden';
-    return () => { window.removeEventListener('keydown', f); document.body.style.overflow = ''; };
-  }, [menu]);
+  // La hoja «Más» se cierra al navegar.
+  useEffect(() => { setMas(false); setMenuQuiosco(false); }, [location.pathname]);
   // Atajo global: Ctrl/⌘+K (o «/» fuera de un campo) abre el buscador de módulos.
   useEffect(() => {
     const f = (e) => {
@@ -114,6 +114,9 @@ export default function Layout({ children, esGrupo = false }) {
   const otras = ctx ? s.empresas.filter((e) => e.codigo !== ctx.empresa.codigo) : [];
   const puedeCambiar = s.via !== 'pin' && (otras.length > 0 || s.usuario?.es_dueno_grupo);
   const salir = () => { s.salir(); nav('/'); };
+  const accesos = useMemo(() => (esGrupo
+    ? [{ id: 'grupo', nombre: 'Dirección', ruta: '', icono: 'dashboard' }, ...(puedeCambiar ? [{ id: 'empresas', nombre: 'Empresas', ruta: null, icono: 'sucursales' }] : [])]
+    : accesosApp(items, s.permisos)), [esGrupo, items, s.permisos, puedeCambiar]);
 
   const opcionesPaleta = useMemo(() => {
     if (!ctx || esGrupo) return [];
@@ -138,10 +141,11 @@ export default function Layout({ children, esGrupo = false }) {
     </div>
   );
 
-  // Dirección del Grupo: barra superior (no es una empresa, no lleva menú lateral).
+  // Dirección del Grupo: barra superior en pantalla ancha; en celular, barra inferior (Dirección · Empresas · Más).
   if (esGrupo) {
+    const accesosG = accesos.map((a) => (a.id === 'empresas' ? { ...a, onClick: () => nav('/') } : a));
     return (
-      <>
+      <div className="grupo-shell con-nav-inf">
         <a className="saltar no-print" href="#contenido">Saltar al contenido</a>
         <header className="barra no-print">
           <Link to="/grupo" className="marca" aria-label="Inicio de la Dirección del Grupo">
@@ -153,9 +157,14 @@ export default function Layout({ children, esGrupo = false }) {
           <BotonTema />
           {usuarioChip}
         </header>
-        <div key="grupo" id="contenido" tabIndex={-1}><LimiteError reinicio={location.pathname}>{children}</LimiteError></div>
+        <div key="grupo" id="contenido" tabIndex={-1}><LimiteError reinicio={location.pathname}><div className="vista" key={location.pathname}>{children}</div></LimiteError></div>
+        <BarraInferior base="/grupo" accesos={accesosG} onMas={() => setMas(true)} masAbierto={mas} />
+        {mas && <HojaMas esGrupo ctx={ctx} base="/grupo" items={[]} usuario={s.usuario} sucursales={[]} puedeCambiar={puedeCambiar} esPin={s.via === 'pin'}
+          onCerrar={() => setMas(false)} onCambiarEmpresa={() => nav('/')} onClave={() => setCambiando(true)} onSalir={salir} />}
+        {quiosco === 'si' && <button className="quiosco-boton no-print" onClick={() => setMenuQuiosco(true)} aria-label="Opciones del modo quiosco"><Icono n="mas" tam={20} /></button>}
+        {menuQuiosco && <MenuQuiosco base="/grupo" onCerrar={() => setMenuQuiosco(false)} />}
         {cambiando && <CambiarClave onCerrar={() => setCambiando(false)} onListo={() => { setCambiando(false); salir(); }} />}
-      </>
+      </div>
     );
   }
 
@@ -166,24 +175,23 @@ export default function Layout({ children, esGrupo = false }) {
   const compacto = modo === 'compacto';
   const oculto = modo === 'oculto';
   const sucActual = s.sucursales.find((x) => x.id === s.sucursalId) ?? s.sucursales[0];
+  const conNavInf = !sinCabecera && quiosco !== 'si';
   return (
-    <div className={`app-shell no-print-shell${menu ? ' menu-abierto' : ''}${compacto ? ' compacto' : ''}${oculto ? ' oculto' : ''}`}>
+    <div className={`app-shell no-print-shell${conNavInf ? ' con-nav-inf' : ''}${compacto ? ' compacto' : ''}${oculto ? ' oculto' : ''}`}>
       <a className="saltar no-print" href="#contenido">Saltar al contenido</a>
       <header className="barra-movil no-print">
-        <button className="btn fantasma" onClick={() => setMenu(true)} aria-label="Abrir menú" aria-expanded={menu} aria-controls="menu-lateral"><Icono n="menu" tam={22} /></button>
-        <b className="titulo">{activo?.nombre ?? ctx.empresa.nombre}</b>
-        {s.sucursales.length > 1
-          ? <select value={s.sucursalId ?? ''} onChange={(e) => s.elegirSucursal(e.target.value)} aria-label="Sucursal activa">{s.sucursales.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}</select>
-          : sucActual && <span className="chip">{sucActual.nombre}</span>}
+        <Link to={base} className="marca-mini" aria-label={`Inicio de ${ctx.empresa.nombre}`}><Logo codigo={ctx.empresa.logo || ctx.empresa.codigo} color={color} /></Link>
+        <div className="titulo-movil"><b>{activo?.nombre ?? ctx.empresa.nombre}</b>{(sinCabecera || s.sucursales.length <= 1) && <small>{ctx.empresa.nombre}{sucActual ? ` · ${sucActual.nombre}` : ''}</small>}</div>
+        {s.sucursales.length > 1 && <select value={s.sucursalId ?? ''} onChange={(e) => s.elegirSucursal(e.target.value)} aria-label="Sucursal activa">{s.sucursales.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}</select>}
+        <button className="btn fantasma icono" onClick={() => setPaleta(true)} aria-label="Buscar módulo"><Icono n="lupa" tam={22} /></button>
+        {!conNavInf && <button className="btn fantasma icono solo-angosto" onClick={() => setMas(true)} aria-label="Más opciones y módulos"><Icono n="menu" tam={22} /></button>}
       </header>
-      {menu && <div className="sidebar-velo" onClick={() => setMenu(false)} aria-hidden="true" />}
       <aside id="menu-lateral" className="sidebar no-print" aria-label="Menú principal">
         <div className="sidebar-cab">
           <Link to={base} className="sidebar-marca" aria-label={`Inicio de ${ctx.empresa.nombre}`}>
             <span className="sidebar-logo"><Logo codigo={ctx.empresa.logo || ctx.empresa.codigo} color={color} /></span>
             <span className="sidebar-marca-texto"><b className="titulo">{ctx.empresa.nombre}</b><small>{ctx.empresa.razon_social}</small></span>
           </Link>
-          <button className="btn fantasma sidebar-cerrar" onClick={() => setMenu(false)} aria-label="Cerrar menú"><Icono n="x" /></button>
           <button className="btn fantasma sidebar-compactar" onClick={() => fijarModo(compacto ? 'visible' : 'compacto')} aria-label={compacto ? 'Expandir menú' : 'Solo íconos'} aria-pressed={compacto} title={compacto ? 'Expandir menú' : 'Solo íconos'}><Icono n={compacto ? 'derecha' : 'atras'} tam={18} /></button>
           <button className="btn fantasma sidebar-ocultar" onClick={() => fijarModo('oculto')} aria-label="Ocultar menú (Ctrl B)" title="Ocultar menú (Ctrl B)"><Icono n="menu" tam={20} /></button>
         </div>
@@ -196,7 +204,7 @@ export default function Layout({ children, esGrupo = false }) {
           </div>
         )}
         {s.sucursales.length === 1 && <div className="sidebar-sucursal"><span>Sucursal</span><strong>{s.sucursales[0].nombre}</strong></div>}
-        <button className="sidebar-buscar" onClick={() => { setMenu(false); setPaleta(true); }} aria-label="Buscar módulo (Control K)">
+        <button className="sidebar-buscar" onClick={() => setPaleta(true)} aria-label="Buscar módulo (Control K)">
           <Icono n="lupa" tam={18} /><span>Buscar módulo…</span><kbd>Ctrl K</kbd>
         </button>
         <nav className="sidebar-nav" aria-label="Módulos">
@@ -212,7 +220,7 @@ export default function Layout({ children, esGrupo = false }) {
                 </button>
                 <div className="sidebar-grupo-lista" id={`grupo-${g}`}>
                   {lista.map((m) => (
-                    <NavLink key={m.id} to={`${base}/${m.ruta}`} title={m.nombre} className={({ isActive }) => `sidebar-item${isActive ? ' activo' : ''}`} onClick={() => setMenu(false)}>
+                    <NavLink key={m.id} to={`${base}/${m.ruta}`} title={m.nombre} className={({ isActive }) => `sidebar-item${isActive ? ' activo' : ''}`}>
                       <Icono n={m.icono} tam={20} /><span>{m.nombre}</span>{m.id === 'antifraude' && <ContadorAlertas />}
                     </NavLink>
                   ))}
@@ -244,8 +252,13 @@ export default function Layout({ children, esGrupo = false }) {
             <button className="btn chico fantasma" onClick={() => setPaleta(true)} aria-label="Buscar módulo (Control K)"><Icono n="lupa" tam={18} /> Buscar</button>
           </div>
         )}
-        <main className="contenido" id="contenido" tabIndex={-1}><LimiteError reinicio={location.pathname}>{children}</LimiteError></main>
+        <main className="contenido" id="contenido" tabIndex={-1}><LimiteError reinicio={location.pathname}><div className="vista" key={location.pathname}>{children}</div></LimiteError></main>
       </div>
+      {conNavInf && <BarraInferior base={base} accesos={accesos} activoRuta={activo?.ruta} onMas={() => setMas(true)} masAbierto={mas} />}
+      {mas && <HojaMas ctx={ctx} base={base} items={items} usuario={s.usuario} sucursales={s.sucursales} sucursalId={s.sucursalId} onSucursal={s.elegirSucursal} onBuscar={() => setPaleta(true)}
+        puedeCambiar={puedeCambiar} esPin={s.via === 'pin'} onCerrar={() => setMas(false)} onCambiarEmpresa={() => nav('/')} onClave={() => setCambiando(true)} onSalir={salir} />}
+      {quiosco === 'si' && <button className="quiosco-boton no-print" onClick={() => setMenuQuiosco(true)} aria-label="Opciones del modo quiosco"><Icono n="mas" tam={20} /></button>}
+      {menuQuiosco && <MenuQuiosco base={base} onCerrar={() => setMenuQuiosco(false)} />}
       <Vigilancia base={base} />
       {paleta && <Paleta opciones={opcionesPaleta} onCerrar={() => setPaleta(false)} />}
       {cambiando && <CambiarClave onCerrar={() => setCambiando(false)} onListo={() => { setCambiando(false); salir(); }} />}

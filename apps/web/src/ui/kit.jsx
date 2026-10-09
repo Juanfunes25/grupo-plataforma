@@ -104,10 +104,34 @@ export function Modal({ titulo, onCerrar, children, pie, tam = '' }) {
     if (e.shiftKey && (document.activeElement === a || document.activeElement === ref.current)) { e.preventDefault(); z.focus(); }
     else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
   };
+  // En celular el modal es una hoja desde abajo: se cierra arrastrando el asa o el encabezado hacia abajo.
+  const arrastre = useRef(null);
+  const esHoja = () => window.matchMedia('(max-width: 700px)').matches;
+  const empezar = (e) => {
+    if (!esHoja() || e.pointerType === 'mouse' || e.target.closest('button')) return;
+    arrastre.current = { y0: e.clientY, t0: e.timeStamp, dy: 0 };
+    ref.current.style.transition = 'none';
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* */ }
+  };
+  const mover = (e) => {
+    const a = arrastre.current; if (!a) return;
+    a.dy = Math.max(0, e.clientY - a.y0);
+    ref.current.style.transform = `translateY(${a.dy}px)`;
+    const v = ref.current.parentElement; if (v) v.style.background = `rgba(4,7,14,${Math.max(0.1, 0.72 - a.dy / 600)})`;
+  };
+  const soltar = (e) => {
+    const a = arrastre.current; if (!a) return;
+    arrastre.current = null;
+    const el = ref.current; const v = el.parentElement;
+    const rapido = a.dy / Math.max(1, e.timeStamp - a.t0) > 0.6;
+    el.style.transition = 'transform .2s var(--ritmo)';
+    if (a.dy > 110 || (rapido && a.dy > 30)) { el.style.transform = 'translateY(105%)'; if (v) v.style.opacity = '0'; vibrar(8); setTimeout(() => cerrar.current?.(), 180); }
+    else { el.style.transform = ''; if (v) v.style.background = ''; }
+  };
   return (
     <div className="velo" onMouseDown={(e) => e.target === e.currentTarget && onCerrar?.()}>
       <div ref={ref} tabIndex={-1} onKeyDown={teclas} className={`modal ${tam}`} role="dialog" aria-modal="true" aria-label={titulo}>
-        <div className="modal-cab"><h2>{titulo}</h2><button className="btn fantasma" onClick={onCerrar} aria-label="Cerrar"><Icono n="x" /></button></div>
+        <div className="modal-cab" onPointerDown={empezar} onPointerMove={mover} onPointerUp={soltar} onPointerCancel={soltar}><span className="modal-asa" aria-hidden="true" /><h2>{titulo}</h2><button className="btn fantasma" onClick={onCerrar} aria-label="Cerrar"><Icono n="x" /></button></div>
         <div className="modal-cuerpo">{children}</div>
         {pie && <div className="modal-pie">{pie}</div>}
       </div>

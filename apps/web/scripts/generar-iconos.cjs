@@ -27,7 +27,7 @@ function pagina(codigo, tam, escala, redondo) {
   let fondo = FONDO; let interior;
   if (codigo === 'diserco') { fondo = '#e8762b'; interior = `<img src="${dis}" style="width:${escala * 100}%;position:absolute;left:${(1 - escala) * 50}%;top:50%;transform:translateY(-50%)">`; }
   else {
-    const lado = tam * escala; const c = mezclaBlanco(m.color, 0.72);
+    const lado = tam * escala; const c = mezclaBlanco(m.color, 0.88);
     interior = `<svg viewBox="0 0 64 64" width="${lado}" height="${lado}" style="position:absolute;left:${(tam - lado) / 2}px;top:${(tam - lado) / 2}px">${m.svg(c)}</svg>`;
   }
   return `<html><body style="margin:0;background:transparent"><div style="position:relative;width:${tam}px;height:${tam}px;background:${fondo};border-radius:${redondo ? tam * 0.22 : 0}px;overflow:hidden">${interior}</div></body></html>`;

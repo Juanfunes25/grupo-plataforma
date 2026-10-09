@@ -1,8 +1,10 @@
 import { permisosDe, modulosVisibles } from '@grupo/shared';
 import { verificarSesion } from '../auth/tokens.js';
+import { crearPolitica } from '../auth/politica.js';
 import { ErrorHttp, malaPeticion, noAutenticado, prohibido } from './http.js';
 
 const TTL = 15_000;
+const VACIO = Object.freeze([]);   // mismo arreglo siempre: permite reconocer que el acceso no cambió
 
 /**
  * Autenticación + contexto de empresa. Cada petición de negocio lleva
@@ -15,8 +17,14 @@ export function crearContexto({ db, config }) {
   const cacheUsuarios = new Map();
   let cacheEmpresas = { ts: 0, lista: [] };
   const cacheAccesos = new Map();
+  const cacheSesiones = new Map();    // sesiones abiertas (core.sesiones_activas): se consulta si fue cerrada a distancia
+  const cachePermisos = new Map();    // permisos y módulos ya calculados por (usuario, empresa)
+  const politica = crearPolitica(db);   // política de seguridad vigente (2FA obligatoria, largo del PIN)
+  const ultimoToque = new Map();      // sesión → última vez que se anotó su actividad (como máximo una vez por minuto)
 
-  const invalidar = () => { cacheUsuarios.clear(); cacheAccesos.clear(); cacheEmpresas = { ts: 0, lista: [] }; };
+  const invalidar = () => { cacheUsuarios.clear(); cacheAccesos.clear(); cachePermisos.clear(); cacheEmpresas = { ts: 0, lista: [] }; };
+  /** Cierre remoto: la sesión deja de valer en esta misma petición, sin esperar al caché. */
+  const invalidarSesion = (sid) => { if (sid) cacheSesiones.delete(sid); else cacheSesiones.clear(); };
 
   async function empresas() {
     if (Date.now() - cacheEmpresas.ts > TTL * 4) {
@@ -34,7 +42,9 @@ export function crearContexto({ db, config }) {
     const c = cacheUsuarios.get(id);
     if (c && Date.now() - c.ts < TTL) return c.u;
     const { rows } = await db.query(
-      'select id, email, nombre, es_dueno_grupo, token_version, activo from core.usuarios where id = $1', [id]);
+      `select u.id, u.email, u.nombre, u.es_dueno_grupo, u.token_version, u.activo,
+              exists (select 1 from core.usuarios_mfa m where m.usuario_id = u.id and m.confirmado) as mfa_activo
+         from core.usuarios u where u.id = $1`, [id]);
     const u = rows[0] ?? null;
     cacheUsuarios.set(id, { ts: Date.now(), u });
     return u;
@@ -50,6 +60,21 @@ export function crearContexto({ db, config }) {
     const a = rows[0] ?? null;
     cacheAccesos.set(k, { ts: Date.now(), a });
     return a;
+  }
+
+  async function sesion(sid) {
+    const c = cacheSesiones.get(sid);
+    if (c && Date.now() - c.ts < 5_000) return c.s;
+    const s = (await db.query('select revocada_at, expira_at from core.sesiones_activas where id = $1', [sid])).rows[0] ?? null;
+    cacheSesiones.set(sid, { ts: Date.now(), s });
+    return s;
+  }
+  function tocarSesion(sid, ip) {
+    const ahora = Date.now();
+    if (ahora - (ultimoToque.get(sid) ?? 0) < 60_000) return;
+    ultimoToque.set(sid, ahora);
+    if (ultimoToque.size > 5000) ultimoToque.clear();
+    db.query('update core.sesiones_activas set ultimo_uso = now(), ip = coalesce($2, ip) where id = $1', [sid, ip || null]).catch(() => {});
   }
 
   /** Empresas a las que el usuario puede entrar, con su rol en cada una. */
@@ -71,7 +96,12 @@ export function crearContexto({ db, config }) {
     try { s = await verificarSesion(config, h.slice(7)); } catch { throw noAutenticado('Tu sesión venció; entra de nuevo'); }
     const u = await usuario(s.usuarioId);
     if (!u || !u.activo || u.token_version !== s.tokenVersion) throw noAutenticado('Tu sesión ya no es válida; entra de nuevo');
-    req.auth = { usuario: u, empresaFija: s.empresaFija, via: s.via, ip: ipDe(req) };
+    if (s.sesionId) {
+      const ses = await sesion(s.sesionId);
+      if (!ses || ses.revocada_at) throw noAutenticado('Esta sesión fue cerrada; entra de nuevo');
+      tocarSesion(s.sesionId, ipDe(req));
+    }
+    req.auth = { usuario: u, empresaFija: s.empresaFija, via: s.via, ip: ipDe(req), sesionId: s.sesionId };
     next();
   }
 
@@ -83,7 +113,7 @@ export function crearContexto({ db, config }) {
     const emp = (await empresas()).find((e) => e.codigo === codigo);
     if (!emp) throw new ErrorHttp(404, 'Empresa no encontrada');
     const u = req.auth.usuario;
-    let rol, extra = [], quitados = [], sucursalIds = [];
+    let rol, extra = VACIO, quitados = VACIO, sucursalIds = VACIO;
     if (u.es_dueno_grupo) {
       rol = 'dueno';
     } else {
@@ -91,16 +121,24 @@ export function crearContexto({ db, config }) {
       if (!a) throw prohibido(`No tienes acceso a ${emp.nombre}`);
       ({ rol, permisos_extra: extra, permisos_quitados: quitados, sucursal_ids: sucursalIds } = a);
     }
-    const permisos = permisosDe(rol, extra, quitados);
+    // Permisos y módulos se calculan una vez por (usuario, empresa) mientras no cambie el acceso ni la empresa.
+    const kp = `${u.id}:${emp.id}`;
+    let calc = cachePermisos.get(kp);
+    if (!calc || calc.emp !== emp || calc.rol !== rol || calc.extra !== extra || calc.quitados !== quitados) {
+      const permisos = permisosDe(rol, extra, quitados);
+      calc = { emp, rol, extra, quitados, permisos, modulos: modulosVisibles(emp.modulos, permisos) };
+      if (cachePermisos.size > 2000) cachePermisos.clear();
+      cachePermisos.set(kp, calc);
+    }
     req.ctx = {
-      usuario: u, empresa: emp, rol, permisos, sucursalIds,
-      modulos: modulosVisibles(emp.modulos, permisos),
-      ip: req.auth.ip, via: req.auth.via,
+      usuario: u, empresa: emp, rol, permisos: calc.permisos, sucursalIds,
+      modulos: calc.modulos,
+      ip: req.auth.ip, via: req.auth.via, sesionId: req.auth.sesionId,
     };
     next();
   }
 
-  return { autenticar, conEmpresa, invalidar, empresas, empresasDe, usuario };
+  return { autenticar, conEmpresa, invalidar, invalidarSesion, empresas, empresasDe, usuario, politica };
 }
 
 /** Exige un permiso en la empresa activa. */

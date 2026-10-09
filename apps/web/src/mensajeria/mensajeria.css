@@ -1,0 +1,20 @@
+/* Correo y avisos: estilos propios del módulo (no tocan el shell global). */
+.msg-borrador { display: grid; gap: 2px; padding: 10px 12px; border: 1px solid var(--peligro, #c0392b); border-radius: var(--radio, 10px); background: color-mix(in srgb, var(--peligro, #c0392b) 10%, transparent); color: var(--peligro-texto, #a02a1c); text-align: center; }
+.msg-borrador span { font-size: .8rem; }
+.msg-pagina { display: grid; gap: 16px; }
+.msg-estado { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.msg-estado .insignia { white-space: nowrap; }
+.msg-pasos { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+.msg-pasos code, .msg-codigo { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .85em; background: color-mix(in srgb, var(--texto, #222) 8%, transparent); padding: 1px 6px; border-radius: 5px; }
+.msg-reglas { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+.msg-regla { display: grid; gap: 10px; align-content: start; }
+.msg-regla h3 { margin: 0; font-size: 1rem; }
+.msg-regla .desc { margin: 0; font-size: .85rem; }
+.msg-regla .cab { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.msg-regla .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.msg-interruptor { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: .9rem; white-space: nowrap; }
+.msg-interruptor input { width: 20px; height: 20px; }
+.msg-historial td, .msg-historial th { vertical-align: top; }
+.msg-historial .asunto { max-width: 340px; overflow-wrap: anywhere; }
+.msg-error { color: var(--peligro-texto, #a02a1c); font-size: .8rem; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .msg-regla .dos { grid-template-columns: 1fr; } .msg-historial .asunto { max-width: 200px; } }

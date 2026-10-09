@@ -39,12 +39,15 @@ export const MODULOS = {
   dashboard:    { nav: 'Negocio',   nombre: 'Dashboard',          descripcion: 'Ventas y números del día',                permiso: 'pos:reportes',   ruta: 'dashboard',    icono: 'dashboard' },
   gerente:      { nav: 'Negocio',   nombre: 'Gerente digital',    descripcion: 'Análisis de tus números con recomendaciones', permiso: 'gerente:ver', ruta: 'gerente',     icono: 'gerente' },
   reportes:     { nav: 'Negocio',   nombre: 'Reportes',           descripcion: 'Ventas por producto, forma de pago, cajero…', permiso: 'pos:reportes', ruta: 'reportes',    icono: 'reportes' },
+  reportes_prog:{ nav: 'Negocio',   nombre: 'Reportes por correo', descripcion: 'Programa reportes diarios o semanales en Excel o PDF', permiso: 'reportes:programar', ruta: 'reportes-programados', icono: 'reportes' },
   catalogo:     { nav: 'Negocio',   nombre: 'Catálogo',           descripcion: 'Productos, precios y modificadores',      permiso: 'pos:catalogo',   ruta: 'catalogo',     icono: 'catalogo' },
   clientes:     { nav: 'Negocio',   nombre: 'Clientes',           descripcion: 'Clientes y proveedores del grupo',        permiso: 'clientes:ver',   ruta: 'terceros',     icono: 'clientes' },
+  cobranza:     { nav: 'Negocio',   nombre: 'Cobranza',           descripcion: 'Cuentas por cobrar, antigüedad, promesas y estados de cuenta', permiso: 'cobranza:ver', ruta: 'cobranza', icono: 'dinero' },
   caja_chica:   { nav: 'Negocio',   nombre: 'Caja chica',         descripcion: 'Entradas y salidas de efectivo',          permiso: 'pos:caja',       ruta: 'caja-chica',   icono: 'dinero' },
   inventario:   { nav: 'Negocio',   nombre: 'Inventario',         descripcion: 'Insumos, recetas, compras y mermas',      permiso: 'inv:ver',        ruta: 'inventario',   icono: 'inventario' },
   rrhh:         { nav: 'Negocio',   nombre: 'Personal',           descripcion: 'Empleados, asistencia y vacaciones',      permiso: 'rrhh:ver',       ruta: 'personal',     icono: 'usuarios' },
-  finanzas:     { nav: 'Negocio',   nombre: 'Finanzas',           descripcion: 'Gastos y utilidad',                       permiso: 'fin:ver',        ruta: 'finanzas',     icono: 'dinero' },
+  finanzas:     { nav: 'Negocio',   nombre: 'Finanzas',           descripcion: 'Resultados, flujo de caja, por cobrar y pagar, presupuesto', permiso: 'fin:ver',        ruta: 'finanzas',     icono: 'dinero' },
+  compras:      { nav: 'Negocio',   nombre: 'Compras',            descripcion: 'Proveedores, órdenes de compra, precios y reorden', permiso: 'compras:ver', ruta: 'compras',      icono: 'inventario' },
   // Control
   antifraude:   { nav: 'Control',   nombre: 'Antifraude',         descripcion: 'Alertas, arqueos y vigilancia de caja',   permiso: 'antifraude:ver', ruta: 'antifraude',   icono: 'escudo' },
   bitacora:     { nav: 'Control',   nombre: 'Bitácora',           descripcion: 'Registro inalterable de acciones',        permiso: 'auditoria:ver',  ruta: 'bitacora',     icono: 'reloj' },
@@ -54,6 +57,7 @@ export const MODULOS = {
   documentos:   { nav: 'Control',   nombre: 'Documentos',         descripcion: 'Contratos, permisos ARSA, registros sanitarios y más', permiso: 'doc:ver',       ruta: 'documentos',   icono: 'escudo' },
   // Ajustes
   impresora:    { nav: 'Ajustes',   nombre: 'Impresora',          descripcion: 'Ticket y prueba de impresión',            permiso: 'pos:vender',     ruta: 'impresora',    icono: 'impresora' },
+  ayuda:        { nav: 'Ajustes',   nombre: 'Ayuda',              descripcion: 'Recorridos guiados y manual por rol',       permiso: null,             ruta: 'ayuda',        icono: 'ayuda' },
   admin:        { nav: 'Ajustes',   nombre: 'Administración',     descripcion: 'Módulos, fiscal y auditoría',             permiso: 'admin:usuarios', ruta: 'admin',        icono: 'sucursales' },
   // Dirección NO es módulo de empresa: vive solo en /grupo.
   grupo:        { nav: null,        nombre: 'Dirección',          descripcion: 'Consolidado de todas las empresas',       permiso: 'grupo:ver',      ruta: 'grupo',        icono: 'dashboard' },
@@ -61,21 +65,23 @@ export const MODULOS = {
 
 // Qué módulos "de base" se derivan de un módulo encendido en core.empresa_modulos.
 export const MODULOS_DERIVADOS = {
-  pos: ['pos', 'facturas', 'cierres', 'dashboard', 'reportes', 'catalogo', 'clientes', 'caja_chica', 'gerente', 'cai'],
+  pos: ['pos', 'facturas', 'cierres', 'dashboard', 'reportes', 'reportes_prog', 'catalogo', 'clientes', 'caja_chica', 'gerente', 'cai'],
   kds: ['kds'],
   inventario: ['inventario'],
   rrhh: ['rrhh'],
   finanzas: ['finanzas'],
+  compras: ['compras'],
   fabrica: ['piedra', 'cot_eco', 'prod_registrar', 'prod_ordenes', 'prod_recetas', 'prod_insumos', 'prod_inventario', 'prod_trazabilidad', 'prod_reporte'],
   distribuidora: ['cot_dis', 'dis_salidas', 'dis_catalogo', 'dis_inventario'],
   reposicion: ['rep_tablero', 'rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_mantenimiento'],
   antifraude: ['antifraude'],      // solo Italo y Origen; EcoStone y DISERCO no lo usan
   cotizaciones: ['cotizaciones'],
+  cobranza: ['cobranza'],          // cobranza: EcoStone y DISERCO
 };
 // Empresas de fábrica/distribuidora tienen su propio catálogo e inventario: se ocultan los genéricos.
 export const MODULOS_OCULTOS_POR = { reposicion: ['inventario'], fabrica: ['catalogo', 'inventario', 'caja_chica'], distribuidora: ['catalogo', 'inventario', 'caja_chica'] };
 // Siempre presentes (según permiso) en cualquier empresa.
-export const MODULOS_SIEMPRE = ['admin', 'usuarios', 'sucursales', 'bitacora', 'impresora', 'documentos'];
+export const MODULOS_SIEMPRE = ['admin', 'usuarios', 'sucursales', 'bitacora', 'impresora', 'documentos', 'ayuda'];
 
 /** Módulos visibles para un usuario en una empresa. */
 export function modulosVisibles(modulosEmpresa, permisos) {
@@ -85,7 +91,7 @@ export function modulosVisibles(modulosEmpresa, permisos) {
   const sinPos = !modulosEmpresa.includes('pos');
   for (const m of modulosEmpresa) for (const o of MODULOS_OCULTOS_POR[m] ?? []) ids.delete(o);
   return [...ids]
-    .filter((id) => MODULOS[id] && tiene(MODULOS[id].permiso) && !(sinPos && id === 'impresora'))
+    .filter((id) => MODULOS[id] && (!MODULOS[id].permiso || tiene(MODULOS[id].permiso)) && !(sinPos && id === 'impresora'))
     .map((id) => ({ id, ...MODULOS[id] }))
     .sort((a, b) => Object.keys(MODULOS).indexOf(a.id) - Object.keys(MODULOS).indexOf(b.id));
 }

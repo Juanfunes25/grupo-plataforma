@@ -33,9 +33,9 @@ export function rutasCatalogo({ db }) {
   // Todo lo que la caja necesita en UNA llamada (se cachea offline en el frontend).
   r.get('/', requierePermiso('pos:vender', 'pos:catalogo', 'pos:reportes'), async (req, res) => {
     const eid = req.ctx.empresa.id;
-    const [cats, prods, pg, grupos, mods, fp, suc, pe, cfg] = await Promise.all([
+    const [cats, prods, pg, grupos, mods, fp, suc, pe, cfg, top] = await Promise.all([
       db.query('select id, nombre, color, orden from pos.categorias where empresa_id = $1 and activo order by orden, nombre', [eid]),
-      db.query(`select id, codigo, codigo_barras, nombre, descripcion, categoria_id, precio, impuesto_tasa, exento, tipo, unidad, unidad_venta, color, imagen, tiempo_prep_min, disponible, es_piedra, m2_por_caja
+      db.query(`select id, codigo, codigo_barras, nombre, descripcion, categoria_id, precio, impuesto_tasa, exento, tipo, unidad, unidad_venta, color, imagen, tiempo_prep_min, disponible, es_piedra, m2_por_caja, favorito
                   from pos.productos where empresa_id = $1 and activo order by orden, nombre`, [eid]),
       db.query('select producto_id, grupo_id from pos.producto_grupos pg join pos.productos p on p.id = pg.producto_id where p.empresa_id = $1 order by pg.orden', [eid]),
       db.query('select id, nombre, min_sel, max_sel from pos.modificador_grupos where empresa_id = $1 and activo order by orden, nombre', [eid]),
@@ -45,12 +45,17 @@ export function rutasCatalogo({ db }) {
       sucursalesPermitidas(db, req.ctx),
       db.query(`select sucursal_id, es_borrador, cai, fecha_limite_emision, correlativo_desde, correlativo_actual, correlativo_hasta from pos.puntos_emision where empresa_id = $1 and activo`, [eid]),
       db.query(`select valor from core.config where empresa_id = $1 and clave = 'pos'`, [eid]),
+      // «Más vendidos»: los 8 productos que más órdenes cobradas tuvieron en los últimos 30 días (por órdenes, no por cantidad: un kilo no pesa más que una pieza).
+      db.query(`select d.producto_id from pos.detalle_venta d join pos.ventas v on v.id = d.venta_id
+                 where v.empresa_id = $1 and v.estado = 'pagada' and v.fecha_emision > now() - interval '30 days'
+                 group by d.producto_id order by count(distinct v.id) desc, sum(d.cantidad) desc limit 8`, [eid]),
     ]);
     const c = cfg.rows[0]?.valor ?? {};
     res.json({
       categorias: cats.rows,
       productos: prods.rows.map((p) => ({ ...p, grupo_ids: pg.rows.filter((x) => x.producto_id === p.id).map((x) => x.grupo_id) })),
       grupos: grupos.rows.map((g) => ({ ...g, modificadores: mods.rows.filter((m) => m.grupo_id === g.id) })),
+      mas_vendidos: top.rows.map((x) => x.producto_id),
       formas_pago: fp.rows,
       sucursales: suc,
       // Estado del CAI por sucursal. Una sucursal SIN entrada aquí no tiene punto de emisión activo (no puede facturar).
@@ -72,7 +77,7 @@ export function rutasCatalogo({ db }) {
   r.get('/version', requierePermiso('pos:vender', 'pos:catalogo', 'pos:reportes'), async (req, res) => {
     const eid = req.ctx.empresa.id;
     const [p, c, m] = await Promise.all([
-      db.query(`select md5(coalesce(string_agg(id::text || nombre || precio::text || activo::text || disponible::text || coalesce(categoria_id::text,'') || coalesce(codigo_barras,'') || orden::text, ',' order by id), '')) as h from pos.productos where empresa_id = $1`, [eid]),
+      db.query(`select md5(coalesce(string_agg(id::text || nombre || precio::text || activo::text || disponible::text || coalesce(categoria_id::text,'') || coalesce(codigo_barras,'') || orden::text || favorito::text, ',' order by id), '')) as h from pos.productos where empresa_id = $1`, [eid]),
       db.query(`select md5(coalesce(string_agg(id::text || nombre || activo::text || orden::text || coalesce(color,''), ',' order by id), '')) as h from pos.categorias where empresa_id = $1`, [eid]),
       db.query(`select md5(coalesce(string_agg(m.id::text || m.nombre || m.precio_extra::text || m.activo::text, ',' order by m.id), '')) as h from pos.modificadores m join pos.modificador_grupos g on g.id = m.grupo_id where g.empresa_id = $1`, [eid]),
     ]);
@@ -127,6 +132,14 @@ export function rutasCatalogo({ db }) {
   r.patch('/productos/:id/disponible', requierePermiso('pos:catalogo', 'pos:vender'), async (req, res) => {
     const { disponible } = validar(z.object({ disponible: z.boolean() }), req.body);
     const { rowCount } = await db.query('update pos.productos set disponible = $3 where id = $1 and empresa_id = $2', [validar(uuid, req.params.id), req.ctx.empresa.id, disponible]);
+    if (!rowCount) throw noEncontrado();
+    res.json({ ok: true });
+  });
+
+  // Estrella de favorito: la fija un encargado desde la caja y sube el producto a la primera fila para todos los cajeros.
+  r.patch('/productos/:id/favorito', requierePermiso('pos:catalogo'), async (req, res) => {
+    const { favorito } = validar(z.object({ favorito: z.boolean() }), req.body);
+    const { rowCount } = await db.query('update pos.productos set favorito = $3 where id = $1 and empresa_id = $2', [validar(uuid, req.params.id), req.ctx.empresa.id, favorito]);
     if (!rowCount) throw noEncontrado();
     res.json({ ok: true });
   });

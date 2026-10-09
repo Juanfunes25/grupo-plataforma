@@ -55,6 +55,7 @@ create table msg.avisos (
   destinatarios  text[] not null default '{}',
   hora           smallint check (hora between 0 and 23),                 -- solo el resumen diario (hora Honduras)
   horas_entre    int not null default 12 check (horas_entre between 1 and 168),   -- una alerta de este tipo cada N horas
+  umbral         numeric(12,2) check (umbral is null or umbral >= 0),             -- descuadre de caja: diferencia (L) desde la cual avisar
   updated_at     timestamptz not null default now(),
   updated_by     uuid references core.usuarios(id) on delete set null
 );

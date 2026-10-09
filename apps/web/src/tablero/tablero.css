@@ -1,0 +1,86 @@
+/* Tablero del dueño · pensado para el celular (una columna), crece a dos columnas en tablet y escritorio. */
+html.tb-sin-recarga { overscroll-behavior-y: contain; }
+.tb { display: grid; gap: 14px; }
+.tb-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.tb-cab h1 { font-size: var(--t-xl); }
+.tb-cab small { color: var(--tenue); display: block; }
+.tb-dos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tb-carga { display: grid; gap: 14px; }
+
+.tb-tirar { display: flex; align-items: center; justify-content: center; gap: 8px; overflow: hidden; color: var(--tenue); height: 0; transition: height .18s var(--ritmo); margin-bottom: -6px; }
+.tb-tirar.ocupado .tb-tirar-giro { animation: tb-giro .9s linear infinite; }
+.tb-tirar-giro { display: inline-flex; }
+@keyframes tb-giro { to { transform: rotate(-360deg); } }
+
+/* Alertas */
+.tb-alertas { display: grid; gap: 8px; }
+.tb-alerta { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--tap); text-align: left; padding: 10px 14px; border-radius: var(--radio); border: 1px solid var(--borde); background: var(--panel); color: var(--texto); }
+button.tb-alerta:hover { border-color: var(--borde-fuerte); }
+.tb-alerta.alta { border-color: color-mix(in srgb, var(--peligro) 55%, var(--borde)); background: var(--peligro-fondo); }
+.tb-alerta.media { border-color: color-mix(in srgb, var(--aviso) 50%, var(--borde)); background: var(--aviso-fondo); }
+.tb-alerta-ico { display: inline-flex; flex: none; } .tb-alerta-ico.alta { color: var(--peligro-texto); } .tb-alerta-ico.media { color: var(--aviso-texto); }
+.tb-alerta-texto { flex: 1; min-width: 0; display: grid; gap: 1px; } .tb-alerta-texto b { font-size: var(--t-m); } .tb-alerta-texto small { color: var(--tenue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-todo-bien { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: var(--radio); background: var(--ok-fondo); color: var(--ok-texto); font-weight: 600; font-size: var(--t-s); }
+
+/* Tarjeta principal */
+.tb-heroe { padding: 18px; border-radius: var(--r-l); border: 1px solid color-mix(in srgb, var(--acento) 55%, var(--borde)); background: linear-gradient(140deg, color-mix(in srgb, var(--acento) 22%, var(--panel)), var(--panel) 70%); box-shadow: var(--sombra-1); display: grid; gap: 14px; }
+.tb-heroe-etq { color: var(--tenue); text-transform: uppercase; letter-spacing: .08em; font-size: var(--t-xs); font-weight: 600; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.tb-heroe-valor { font-family: 'Barlow Condensed', sans-serif; font-size: clamp(2.8rem, 13vw, 4.2rem); font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tb-heroe-sub { color: var(--tenue); font-size: var(--t-s); display: flex; gap: 6px 14px; flex-wrap: wrap; }
+.tb-comps { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tb-comp { background: color-mix(in srgb, var(--panel) 80%, transparent); border: 1px solid var(--borde); border-radius: var(--radio-s); padding: 10px 12px; display: grid; gap: 3px; align-content: start; min-width: 0; }
+.tb-comp-cab { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; font-size: var(--t-xs); color: var(--tenue); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+.tb-comp b { font-size: 1.25rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; } .tb-comp small { color: var(--tenue); font-size: var(--t-xs); }
+
+.tb-delta { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: var(--r-pill); font-size: var(--t-xs); font-weight: 700; text-transform: none; letter-spacing: 0; white-space: nowrap; background: var(--panel-3); color: var(--tenue); }
+.tb-delta i { font-style: normal; font-size: .62rem; }
+.tb-delta.ok { background: var(--ok-fondo); color: var(--ok-texto); } .tb-delta.mal { background: var(--peligro-fondo); color: var(--peligro-texto); }
+
+/* Tarjetas pequeñas */
+.tb-mini { background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); padding: 14px; display: grid; gap: 4px; align-content: start; box-shadow: var(--sombra-1); min-width: 0; }
+.tb-mini .etq { color: var(--tenue); font-size: var(--t-xs); text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+.tb-mini .val { font-family: 'Barlow Condensed', sans-serif; font-size: 2rem; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tb-mini .sub { color: var(--tenue); font-size: var(--t-xs); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+.tb-bloque { background: var(--panel); border: 1px solid var(--borde); border-radius: var(--radio); padding: 14px; display: grid; gap: 10px; box-shadow: var(--sombra-1); }
+.tb-bloque > h2 { font-size: var(--t-l); }
+
+/* Sucursales */
+.tb-suc { display: grid; gap: 10px; }
+.tb-suc-fila { display: grid; gap: 6px; padding: 10px 0; border-top: 1px solid var(--borde); } .tb-suc-fila:first-child { border-top: 0; padding-top: 0; }
+.tb-suc-cab { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.tb-suc-nombre { display: flex; align-items: center; gap: 8px; font-weight: 600; min-width: 0; } .tb-suc-nombre i { width: 10px; height: 10px; border-radius: 50%; flex: none; background: var(--suc, var(--acento)); }
+.tb-suc-total { font-weight: 700; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.tb-suc-pista { height: 8px; background: var(--panel-3); border-radius: 99px; overflow: hidden; } .tb-suc-pista i { display: block; height: 100%; border-radius: 99px; background: var(--suc, var(--acento)); }
+.tb-suc-pie { display: flex; gap: 6px 12px; flex-wrap: wrap; align-items: center; color: var(--tenue); font-size: var(--t-xs); }
+
+/* Formas de pago */
+.tb-pago-barra { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: var(--panel-3); }
+.tb-pago-barra i { display: block; height: 100%; }
+.tb-pago-lista { display: grid; gap: 6px; }
+.tb-pago-fila { display: flex; justify-content: space-between; gap: 10px; align-items: center; font-size: var(--t-s); } .tb-pago-fila span { display: inline-flex; align-items: center; gap: 8px; } .tb-pago-fila i { width: 10px; height: 10px; border-radius: 50%; }
+.tb-pago-fila b { font-variant-numeric: tabular-nums; }
+
+/* Tendencia */
+.tb-tend { display: flex; align-items: flex-end; gap: 8px; height: 150px; padding-top: 6px; }
+.tb-tend-col { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; }
+.tb-tend-col i { display: block; width: 100%; max-width: 44px; border-radius: 6px 6px 0 0; background: color-mix(in srgb, var(--tb-color, var(--acento)) 45%, var(--panel-3)); }
+.tb-tend-col.hoy i { background: var(--tb-color, var(--acento)); }
+.tb-tend-val { font-size: .66rem; color: var(--tenue); white-space: nowrap; } .tb-tend-dia { font-size: .7rem; color: var(--tenue); } .tb-tend-col.hoy .tb-tend-dia { color: var(--texto); font-weight: 700; }
+
+/* Dirección: tarjetas por empresa */
+.tb-empresas { display: grid; gap: 14px; }
+.tb-empresa { background: var(--panel); border: 1px solid var(--borde); border-top: 4px solid var(--emp, var(--acento)); border-radius: var(--radio); padding: 14px; display: grid; gap: 12px; box-shadow: var(--sombra-1); min-width: 0; }
+.tb-empresa-cab { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tb-empresa-cab h2 { font-size: var(--t-l); }
+.tb-empresa-valor { font-family: 'Barlow Condensed', sans-serif; font-size: 2.4rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tb-empresa-datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; } .tb-empresa-datos div { display: grid; gap: 1px; min-width: 0; } .tb-empresa-datos small { color: var(--tenue); font-size: var(--t-xs); } .tb-empresa-datos b { font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tb-abrir { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--tap); }
+
+@media (min-width: 720px) {
+  .tb-empresas { grid-template-columns: 1fr 1fr; }
+  .tb-cuadricula { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+}
+@media (min-width: 1100px) { .tb-empresas { grid-template-columns: repeat(4, 1fr); } .tb-comps { max-width: 640px; } }
+@media (max-width: 380px) { .tb-comps { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .tb-tirar, .tb-tirar.ocupado .tb-tirar-giro { transition: none; animation: none; } }

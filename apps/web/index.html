@@ -2,13 +2,19 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Grupo" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="apple-touch-icon" href="/icons/base-180.png" />
     <meta name="theme-color" content="#0e1320" />
     <link rel="icon" type="image/svg+xml" href="/icono.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <script>try{if(localStorage.getItem("grupo.tema")==="claro"){document.documentElement.dataset.tema="claro"}}catch(e){}</script>
+    <script>try{var d=document.documentElement,g=function(k,v,o){var x=localStorage.getItem("grupo."+k);return v.indexOf(x)>-1?x:o};var t=g("tema",["auto","claro","oscuro"],"oscuro");if(t==="auto")t=matchMedia("(prefers-color-scheme: light)").matches?"claro":"oscuro";d.dataset.tema=t;d.dataset.contraste=g("contraste",["normal","alto"],"normal");d.dataset.letra=g("letra",["normal","grande","enorme"],"normal");d.dataset.densidad=g("densidad",["comoda","compacta"],"comoda");d.dataset.quiosco=g("quiosco",["si","no"],"no");if(t==="claro")document.querySelector('meta[name=theme-color]').content="#f3f1ed"}catch(e){}</script>
     <title>Grupo · Plataforma</title>
   </head>
   <body>

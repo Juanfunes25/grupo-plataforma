@@ -4,11 +4,15 @@ import { fechaHN, sumarDias } from '@grupo/shared';
 import { requierePermiso, resolverSucursal } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
 import { malaPeticion, noEncontrado, uuid, validar, dinero, fechaISO } from '../../lib/http.js';
+import { rutasUnificado } from './unificado.js';
 
 const cant = z.coerce.number().positive().max(1_000_000);
 
-export function rutasInv({ db }) {
+export function rutasInv({ db, ctxMgr }) {
   const r = Router();
+
+  // Inventario unificado del grupo (existencias, alertas, conteos cíclicos, traslados, kardex): /api/inv/u/…
+  r.use('/u', rutasUnificado({ db, ctxMgr }));
 
   // ── Insumos ──────────────────────────────────────────────────────────────
   r.get('/insumos', requierePermiso('inv:ver'), async (req, res) => {

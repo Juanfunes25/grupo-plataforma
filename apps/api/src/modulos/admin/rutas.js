@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { ROLES, PERMISOS, ROLES_CON_PIN, MODULOS } from '@grupo/shared';
 import { hashSecreto } from '../../auth/passwords.js';
 import { hashPin, PIN_RE } from '../../auth/pin.js';
+import { problemaClave, problemaPin } from '../../auth/politica.js';
+import { revocarSesiones } from '../auth/sesiones.js';
 import { requierePermiso } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
 import { conflicto, fechaISO, malaPeticion, noEncontrado, prohibido, uuid, validar } from '../../lib/http.js';
@@ -84,6 +86,8 @@ export function rutasAdmin({ db, config, ctxMgr }) {
     if (ROLES_DIRECCION.includes(b.rol) && (!b.email)) throw malaPeticion('Ese rol entra con correo y contraseña: falta el correo');
     if (b.pin && !ROLES_CON_PIN.includes(b.rol)) throw malaPeticion('Ese rol no puede entrar con PIN');
     if (!b.email && !b.pin) throw malaPeticion('Indica un correo o un PIN para que pueda entrar');
+    if (b.password) { const m = problemaClave(b.password, { email: b.email, nombre: b.nombre }); if (m) throw malaPeticion(m); }
+    if (b.pin) { const m = problemaPin(b.pin, await ctxMgr.politica.obtener()); if (m) throw malaPeticion(m); }
     const emp = req.ctx.empresa;
     const id = await db.tx(async (q) => {
       await validarSucursales(q, emp.id, b.sucursal_ids);
@@ -161,6 +165,7 @@ export function rutasAdmin({ db, config, ctxMgr }) {
     const a = (await db.query('select id, rol from core.accesos where usuario_id = $1 and empresa_id = $2', [id, req.ctx.empresa.id])).rows[0];
     if (!a) throw noEncontrado();
     if (pin && !ROLES_CON_PIN.includes(a.rol)) throw malaPeticion('Ese rol no puede entrar con PIN');
+    if (pin) { const m = problemaPin(pin, await ctxMgr.politica.obtener()); if (m) throw malaPeticion(m); }
     try {
       await db.query('update core.accesos set pin_hash = $1, pin_cambiado_at = now() where id = $2',
         [pin ? hashPin(config, req.ctx.empresa.id, pin) : null, a.id]);
@@ -176,14 +181,82 @@ export function rutasAdmin({ db, config, ctxMgr }) {
   r.post('/usuarios/:id/password', requierePermiso('admin:usuarios'), async (req, res) => {
     const id = validar(uuid, req.params.id);
     const { password } = validar(z.object({ password: z.string().min(8, 'Mínimo 8 caracteres').max(200) }), req.body);
+    const a = (await db.query('select a.rol, u.email, u.nombre from core.accesos a join core.usuarios u on u.id = a.usuario_id where a.usuario_id = $1 and a.empresa_id = $2', [id, req.ctx.empresa.id])).rows[0];
+    if (!a) throw noEncontrado();
+    if (ROLES_ALTOS.includes(a.rol)) validarRolAsignable(req.ctx, a.rol);
+    await validarUsuarioNoProtegido(db, req.ctx, id);
+    { const m = problemaClave(password, { email: a.email, nombre: a.nombre }); if (m) throw malaPeticion(m); }
+    await db.query('update core.usuarios set password_hash = $1, token_version = token_version + 1 where id = $2 and auth_user_id is null', [hashSecreto(password), id]);
+    await revocarSesiones(db, ctxMgr, id, { motivo: 'contraseña restablecida por un administrador' });
+    await auditar(db, req.ctx, 'password_restablecida', 'usuario', id);
+    ctxMgr.invalidar();
+    res.json({ ok: true });
+  });
+
+  // ── Cerrar a distancia las sesiones de una persona / reiniciar su 2FA ─────
+  r.post('/usuarios/:id/cerrar-sesiones', requierePermiso('admin:usuarios'), async (req, res) => {
+    const id = validar(uuid, req.params.id);
     const a = (await db.query('select rol from core.accesos where usuario_id = $1 and empresa_id = $2', [id, req.ctx.empresa.id])).rows[0];
     if (!a) throw noEncontrado();
     if (ROLES_ALTOS.includes(a.rol)) validarRolAsignable(req.ctx, a.rol);
     await validarUsuarioNoProtegido(db, req.ctx, id);
-    await db.query('update core.usuarios set password_hash = $1, token_version = token_version + 1 where id = $2 and auth_user_id is null', [hashSecreto(password), id]);
-    await auditar(db, req.ctx, 'password_restablecida', 'usuario', id);
+    const n = await revocarSesiones(db, ctxMgr, id, { motivo: `cerradas por ${req.ctx.usuario.nombre}` });
+    await auditar(db, req.ctx, 'sesiones_cerradas_por_admin', 'usuario', id, { cantidad: n });
+    res.json({ ok: true, cerradas: n });
+  });
+  // Perdió el teléfono y los códigos de recuperación: quien lo administra le quita el 2FA para que lo configure de nuevo.
+  r.post('/usuarios/:id/reiniciar-2fa', requierePermiso('admin:usuarios'), async (req, res) => {
+    const id = validar(uuid, req.params.id);
+    if (id === req.ctx.usuario.id) throw prohibido('Tu propia verificación se gestiona en «Mi seguridad»');
+    const a = (await db.query('select rol from core.accesos where usuario_id = $1 and empresa_id = $2', [id, req.ctx.empresa.id])).rows[0];
+    if (!a) throw noEncontrado();
+    if (ROLES_ALTOS.includes(a.rol)) validarRolAsignable(req.ctx, a.rol);
+    await validarUsuarioNoProtegido(db, req.ctx, id);
+    await db.tx(async (q) => {
+      await q.query('delete from core.usuarios_mfa where usuario_id = $1', [id]);
+      await q.query('delete from core.mfa_recuperacion where usuario_id = $1', [id]);
+    });
+    await revocarSesiones(db, ctxMgr, id, { motivo: 'verificación en dos pasos reiniciada' });
+    await auditar(db, req.ctx, 'mfa_reiniciado_por_admin', 'usuario', id);
     ctxMgr.invalidar();
     res.json({ ok: true });
+  });
+
+  // ── Política de seguridad (2FA obligatoria para dirección, largo del PIN) ─
+  r.get('/seguridad', requierePermiso('admin:usuarios'), async (req, res) => {
+    const pol = (await db.query('select mfa_obligatoria_direccion, pin_largo_min, pin_largo_max, actualizado_at from core.seguridad_politica where id')).rows[0];
+    const alcance = req.ctx.usuario.es_dueno_grupo;   // el dueño del grupo ve a toda la dirección; un administrador, la de su empresa
+    const { rows } = await db.query(
+      `select u.id, u.nombre, u.email, u.es_dueno_grupo, u.ultimo_acceso,
+              coalesce((select string_agg(distinct a.rol, ', ') from core.accesos a where a.usuario_id = u.id and a.activo and a.rol in ('dueno','admin')), '') as roles,
+              exists (select 1 from core.usuarios_mfa m where m.usuario_id = u.id and m.confirmado) as mfa_activo
+         from core.usuarios u
+        where u.activo and (u.es_dueno_grupo
+              or exists (select 1 from core.accesos a where a.usuario_id = u.id and a.activo and a.rol in ('dueno','admin') and ($1::boolean or a.empresa_id = $2)))
+        order by u.es_dueno_grupo desc, u.nombre`, [alcance, req.ctx.empresa.id]);
+    res.json({ politica: pol, direccion: rows, puede_cambiar: req.ctx.usuario.es_dueno_grupo, yo_tengo_mfa: Boolean(req.ctx.usuario.mfa_activo) });
+  });
+  r.put('/seguridad', async (req, res) => {
+    if (!req.ctx.usuario.es_dueno_grupo) throw prohibido('Solo el dueño del grupo cambia la política de seguridad');
+    const b = validar(z.object({
+      mfa_obligatoria_direccion: z.boolean().optional(),
+      pin_largo_min: z.number().int().min(4).max(6).optional(),
+      pin_largo_max: z.number().int().min(4).max(6).optional(),
+    }), req.body);
+    const ant = (await db.query('select * from core.seguridad_politica where id')).rows[0];
+    const nueva = { ...ant, ...Object.fromEntries(Object.entries(b).filter(([, v]) => v !== undefined)) };
+    if (nueva.pin_largo_max < nueva.pin_largo_min) throw malaPeticion('El largo máximo del PIN no puede ser menor que el mínimo');
+    // Para no dejar al dueño fuera de su propio sistema: debe tener la verificación activa antes de exigirla a todos.
+    if (b.mfa_obligatoria_direccion === true && !ant.mfa_obligatoria_direccion && !req.ctx.usuario.mfa_activo) {
+      throw conflicto('Primero activa tu propia verificación en dos pasos (Mi seguridad); así no te quedas fuera cuando se vuelva obligatoria');
+    }
+    await db.query(
+      `update core.seguridad_politica set mfa_obligatoria_direccion = $1, pin_largo_min = $2, pin_largo_max = $3, actualizado_at = now(), actualizado_por = $4 where id`,
+      [nueva.mfa_obligatoria_direccion, nueva.pin_largo_min, nueva.pin_largo_max, req.ctx.usuario.id]);
+    await auditar(db, req.ctx, 'politica_seguridad_editada', 'seguridad', null,
+      { cambios: cambiosDe(ant, nueva, ['mfa_obligatoria_direccion', 'pin_largo_min', 'pin_largo_max']) });
+    ctxMgr.politica.invalidar();
+    res.json({ ok: true, politica: nueva });
   });
 
   // ── Sucursales ───────────────────────────────────────────────────────────

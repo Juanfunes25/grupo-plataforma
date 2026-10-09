@@ -108,7 +108,7 @@ test('cotización de proyecto: numeración, secciones, permisos, aprobar, cobros
   const ed = await ventas.put(`${D}/cotizaciones/${cotProy.id}`, { ...cuerpo, lineas: [{ descripcion: 'Epóxico sólido', cantidad: 100, unidad: 'm2', precio_unitario: 400 }] });
   assert.equal(ed.body.total, 46000);
   cotProy = ed.body;
-  assert.equal((await ventas.post(`${D}/cotizaciones/${cotProy.id}/correo`, { email: 'a@b.com' })).body.codigo, 'correo_pendiente');
+  { const env = await ventas.post(`${D}/cotizaciones/${cotProy.id}/correo`, { email: 'a@b.com' }); assert.equal(env.status, 200); assert.equal(env.body.pendiente, true); }   // sin Gmail configurado queda pendiente
   assert.equal((await ventas.post(`${D}/cotizaciones/${cotProy.id}/cobros`, { forma_pago_id: '00000000-0000-4000-8000-000000000000', monto: 10 })).status, 409);   // aún no aprobada
   assert.equal((await ventas.post(`${D}/cotizaciones/${cotProy.id}/aprobar`)).body.estado, 'aprobada');
   assert.equal((await ventas.put(`${D}/cotizaciones/${cotProy.id}`, cuerpo)).status, 409);   // aprobada ya no se edita

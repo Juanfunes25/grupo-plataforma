@@ -148,7 +148,7 @@ test('PDF de la factura: archivo válido con los datos fiscales; ticket de prueb
   const texto = buf.toString('latin1');
   assert.ok(texto.includes(v.numero_factura), 'trae el número de factura');
   assert.ok(texto.includes('05019876543210'), 'trae el RTN del cliente');
-  assert.ok(texto.includes('SIN VALIDEZ FISCAL'), 'en modo borrador lo dice');
+  assert.ok(texto.includes('BORRADOR - SIN VALOR FISCAL'), 'en modo borrador lo dice');
   // tabla de referencias coherente: startxref apunta a "xref"
   const pos = Number(/startxref\n(\d+)/.exec(texto)[1]);
   assert.equal(texto.slice(pos, pos + 4), 'xref');

@@ -130,8 +130,10 @@ test('documento imprimible trae empresa, validez y condiciones; el correo está 
   assert.ok(d.condiciones.length >= 3);
   assert.equal(d.cotizacion.id, c.id);
   const env = await ger.post(`/api/cotizaciones/${c.id}/enviar`);
-  assert.equal(env.status, 501);
-  assert.equal(env.body.codigo, 'correo_pendiente');
+  // Sin Gmail configurado el envío no falla: queda «pendiente de configurar» (ver mensajeria.test.js para el envío real)
+  assert.equal(env.status, 200);
+  assert.equal(env.body.ok, false);
+  assert.equal(env.body.pendiente, true);
   const sinCorreo = (await ger.post('/api/cotizaciones', base({ email_cliente: '' }))).body;
   assert.equal((await ger.post(`/api/cotizaciones/${sinCorreo.id}/enviar`)).status, 400);
 });

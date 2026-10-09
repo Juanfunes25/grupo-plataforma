@@ -2,7 +2,10 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { ROLES_CON_PIN, permisosDe } from '@grupo/shared';
 import { hashSecreto, verificarSecreto } from '../../auth/passwords.js';
-import { firmarSesion } from '../../auth/tokens.js';
+import { firmarDesafio, firmarSesion } from '../../auth/tokens.js';
+import { problemaClave } from '../../auth/politica.js';
+import { crearSesion, revocarSesiones, rutasSesiones } from './sesiones.js';
+import { esDireccion, estadoMfa, rutasMfa } from './mfa.js';
 import { loginSupabase } from '../../auth/supabase.js';
 import { hashPin, PIN_RE } from '../../auth/pin.js';
 import { crearLimitador } from '../../lib/limitador.js';
@@ -30,7 +33,8 @@ export function rutasAuth({ db, config, ctxMgr }) {
   const r = Router();
   const limLogin = crearLimitador({ max: 6, ventanaMs: 10 * 60_000 });
   const limPin = crearLimitador({ max: 8, ventanaMs: 10 * 60_000 });
-  r.limitadores = { limLogin, limPin };
+  const limMfa = crearLimitador({ max: 6, ventanaMs: 10 * 60_000 });   // intentos del código de 6 dígitos, por persona
+  r.limitadores = { limLogin, limPin, limMfa };
 
   const ipDe = (req) => req.ip || req.socket?.remoteAddress || '';
 
@@ -43,9 +47,10 @@ export function rutasAuth({ db, config, ctxMgr }) {
     return e;
   }
 
-  async function respuestaSesion(u, empresa, via, fija) {
+  async function respuestaSesion(u, empresa, via, fija, req) {
+    const sesionId = await crearSesion(db, config, { usuario: u, via, empresaCodigo: empresa.codigo, req });
     const token = await firmarSesion(config, {
-      usuarioId: u.id, tokenVersion: u.token_version, via, empresaCodigo: fija ? empresa.codigo : undefined });
+      usuarioId: u.id, tokenVersion: u.token_version, via, empresaCodigo: fija ? empresa.codigo : undefined, sesionId });
     await db.query('update core.usuarios set ultimo_acceso = now() where id = $1', [u.id]);
     return { token, usuario: { id: u.id, nombre: u.nombre, email: u.email, es_dueno_grupo: u.es_dueno_grupo }, empresa: empresa.codigo };
   }
@@ -85,10 +90,29 @@ export function rutasAuth({ db, config, ctxMgr }) {
       if (!a.rowCount) throw new ErrorHttp(403, `Tu usuario no tiene acceso a ${emp.nombre}`);
     }
     limLogin.exito(clave);
-    await auditar(db, null, 'login', 'usuario', u.id, { via: 'password' }, { empresaId: emp.id, usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
-    await vigilarDispositivo(db, { empresa: emp, usuario: u, dispositivo: req.headers['x-dispositivo'], navegador: req.headers['user-agent'], ip: ipDe(req) });   // antifraude
-    res.json(await respuestaSesion(u, emp, 'password', false));
+
+    // Segundo paso: con 2FA activa la contraseña sola no basta; si la política la exige y aún no la tiene, se configura ahora.
+    const mfa = await estadoMfa(db, u.id);
+    if (mfa.confirmado) {
+      return res.json({ requiere_2fa: true, desafio: await firmarDesafio(config, { usuarioId: u.id, empresaCodigo: emp.codigo, fase: 'verificar' }) });
+    }
+    if ((await ctxMgr.politica.obtener()).mfa_obligatoria_direccion && await esDireccion(db, u)) {
+      return res.json({ requiere_configurar_2fa: true, desafio: await firmarDesafio(config, { usuarioId: u.id, empresaCodigo: emp.codigo, fase: 'configurar' }) });
+    }
+    res.json(await completarLogin(req, u, emp, { mfa: false }));
   });
+
+  /** Último tramo del login con correo: bitácora, antifraude y la sesión. Lo comparten el login simple y el de dos pasos. */
+  async function completarLogin(req, u, emp, { mfa }) {
+    await auditar(db, null, 'login', 'usuario', u.id, { via: 'password', ...(mfa ? { mfa: true } : {}) }, { empresaId: emp.id, usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
+    await vigilarDispositivo(db, { empresa: emp, usuario: u, dispositivo: req.headers['x-dispositivo'], navegador: req.headers['user-agent'], ip: ipDe(req) });   // antifraude
+    return respuestaSesion(u, emp, 'password', false, req);
+  }
+  const mfaRutas = rutasMfa({
+    db, config, ctxMgr, limitadorMfa: limMfa,
+    emitirSesion: async (req, u, empresaCodigo, opc) => completarLogin(req, u, await empresaPorCodigo(empresaCodigo), opc),
+  });
+  r.use(mfaRutas.publicas);
 
   // ── PIN (mostrador, cocina, bodega): solo sirve en UNA empresa ───────────
   r.post('/pin', async (req, res) => {
@@ -111,7 +135,7 @@ export function rutasAuth({ db, config, ctxMgr }) {
     limPin.exito(clave);
     await auditar(db, null, 'login', 'usuario', u.id, { via: 'pin' }, { empresaId: emp.id, usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
     await vigilarDispositivo(db, { empresa: emp, usuario: u, dispositivo: req.headers['x-dispositivo'], navegador: req.headers['user-agent'], ip: ipDe(req) });   // antifraude
-    res.json(await respuestaSesion(u, emp, 'pin', true));
+    res.json(await respuestaSesion(u, emp, 'pin', true, req));
   });
 
   // ── Quién soy y qué puedo hacer ──────────────────────────────────────────
@@ -120,7 +144,7 @@ export function rutasAuth({ db, config, ctxMgr }) {
     let empresas = await ctxMgr.empresasDe(u);
     if (req.auth.empresaFija) empresas = empresas.filter((e) => e.codigo === req.auth.empresaFija);
     const salida = {
-      usuario: { id: u.id, nombre: u.nombre, email: u.email, es_dueno_grupo: u.es_dueno_grupo },
+      usuario: { id: u.id, nombre: u.nombre, email: u.email, es_dueno_grupo: u.es_dueno_grupo, mfa_activo: Boolean(u.mfa_activo) },
       via: req.auth.via,
       empresas: empresas.map((e) => ({ codigo: e.codigo, nombre: e.nombre, color: e.color, logo: e.logo, lema: e.lema, rol: e.rol })),
     };
@@ -146,10 +170,18 @@ export function rutasAuth({ db, config, ctxMgr }) {
     const u = (await db.query('select * from core.usuarios where id = $1', [req.auth.usuario.id])).rows[0];
     if (config.supabaseUrl && u.auth_user_id) throw malaPeticion('Tu contraseña se cambia desde Supabase Auth');
     if (!verificarSecreto(actual, u.password_hash)) throw new ErrorHttp(401, 'La contraseña actual no es correcta');
+    const motivo = problemaClave(nueva, { email: u.email, nombre: u.nombre });
+    if (motivo) throw malaPeticion(motivo);
+    if (actual === nueva) throw malaPeticion('La nueva contraseña debe ser distinta a la actual');
     await db.query('update core.usuarios set password_hash = $1, token_version = token_version + 1 where id = $2', [hashSecreto(nueva), u.id]);
+    await revocarSesiones(db, ctxMgr, u.id, { motivo: 'cambio de contraseña' });
+    await auditar(db, null, 'password_cambiada', 'usuario', u.id, {}, { usuarioId: u.id, usuarioNombre: u.nombre, ip: req.auth.ip });
     ctxMgr.invalidar();
     res.json({ ok: true, mensaje: 'Contraseña cambiada. Vuelve a entrar.' });
   });
+
+  // Sesiones («Mis sesiones», cerrar sesión de verdad) y gestión propia del 2FA: requieren sesión.
+  r.use(ctxMgr.autenticar, rutasSesiones({ db, ctxMgr }), mfaRutas.privadas);
 
   return r;
 }

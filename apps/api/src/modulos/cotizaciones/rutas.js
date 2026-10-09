@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { calcularTotales, fechaHN, round2 } from '@grupo/shared';
 import { requierePermiso, resolverSucursal } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
+import { enviarCotizacionPorCorreo } from '../mensajeria/envios.js';
 import { ErrorHttp, conflicto, malaPeticion, noEncontrado, prohibido, uuid, validar } from '../../lib/http.js';
 import {
   CLAVES_CHECKLIST, CONDICIONES_EVENTOS, DIAS_VALIDEZ, ESTADOS, ESTADOS_MANUALES, ITEMS_CHECKLIST, UMBRAL_RTN_OBLIGATORIO,
@@ -244,15 +245,15 @@ export function rutasCotizaciones({ db }) {
     });
   });
 
-  // ── Envío por correo ─────────────────────────────────────────────────────
-  // Italo Facturación enviaba el PDF con nodemailer + Gmail (GMAIL_USER / GMAIL_APP_PASSWORD).
-  // La plataforma aún no tiene servicio de correo configurado: el endpoint existe, valida
-  // lo mismo y responde claramente que está pendiente. La pantalla ofrece «Abrir en mi correo».
+  // ── Envío por correo (Gmail, con el PDF adjunto) ─────────────────────────
   r.post('/:id/enviar', async (req, res) => {
-    const c = await cargarUna(db, req.ctx, validar(uuid, req.params.id));
-    if (!c.email_cliente) throw malaPeticion('El cliente no tiene correo registrado');
+    const id = validar(uuid, req.params.id);
+    const b = validar(z.object({ email: z.string().trim().max(160).optional(), mensaje: z.string().trim().max(500).optional() }), req.body ?? {});
+    const c = await cargarUna(db, req.ctx, id);
     if (c.estado === 'facturada') throw conflicto('Esa cotización ya está facturada');
-    throw new ErrorHttp(501, 'El envío automático por correo está pendiente de configurar en el servidor (falta el servicio de correo). Usa «Abrir en mi correo» o imprime el PDF y envíalo tú.', 'correo_pendiente');
+    const out = await enviarCotizacionPorCorreo({ q: db, ctx: req.ctx, tipo: 'italo', cot: c, id, destino: b.email || c.email_cliente, mensaje: b.mensaje });
+    if (out.ok && c.estado === 'borrador') await db.query(`update cot.cotizaciones set estado = 'enviada' where id = $1 and estado = 'borrador'`, [id]);
+    res.json(out);
   });
 
   // ── Cotización → factura (misma conversión que Italo Facturación) ────────

@@ -1,0 +1,68 @@
+{
+  "id": "/origen",
+  "name": "Origen · Grupo",
+  "short_name": "Origen",
+  "description": "Plataforma del Grupo: Origen",
+  "lang": "es-HN",
+  "dir": "ltr",
+  "start_url": "/origen",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "any",
+  "theme_color": "#5c9a3a",
+  "background_color": "#0e1320",
+  "categories": [
+    "business",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/icons/origen-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/origen-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/origen-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Facturar",
+      "short_name": "Facturar",
+      "url": "/origen/pos",
+      "icons": [
+        {
+          "src": "/icons/origen-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Cierre de caja",
+      "short_name": "Cierre",
+      "url": "/origen/cierres",
+      "icons": [
+        {
+          "src": "/icons/origen-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}

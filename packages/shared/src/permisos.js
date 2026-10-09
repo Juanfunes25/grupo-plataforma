@@ -17,6 +17,7 @@ export const PERMISOS = {
   'inv:ver':          'Ver inventario',
   'inv:mover':        'Registrar compras, mermas y conteos',
   'inv:recetas':      'Editar recetas',
+  'inv:aprobar':      'Aprobar las diferencias de un conteo de inventario y ajustar',
   // RRHH
   'rrhh:ver':         'Ver personal',
   'rrhh:editar':      'Editar personal, horarios y vacaciones',
@@ -25,6 +26,11 @@ export const PERMISOS = {
   // Finanzas
   'fin:ver':          'Ver finanzas',
   'fin:gastos':       'Registrar gastos',
+  'fin:presupuesto':  'Definir el presupuesto mensual',
+  // Compras
+  'compras:ver':      'Ver compras, proveedores y precios',
+  'compras:editar':   'Crear, enviar y anular órdenes de compra',
+  'compras:recibir':  'Recibir mercadería de una orden de compra',
   // Dirección
   'grupo:ver':        'Ver el consolidado del grupo',
   'gerente:ver':      'Ver el gerente digital (análisis de la empresa)',
@@ -48,6 +54,10 @@ export const PERMISOS = {
   'auditoria:ver':    'Ver la bitácora de auditoría',
   'clientes:ver':     'Ver clientes y proveedores',
   'clientes:editar':  'Crear y editar clientes y proveedores',
+  'reportes:programar': 'Programar reportes por correo (diarios o semanales)',
+  // Cobranza (EcoStone y DISERCO)
+  'cobranza:ver':     'Ver cuentas por cobrar, antigüedad y estados de cuenta',
+  'cobranza:gestionar': 'Registrar gestiones de cobro, promesas de pago y recordatorios',
 };
 
 const TODOS = Object.keys(PERMISOS);
@@ -58,8 +68,8 @@ export const ROLES = {
   gerente: {
     nombre: 'Manager',
     permisos: ['gerente:ver', 'pos:vender', 'pos:caja', 'pos:anular', 'pos:descuento', 'pos:reimprimir', 'pos:catalogo', 'pos:reportes',
-      'kds:ver', 'inv:ver', 'inv:mover', 'inv:recetas', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos', 'fab:ver', 'fab:editar', 'fab:registrar', 'dis:salidas', 'rep:pesar', 'rep:despachar', 'rep:producir', 'rep:ver', 'rep:costeo', 'rep:inventario', 'doc:ver',
-      'clientes:ver', 'clientes:editar', 'cotizaciones:ver'],
+      'kds:ver', 'inv:ver', 'inv:mover', 'inv:recetas', 'inv:aprobar', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos', 'compras:ver', 'compras:editar', 'compras:recibir', 'fab:ver', 'fab:editar', 'fab:registrar', 'dis:salidas', 'rep:pesar', 'rep:despachar', 'rep:producir', 'rep:ver', 'rep:costeo', 'rep:inventario', 'doc:ver',
+      'clientes:ver', 'clientes:editar', 'cotizaciones:ver', 'cobranza:ver', 'cobranza:gestionar'],
   },
   cajero: {
     nombre: 'Cajero',
@@ -83,11 +93,11 @@ export const ROLES = {
   },
   contador: {
     nombre: 'Contador',
-    permisos: ['gerente:ver', 'pos:reportes', 'fin:ver', 'fin:gastos', 'inv:ver', 'clientes:ver', 'auditoria:ver', 'grupo:ver', 'doc:ver'],
+    permisos: ['gerente:ver', 'pos:reportes', 'fin:ver', 'fin:gastos', 'fin:presupuesto', 'compras:ver', 'inv:ver', 'clientes:ver', 'auditoria:ver', 'grupo:ver', 'doc:ver', 'cobranza:ver'],
   },
   solo_lectura: {
     nombre: 'Solo lectura',
-    permisos: ['pos:reportes', 'inv:ver', 'rrhh:ver', 'fin:ver', 'clientes:ver'],
+    permisos: ['pos:reportes', 'inv:ver', 'rrhh:ver', 'fin:ver', 'compras:ver', 'clientes:ver'],
   },
 };
 

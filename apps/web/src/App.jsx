@@ -51,6 +51,7 @@ const Incidencias = lazy(() => import('./pantallas/Incidencias.jsx'));
 const Mantenimiento = lazy(() => import('./pantallas/Mantenimiento.jsx'));
 const Documentos = lazy(() => import('./pantallas/Documentos.jsx'));
 const Impresora = lazy(() => import('./pantallas/Impresora.jsx'));
+const MiApp = lazy(() => import('./pantallas/MiApp.jsx'));
 
 const PANTALLAS = { pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, terceros: Terceros, admin: Admin, gerente: Gerente,
   facturas: Facturas, cierres: Cierres, 'caja-chica': CajaChica, reportes: Reportes, dashboard: Dashboard, antifraude: Antifraude, bitacora: Bitacora,
@@ -83,6 +84,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Entrada />} />
       <Route path="/acceso/:codigo" element={<Acceso />} />
+      <Route path="/app" element={<Suspense fallback={<Cargando />}><MiApp /></Suspense>} />
       <Route path="/grupo" element={<Protegida><Layout esGrupo><Suspense fallback={<Cargando />}><Grupo /></Suspense></Layout></Protegida>} />
       <Route path="/:empresa" element={<Protegida><Layout><Hub /></Layout></Protegida>} />
       <Route path="/:empresa/:ruta" element={<Protegida><Layout><Modulo /></Layout></Protegida>} />

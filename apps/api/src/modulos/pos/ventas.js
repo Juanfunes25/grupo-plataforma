@@ -5,8 +5,9 @@ import { auditar } from '../../lib/auditoria.js';
 import { ErrorHttp, conflicto, malaPeticion, noEncontrado, prohibido, uuid, validar, fechaISO } from '../../lib/http.js';
 import { armarItems, totalesDe } from './calculo.js';
 import { formatearTicket, formatearTicketPrueba, envolverTicketHtml, anchoValido } from './ticket.js';
-import { generarPdfFactura } from './pdf.js';
-import { UMBRAL_RTN_OBLIGATORIO, identidadValida, fechaHN } from '@grupo/shared';
+import { generarPdfFactura, cargarLogo } from './pdf.js';
+import { enviarFacturaPorCorreo } from '../mensajeria/envios.js';
+import { UMBRAL_RTN_OBLIGATORIO, identidadValida, fechaHN, round2 } from '@grupo/shared';
 import { verificarSecreto } from '../../auth/passwords.js';
 import { loginSupabase } from '../../auth/supabase.js';
 import { crearLimitador } from '../../lib/limitador.js';
@@ -32,6 +33,15 @@ const cuerpoVenta = z.object({
   tercera_edad: z.object({ nombre: z.string().trim().min(3).max(120), identidad: z.string().trim().max(30).refine(identidadValida, 'Escribe el número de identidad o carné (mínimo 5 caracteres)') }).optional().nullable(),
   cobrar: z.object({ pagos: z.array(pago).min(1).max(10) }).optional(),
   confirmar_sin_stock: z.boolean().optional(),
+  // Venta hecha SIN conexión que llega al sincronizar. `id_cliente` lo genera la caja una sola vez: reenviar la misma venta no duplica nada.
+  id_cliente: uuid.optional(),
+  orden_id: uuid.optional(),    // la orden que la caja ya había guardado como abierta antes de perder la conexión: se cobra ESA, no se crea otra
+  offline: z.object({
+    vendida_at: z.string().max(40),
+    numero_provisional: z.string().trim().min(4).max(40),
+    cajero_nombre: z.string().trim().max(80).optional().nullable(),
+    total_cliente: z.coerce.number().min(0).max(999_999_999).optional(),
+  }).optional(),
 });
 
 export function rutasVentas({ db, config, ctxMgr }) {
@@ -175,26 +185,90 @@ export function rutasVentas({ db, config, ctxMgr }) {
   }
 
   // ── Crear (y opcionalmente cobrar en el mismo paso) ──────────────────────
+  // Venta SIN CONEXIÓN (b.offline): la caja ya cobró en efectivo y entregó un comprobante provisional. Aquí se le asigna el número fiscal
+  // REAL (pos.cobrar_venta, con el mismo bloqueo de siempre: el correlativo nunca se repite ni se salta) y se guarda el número
+  // provisional junto a la factura para poder cruzarlos. Es idempotente por `id_cliente`.
+  const porIdCliente = async (q, ctx, idCliente) => {
+    const f = (await q.query('select id from pos.ventas where empresa_id = $1 and id_cliente = $2', [ctx.empresa.id, idCliente])).rows[0];
+    return f ? cargar(q, ctx, f.id) : null;
+  };
+
   r.post('/', requierePermiso('pos:vender'), async (req, res) => {
     const b = validar(cuerpoVenta, req.body);
-    const out = await db.tx(async (q) => {
-      const suc = await resolverSucursal(q, req.ctx, b.sucursal_id);
-      const cliente = await clienteDe(q, b.cliente_id);
-      const items = await armarItems(q, req.ctx, b.items);
-      const tot = totalesDe(items, cliente, 0);
-      const te = await datosTerceraEdad(q, req.ctx, tot, b.tercera_edad);
-      const ticket = (await q.query('select pos.siguiente_ticket($1) as n', [suc.id])).rows[0].n;
-      const v = (await q.query(
-        `insert into pos.ventas (empresa_id, sucursal_id, cliente_id, cajero_id, canal, tipo_orden, nombre_orden, notas, ticket_dia,
-                                 subtotal_exento, subtotal_exonerado, subtotal_gravado_15, subtotal_gravado_18, descuento, descuento_porcentaje, isv_total, total)
-         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning *`,
-        [req.ctx.empresa.id, suc.id, cliente.id, req.ctx.usuario.id, b.canal, b.tipo_orden, b.nombre_orden ?? null, b.notas ?? null, ticket, ...camposTotales(tot)])).rows[0];
-      await guardarLineas(q, v.id, tot);
-      if (te.nombre) await q.query('update pos.ventas set tercera_edad_nombre = $2, tercera_edad_identidad = $3 where id = $1', [v.id, te.nombre, te.identidad]);
-      const extras = { confirmarSinStock: b.confirmar_sin_stock };
-      if (b.cobrar) await cobrar(q, req.ctx, v.id, b.cobrar.pagos, extras);
-      return { ...(await detalle(q, req.ctx, await cargar(q, req.ctx, v.id))), ...(b.cobrar ? { aviso_rtn: extras.aviso_rtn ?? null, faltantes_inventario: extras.faltantes_inventario ?? [] } : {}) };
-    });
+    if (b.offline && (!b.id_cliente || !b.cobrar)) throw malaPeticion('Una venta sin conexión llega ya cobrada y con su id_cliente');
+    if (b.id_cliente) {
+      const previa = await porIdCliente(db, req.ctx, b.id_cliente);
+      if (previa) return res.status(200).json({ ...(await detalle(db, req.ctx, previa)), duplicado: true });
+    }
+    let out;
+    try {
+      out = await db.tx(async (q) => {
+        const suc = await resolverSucursal(q, req.ctx, b.sucursal_id);
+        const cliente = await clienteDe(q, b.cliente_id);
+        const items = await armarItems(q, req.ctx, b.items);
+        const tot = totalesDe(items, cliente, 0);
+        const te = await datosTerceraEdad(q, req.ctx, tot, b.tercera_edad);
+        let info = null;
+        if (b.offline) {
+          // Sin conexión solo se acepta EFECTIVO: tarjeta/transferencia necesitan validarse en el momento.
+          const tipos = (await q.query('select id, tipo from pos.formas_pago where empresa_id = $1 and id = any($2::uuid[])', [req.ctx.empresa.id, b.cobrar.pagos.map((p) => p.forma_pago_id)])).rows;
+          if (tipos.length !== new Set(b.cobrar.pagos.map((p) => p.forma_pago_id)).size || tipos.some((x) => x.tipo !== 'efectivo')) {
+            throw malaPeticion('Una venta hecha sin conexión solo puede ser en efectivo');
+          }
+          const recibido = round2(b.cobrar.pagos.reduce((s, p) => s + p.monto, 0));
+          if (recibido + 0.005 < tot.total) {
+            throw new ErrorHttp(409, `El precio cambió mientras la caja estaba sin conexión: el total ahora es L ${tot.total.toFixed(2)} y el cliente pagó L ${recibido.toFixed(2)}. Un encargado debe resolverla.`, 'precio_cambio');
+          }
+          const ahora = Date.now();
+          let vendida = Date.parse(b.offline.vendida_at);
+          if (!Number.isFinite(vendida) || vendida > ahora) vendida = ahora;   // el reloj del equipo nunca adelanta una venta
+          info = {
+            vendida_at: new Date(vendida).toISOString(),
+            json: { cajero_nombre: b.offline.cajero_nombre ?? null, retraso_min: Math.round((ahora - vendida) / 60000), total_cliente: b.offline.total_cliente ?? null,
+              total_servidor: tot.total, diferencia: b.offline.total_cliente != null ? round2(tot.total - b.offline.total_cliente) : null, sincronizada_por: req.ctx.usuario.nombre },
+          };
+        }
+        let v;
+        if (b.orden_id) {
+          const previa = await cargar(q, req.ctx, b.orden_id, { bloquear: true });
+          if (previa.estado !== 'abierta' || previa.sucursal_id !== suc.id) throw conflicto('La orden que la caja había guardado ya no está abierta (otra caja la cobró o la descartó)');
+          v = (await q.query(
+            `update pos.ventas set cliente_id = $2, canal = $3, tipo_orden = $4, nombre_orden = $5, notas = $6, subtotal_exento = $7, subtotal_exonerado = $8,
+                    subtotal_gravado_15 = $9, subtotal_gravado_18 = $10, descuento = $11, descuento_porcentaje = $12, isv_total = $13, total = $14, updated_at = now()
+              where id = $1 returning *`,
+            [previa.id, cliente.id, b.canal, b.tipo_orden, b.nombre_orden ?? null, b.notas ?? null, ...camposTotales(tot)])).rows[0];
+        } else {
+          const ticket = (await q.query('select pos.siguiente_ticket($1) as n', [suc.id])).rows[0].n;
+          v = (await q.query(
+            `insert into pos.ventas (empresa_id, sucursal_id, cliente_id, cajero_id, canal, tipo_orden, nombre_orden, notas, ticket_dia,
+                                     subtotal_exento, subtotal_exonerado, subtotal_gravado_15, subtotal_gravado_18, descuento, descuento_porcentaje, isv_total, total)
+             values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) returning *`,
+            [req.ctx.empresa.id, suc.id, cliente.id, req.ctx.usuario.id, b.canal, b.tipo_orden, b.nombre_orden ?? null, b.notas ?? null, ticket, ...camposTotales(tot)])).rows[0];
+        }
+        if (b.id_cliente) {
+          await q.query('update pos.ventas set id_cliente = $2, vendida_at = $3, numero_provisional = $4, offline_info = $5::jsonb where id = $1',
+            [v.id, b.id_cliente, info?.vendida_at ?? null, b.offline?.numero_provisional ?? null, info ? JSON.stringify(info.json) : null]);
+        }
+        await guardarLineas(q, v.id, tot);
+        if (te.nombre) await q.query('update pos.ventas set tercera_edad_nombre = $2, tercera_edad_identidad = $3 where id = $1', [v.id, te.nombre, te.identidad]);
+        // Lo vendido sin conexión ya salió de la tienda: si la piedra/insumo no alcanza se factura igual y queda la alerta de «sin existencia».
+        const extras = { confirmarSinStock: b.confirmar_sin_stock || Boolean(b.offline) };
+        if (b.cobrar) await cobrar(q, req.ctx, v.id, b.cobrar.pagos, extras);
+        if (info) {
+          const fin = await cargar(q, req.ctx, v.id);
+          await auditar(q, req.ctx, 'venta_offline_sincronizada', 'venta', v.id,
+            { factura: fin.numero_factura, provisional: b.offline.numero_provisional, ...info.json }, { sucursalId: suc.id });
+        }
+        return { ...(await detalle(q, req.ctx, await cargar(q, req.ctx, v.id))), ...(b.cobrar ? { aviso_rtn: extras.aviso_rtn ?? null, faltantes_inventario: extras.faltantes_inventario ?? [] } : {}) };
+      });
+    } catch (e) {
+      // Dos envíos simultáneos de la misma venta: gana el primero y el segundo recibe esa misma factura.
+      if (b.id_cliente && (e.code === '23505' || /ventas_id_cliente_uk/.test(String(e.message)))) {
+        const previa = await porIdCliente(db, req.ctx, b.id_cliente);
+        if (previa) return res.status(200).json({ ...(await detalle(db, req.ctx, previa)), duplicado: true });
+      }
+      throw e;
+    }
     if (b.cobrar) await vigilarVenta(db, req.ctx, 'cobrada', out.id);   // antifraude: doble factura, tercera edad
     res.status(201).json(out);
   });
@@ -202,7 +276,7 @@ export function rutasVentas({ db, config, ctxMgr }) {
   // ── Editar una orden abierta ─────────────────────────────────────────────
   r.put('/:id', requierePermiso('pos:vender'), async (req, res) => {
     const id = validar(uuid, req.params.id);
-    const b = validar(cuerpoVenta.omit({ cobrar: true }).partial({ items: true }), req.body);
+    const b = validar(cuerpoVenta.omit({ cobrar: true, id_cliente: true, offline: true, orden_id: true }).partial({ items: true }), req.body);
     const out = await db.tx(async (q) => {
       const v = await cargar(q, req.ctx, id, { bloquear: true });
       if (v.estado !== 'abierta') throw conflicto('Solo se pueden editar órdenes abiertas');
@@ -230,12 +304,19 @@ export function rutasVentas({ db, config, ctxMgr }) {
   });
 
   // ── Cobrar una orden abierta ─────────────────────────────────────────────
+  // `id_cliente` (opcional) marca el cobro con el id que la caja generó: si la respuesta se pierde y la caja reintenta (por la vía
+  // normal o como venta sin conexión), el servidor devuelve ESTA misma factura en lugar de duplicarla.
   r.post('/:id/cobrar', requierePermiso('pos:vender'), async (req, res) => {
     const id = validar(uuid, req.params.id);
-    const { pagos, confirmar_sin_stock } = validar(z.object({ pagos: z.array(pago).min(1, 'Falta la forma de pago'), confirmar_sin_stock: z.boolean().optional() }), req.body);
+    const { pagos, confirmar_sin_stock, id_cliente } = validar(z.object({ pagos: z.array(pago).min(1, 'Falta la forma de pago'), confirmar_sin_stock: z.boolean().optional(), id_cliente: uuid.optional() }), req.body);
+    if (id_cliente) {
+      const previa = await porIdCliente(db, req.ctx, id_cliente);
+      if (previa) return res.status(200).json({ ...(await detalle(db, req.ctx, previa)), duplicado: true });
+    }
     const out = await db.tx(async (q) => {
       const extras = { confirmarSinStock: confirmar_sin_stock };
       await cobrar(q, req.ctx, id, pagos, extras);
+      if (id_cliente) await q.query('update pos.ventas set id_cliente = $2 where id = $1', [id, id_cliente]);
       return { ...(await detalle(q, req.ctx, await cargar(q, req.ctx, id))), aviso_rtn: extras.aviso_rtn ?? null, faltantes_inventario: extras.faltantes_inventario ?? [] };
     });
     await vigilarVenta(db, req.ctx, 'cobrada', id);   // antifraude: doble factura, tercera edad
@@ -321,7 +402,7 @@ export function rutasVentas({ db, config, ctxMgr }) {
     const { rows } = await db.query(
       `select v.id, v.ticket_dia, v.numero_orden, v.numero_factura, v.estado, v.estado_prep, v.nombre_orden, v.canal, v.tipo_orden, v.total,
               v.created_at, v.fecha_emision, v.es_borrador_fiscal, v.sucursal_id, v.cajero_id, v.cliente_id, v.isv_total, v.descuento, v.cambio,
-              v.motivo_anulacion, v.impresiones, v.reimpresiones, s.nombre as sucursal, u.nombre as cajero,
+              v.motivo_anulacion, v.impresiones, v.reimpresiones, v.numero_provisional, v.vendida_at, s.nombre as sucursal, u.nombre as cajero,
               coalesce(v.cliente_nombre, t.nombre) as cliente, coalesce(v.cliente_rtn, t.rtn) as cliente_rtn, t.es_consumidor_final,
               (select count(*)::int from pos.detalle_venta d where d.venta_id = v.id) as lineas,
               (select coalesce(json_agg(json_build_object('forma', f.nombre, 'tipo', f.tipo, 'monto', p.monto) order by f.orden), '[]'::json)
@@ -367,7 +448,7 @@ export function rutasVentas({ db, config, ctxMgr }) {
   // Nunca bloquean la venta: el cliente los manda "y olvida".
   r.post('/evento', requierePermiso('pos:vender', 'pos:reportes'), async (req, res) => {
     const b = validar(z.object({ accion: z.string().regex(/^[a-z_]+\.[a-z_]+$/).max(40), detalle: z.record(z.any()).default({}), sucursal_id: uuid.optional().nullable() }), req.body);
-    const permitidos = ['orden.quitar_producto', 'orden.descuento', 'factura.buscar', 'factura.ver', 'pantalla.abrir'];
+    const permitidos = ['orden.quitar_producto', 'orden.descuento', 'factura.buscar', 'factura.ver', 'pantalla.abrir', 'offline.descartada', 'offline.cola_revisar'];
     if (!permitidos.includes(b.accion)) throw malaPeticion('Evento desconocido');
     const info = JSON.stringify(b.detalle).length > 2000 ? { truncado: true } : b.detalle;
     await auditar(db, req.ctx, b.accion, 'ui', null, info, { sucursalId: b.sucursal_id ?? null });
@@ -463,10 +544,21 @@ export function rutasVentas({ db, config, ctxMgr }) {
     if (v.estado === 'abierta') throw conflicto('La orden todavía no tiene factura');
     const d = await detalle(db, req.ctx, v);
     await auditar(db, req.ctx, 'factura_pdf', 'venta', id, { factura: d.numero_factura }, { sucursalId: d.sucursal_id });
-    const pdf = generarPdfFactura({ empresa: req.ctx.empresa, sucursal: d.sucursal, venta: d, lineas: d.lineas, pagos: d.pagos, punto: d.punto, cliente: d.cliente, cajero: d.cajero });
+    const pdf = generarPdfFactura({ empresa: req.ctx.empresa, sucursal: d.sucursal, venta: d, lineas: d.lineas, pagos: d.pagos, punto: d.punto, cliente: d.cliente, cajero: d.cajero },
+      { logo: cargarLogo(req.ctx.empresa.codigo, config?.webDist) });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="factura-${String(d.numero_factura ?? d.ticket_dia).replace(/[^\w.-]/g, '_')}.pdf"`);
     res.send(pdf);
+  });
+
+  // ── Enviar la factura (PDF adjunto) por correo al cliente: el correo es editable; queda en la bitácora ──
+  r.post('/:id/correo', requierePermiso('pos:vender', 'pos:reportes'), async (req, res) => {
+    const id = validar(uuid, req.params.id);
+    const b = validar(z.object({ email: z.string().trim().max(160).optional(), mensaje: z.string().trim().max(500).optional() }), req.body ?? {});
+    const v = await cargar(db, req.ctx, id);
+    if (v.estado === 'abierta') throw conflicto('La orden todavía no tiene factura');
+    const d = await detalle(db, req.ctx, v);
+    res.json(await enviarFacturaPorCorreo({ q: db, ctx: req.ctx, d, destino: b.email || d.cliente?.correo, mensaje: b.mensaje }));
   });
 
   return r;

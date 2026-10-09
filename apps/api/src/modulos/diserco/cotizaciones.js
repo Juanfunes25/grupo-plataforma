@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { sumarDias, UMBRAL_RTN_OBLIGATORIO, lempiras } from '@grupo/shared';
 import { requierePermiso } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
+import { enviarCotizacionPorCorreo } from '../mensajeria/envios.js';
 import { ErrorHttp, conflicto, malaPeticion, noEncontrado, prohibido, uuid, validar } from '../../lib/http.js';
 import { DISERCO, codigoCotizacion } from './config.js';
 import { calcularCotizacion, round2 } from './calculo.js';
@@ -266,14 +267,15 @@ export function rutasCotizacionesDis(r, { db }) {
     res.json(out);
   });
 
-  // ── Correo ─────────────────────────────────────────────────────────────────
-  // La plataforma aún no tiene servicio de correo (la app original usaba nodemailer + Gmail). El endpoint valida lo mismo
-  // y responde «pendiente de configurar»; la pantalla ofrece «Abrir en mi correo» y el PDF para adjuntar.
+  // ── Correo (Gmail, con el PDF adjunto) ──────────────────────────────────────
   r.post('/cotizaciones/:id/correo', requierePermiso('cotizaciones:ver'), async (req, res) => {
-    const cot = o404(await cargar(db, req.ctx, validar(uuid, req.params.id)));
+    const id = validar(uuid, req.params.id);
+    const cot = o404(await cargar(db, req.ctx, id));
     const destino = String(req.body?.email ?? cot.email ?? cot.cliente_email ?? '').trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(destino)) throw malaPeticion('Escribe un correo válido para enviar la cotización');
-    throw new ErrorHttp(501, 'El envío automático por correo está pendiente de configurar en el servidor (falta el servicio de correo). Usa «Abrir en mi correo» o descarga el PDF y envíalo tú.', 'correo_pendiente');
+    const mensaje = String(req.body?.mensaje ?? '').trim().slice(0, 500) || undefined;
+    const out = await enviarCotizacionPorCorreo({ q: db, ctx: req.ctx, tipo: 'diserco', cot, id, destino, mensaje });
+    if (out.ok && cot.estado === 'borrador') await db.query(`update dis.cotizaciones set estado = 'enviada', updated_at = now() where id = $1 and estado = 'borrador'`, [id]);
+    res.json(out);
   });
 
   // ── Estados ────────────────────────────────────────────────────────────────

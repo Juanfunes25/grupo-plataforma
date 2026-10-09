@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSesion } from '../sesion.jsx';
 import { get } from '../api.js';
 import { ErrorCaja, Esqueleto, useDatos } from '../ui/kit.jsx';
@@ -51,6 +51,7 @@ export default function Entrada() {
         )}
       </div>
       {s.autenticado && <div className="centro"><button className="btn fantasma chico" onClick={s.salir}><Icono n="salir" tam={16} /> Cerrar sesión</button></div>}
+      <div className="centro"><Link to="/app" className="btn fantasma chico"><Icono n="descargar" tam={16} /> Instalar la app y apariencia</Link></div>
       <div className="pie-version">v{__VERSION__}</div>
     </main>
   );

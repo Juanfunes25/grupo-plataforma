@@ -33,11 +33,8 @@ export function aplicarAcento(hex) {
   s.setProperty('--acento-btn', a.btn); s.setProperty('--acento-btn-texto', a.btnTexto);
 }
 
-// ── Tema claro/oscuro (oscuro por defecto) ──
-const CLAVE_TEMA = 'grupo.tema';
-export const leerTema = () => { try { return localStorage.getItem(CLAVE_TEMA) === 'claro' ? 'claro' : 'oscuro'; } catch { return 'oscuro'; } };
-export function aplicarTema(t) {
-  document.documentElement.dataset.tema = t === 'claro' ? 'claro' : 'oscuro';
-  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t === 'claro' ? '#f3f1ed' : '#0e1320';
-}
-export function guardarTema(t) { try { localStorage.setItem(CLAVE_TEMA, t); } catch { /* sin almacenamiento */ } aplicarTema(t); }
+// ── Tema (claro / oscuro / automático) ── la lógica vive en preferencias.js; estas funciones se conservan por compatibilidad.
+import { aplicarPreferencias, guardarPref, leerPref } from './preferencias.js';
+export const leerTema = () => leerPref('tema');
+export const aplicarTema = () => aplicarPreferencias();
+export const guardarTema = (t) => guardarPref('tema', t);

@@ -4,3 +4,8 @@ export * from './fiscal.js';
 export * from './formato.js';
 export * from './documentos.js';
 export * from './gelato.js';
+export * from './crm.js';
+export * from './navapp.js';
+export * from './ticket.js';
+export * from './colaOffline.js';
+export * from './idioma.js';
