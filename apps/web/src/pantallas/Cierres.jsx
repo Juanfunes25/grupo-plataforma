@@ -177,19 +177,9 @@ function NuevoCierre({ sucursal, reimprimir }) {
 
             <section className="tarjeta cierre-bloque">
               <header><h3>Efectivo</h3>{cuadre && efectivoContado !== '' && <ChipDif valor={cuadre.diferencia_efectivo} />}</header>
-              {!ciego && resumen && <FilaSistema etiqueta="Ventas en efectivo (sin cambio)" valor={resumen.efectivo} />}
-              <div className="cierre-dos">
-                <CampoMonto etiqueta="Fondo de caja" valor={form.fondo_caja} onChange={set('fondo_caja')} />
-                <CampoMonto etiqueta="Salidas de caja" valor={form.salidas} onChange={set('salidas')} ayuda={resumen?.salidas_sugeridas > 0 ? `Caja chica: ${L(resumen.salidas_sugeridas)}` : undefined} />
-              </div>
-              <CampoMonto etiqueta="Ingresos de caja" valor={form.ingresos} onChange={set('ingresos')} ayuda={resumen?.ingresos_sugeridos > 0 ? `Caja chica: ${L(resumen.ingresos_sugeridos)}` : 'Entradas de efectivo ajenas a las ventas'} />
-              {cuadre && <FilaSistema etiqueta="Debe haber en gaveta" valor={cuadre.efectivo_esperado} fuerte />}
-              <CampoMonto etiqueta="Efectivo contado a mano" valor={efectivoContado} onChange={set('efectivo_contado')} disabled={contando} obligatorio
+              <CampoMonto etiqueta="Fondo de caja" valor={form.fondo_caja} onChange={set('fondo_caja')} />
+              <CampoMonto etiqueta="Efectivo total en caja" valor={efectivoContado} onChange={set('efectivo_contado')} obligatorio
                 ayuda="Todo lo que hay en la gaveta, incluido el fondo" />
-              <label className="fila" style={{ flexDirection: 'row', alignItems: 'center', color: 'var(--texto)' }}>
-                <input type="checkbox" checked={contando} onChange={(e) => setContando(e.target.checked)} />Contar billetes y monedas
-              </label>
-              {contando && <Conteo denominaciones={config.denominaciones} conteo={conteo} onCambio={setConteo} />}
             </section>
 
             {!ciego && (
