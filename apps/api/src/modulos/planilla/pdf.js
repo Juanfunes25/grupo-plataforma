@@ -32,34 +32,20 @@ function dibujarBoleta(pg, { empresa, planilla, linea, aviso }, top) {
   pg.texto(empresa, x0, y, { tam: 13, negrita: true });
   pg.texto('BOLETA DE PAGO', x0, y, { tam: 11, negrita: true, derecha: true, w });
   y -= 13; pg.texto(planilla.etiqueta, x0, y, { tam: 9 });
-  pg.texto(`Fecha de pago: ${planilla.fecha_pago ?? '-'}`, x0, y, { tam: 9, derecha: true, w });
+  pg.texto(`Periodo: ${planilla.desde} al ${planilla.hasta} · Pago: ${planilla.fecha_pago ?? '-'}`, x0, y, { tam: 9, derecha: true, w });
   y -= 6; pg.linea(x0, y, x0 + w, y, 0.8);
   y -= 13;
   pg.texto('Empleado', x0, y, { tam: 7, gris: 0.4 }); pg.texto('Identidad', x0 + 230, y, { tam: 7, gris: 0.4 }); pg.texto('Puesto', x0 + 340, y, { tam: 7, gris: 0.4 });
   y -= 11;
   pg.texto(recortar(linea.nombre, 10, 220, true), x0, y, { tam: 10, negrita: true }); pg.texto(linea.identidad ?? '-', x0 + 230, y, { tam: 9 });
   pg.texto(recortar(`${linea.puesto ?? '-'}${linea.sucursal ? ` · ${linea.sucursal}` : ''}`, 9, w - 340), x0 + 340, y, { tam: 9 });
+  if (linea.observaciones) { y -= 11; pg.texto(recortar(`Obs.: ${linea.observaciones}`, 7.5, w), x0, y, { tam: 7.5, gris: 0.35 }); }
   y -= 14;
   const esDecimo = planilla.tipo === 'aguinaldo' || planilla.tipo === 'catorceavo';
-  const ingresos = [];
-  if (esDecimo) {
-    ingresos.push([`${planilla.etiqueta}`, linea.devengado]);
-    ingresos.push([`Proporcional: ${linea.dias_pagados} dias trabajados`, null]);
-  } else {
-    ingresos.push([`Sueldo (${linea.dias_pagados} dias) · base ${L(linea.salario_mensual)} al mes`, linea.devengado]);
-    const hx = [['he_diurna_h', 'diurnas'], ['he_nocturna_h', 'nocturnas'], ['he_feriada_h', 'feriadas']].filter(([k]) => Number(linea[k]) > 0).map(([k, n]) => `${linea[k]} h ${n}`);
-    if (Number(linea.he_monto) > 0) ingresos.push([`Horas extra (${hx.join(', ')})`, linea.he_monto]);
-    if (Number(linea.bonos) > 0) ingresos.push(['Bonos', linea.bonos]);
-    if (Number(linea.vacaciones_extra) > 0) ingresos.push([`Pago adicional por vacaciones (${linea.vacaciones_dias} dias)`, linea.vacaciones_extra]);
-    else if (Number(linea.vacaciones_dias) > 0) ingresos.push([`Vacaciones pagadas incluidas en el sueldo: ${linea.vacaciones_dias} dias`, null]);
-  }
-  const deducciones = [];
-  if (Number(linea.desc_ausencias) > 0) deducciones.push(['Ausencias / permisos sin goce', linea.desc_ausencias]);
-  if (Number(linea.ihss) > 0) deducciones.push(['IHSS', linea.ihss]);
-  if (Number(linea.rap) > 0) deducciones.push(['RAP', linea.rap]);
-  if (Number(linea.infop) > 0) deducciones.push(['INFOP', linea.infop]);
-  if (Number(linea.isr) > 0) deducciones.push(['ISR retenido', linea.isr]);
-  if (Number(linea.otros_desc) > 0) deducciones.push(['Otros descuentos', linea.otros_desc]);
+  const ingresos = [[esDecimo ? `${planilla.etiqueta}: ${L(linea.dias)} dias x ${L(linea.salario_diario)}` : `Sueldo: ${L(linea.dias)} dias x ${L(linea.salario_diario)}`, linea.total_quincenal]];
+  if (Number(linea.total_hx) > 0) ingresos.push([`Horas extra: ${linea.horas_extra} h x ${L(linea.por_hora)}`, linea.total_hx]);
+  if (Number(linea.otros_ingresos) > 0) ingresos.push(['Bonos / otros ingresos', linea.otros_ingresos]);
+  const deducciones = (linea.deducciones ?? []).filter((d) => Number(d.monto) > 0).map((d) => [d.concepto, d.monto]);
   if (!deducciones.length) deducciones.push(['Sin deducciones', null]);
 
   const yTabla = y;
@@ -74,11 +60,11 @@ function dibujarBoleta(pg, { empresa, planilla, linea, aviso }, top) {
   }
   pg.linea(x0, y + 6, x0 + mitad, y + 6, 0.4); pg.linea(x0 + mitad + 16, y + 6, x0 + w, y + 6, 0.4);
   y -= 4;
-  pg.texto('Total ingresos', x0 + 4, y, { tam: 9, negrita: true }); pg.texto(L(linea.total_ingresos), x0, y, { tam: 9, negrita: true, derecha: true, w: mitad - 4 });
+  pg.texto('Total ingresos', x0 + 4, y, { tam: 9, negrita: true }); pg.texto(L(Number(linea.total_quincenal) + Number(linea.total_hx) + Number(linea.otros_ingresos)), x0, y, { tam: 9, negrita: true, derecha: true, w: mitad - 4 });
   pg.texto('Total deducciones', x0 + mitad + 20, y, { tam: 9, negrita: true }); pg.texto(L(linea.total_deducciones), x0 + mitad + 16, y, { tam: 9, negrita: true, derecha: true, w: mitad - 4 });
   y -= 8; void yTabla;
   pg.rect(x0, y - 18, w, 20, 0.88);
-  pg.texto('NETO A PAGAR (Lempiras)', x0 + 6, y - 12, { tam: 10, negrita: true }); pg.texto(`L ${L(linea.neto)}`, x0, y - 12, { tam: 12, negrita: true, derecha: true, w: w - 6 });
+  pg.texto('NETO A PAGAR (Lempiras)', x0 + 6, y - 12, { tam: 10, negrita: true }); pg.texto(`L ${L(linea.total)}`, x0, y - 12, { tam: 12, negrita: true, derecha: true, w: w - 6 });
   y -= 44;
   pg.linea(x0 + 10, y, x0 + 210, y, 0.5); pg.linea(x0 + w - 210, y, x0 + w - 10, y, 0.5);
   y -= 10; pg.texto('Firma del empleado', x0 + 10, y, { tam: 7.5, gris: 0.35 }); pg.texto('Firma de la empresa', x0 + w - 210, y, { tam: 7.5, gris: 0.35 });

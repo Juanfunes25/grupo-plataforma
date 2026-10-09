@@ -155,6 +155,8 @@ test('cobro normal con id_cliente: si la respuesta se perdió y la caja reintent
   assert.equal(reintento.body.duplicado, true);
   assert.equal(reintento.body.id, orden.id);
   assert.equal(reintento.body.numero_factura, cobro.body.numero_factura);
+  assert.equal(reintento.body.numero_provisional, 'OFF-TEST-0020', 'el comprobante provisional que se entregó queda anotado en la factura');
+  assert.equal((await t.db.query('select count(*)::int as n from pos.ventas where id_cliente = $1', [idCliente])).rows[0].n, 1);
 });
 
 test('venta sin conexión sobre una orden que ya estaba guardada como abierta: se cobra ESA orden (no queda una abierta huérfana)', async () => {

@@ -549,8 +549,10 @@ export default function Pos() {
   useEffect(() => {
     if (!cat) return undefined;
     const f = (e) => {
-      if (modal || recibo || avisoStock) return;
       const enCampo = esCampo(document.activeElement);
+      // Con el recibo abierto, Enter = «Nueva venta» aunque el foco se haya ido (por ejemplo, tras imprimir).
+      if (recibo && !modal && e.key === 'Enter' && !e.ctrlKey && !enCampo && document.activeElement?.tagName !== 'BUTTON') { e.preventDefault(); setRecibo(null); buscadorRef.current?.focus(); return; }
+      if (modal || recibo || avisoStock) return;
       if (e.ctrlKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'z') {
         if (enCampo && document.activeElement === buscadorRef.current && busca) return;   // dentro del texto, Ctrl+Z deshace el texto
         e.preventDefault(); deshacer(); return;
@@ -637,7 +639,7 @@ export default function Pos() {
           {turno && <button className="btn chico peligro" onClick={intentarCerrarCaja}>Cerrar caja</button>}
         </div>
 
-        {sinRed && <div className="aviso-caja mal" role="status">Sin conexión: puedes seguir vendiendo en efectivo. Se entrega un comprobante provisional y la factura se emite sola cuando vuelva el internet. No se puede cobrar con tarjeta ni vender piedra.</div>}
+        {sinRed && <div className="aviso-caja mal" role="status">Sin conexión: se vende solo en efectivo, con comprobante provisional; la factura sale sola al volver el internet.</div>}
         {modoEdicion && <div className="aviso-caja" role="status">{modoEdicion === 'favorito' ? 'Toca un producto para marcarlo (o quitarlo) de Favoritos. Esc para salir.' : 'Toca un producto para marcarlo agotado (o disponible de nuevo). Esc para salir.'}</div>}
 
         <input ref={buscadorRef} className="pos-buscar" placeholder="Buscar o escanear…  (Enter agrega · 3*jugo agrega 3 · / para volver aquí)" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar producto"

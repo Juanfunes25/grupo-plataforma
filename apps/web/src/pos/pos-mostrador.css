@@ -62,3 +62,21 @@ kbd { display: inline-block; font: 700 .72rem/1 'Inter', sans-serif; padding: 3p
   .pos-btn-recibido { min-height: 64px; }
 }
 .pos-orden-vacia { padding: 18px 12px; gap: 4px; }
+
+/* Teléfono: efectivo y teclado compactos para que quepan con el botón Cobrar sin desplazarse */
+@media (max-width: 720px) {
+  .pos-efectivo .kpi { padding: 8px 12px; }
+  .pos-efectivo .kpi .val { font-size: 1.8rem; }
+  .pos-efectivo .pos-cambio .val, .pos-efectivo .pos-cant-grande { font-size: 2.3rem !important; }
+  .pos-efectivo .kpi.acento .val { font-size: 2rem; }
+  .pos-teclado { gap: 6px; }
+  .pos-teclado button { min-height: 54px; font-size: 1.5rem; }
+  .pos-billetes .btn { min-height: 46px; }
+}
+
+/* Tabletas y pantallas táctiles: la tabla de la orden usa el diseño angosto (el botón «Opciones» baja a su propia fila) para que el nombre del producto no se corte */
+@media (pointer: coarse) {
+  .pos-wz-th, .pos-wz-tr { grid-template-columns: minmax(0, 1fr) 138px 66px 74px; }
+  .pos-wz-th span:last-child { display: none; }
+  .pos-wz-opc { grid-column: 1 / -1; }
+}

@@ -1,0 +1,24 @@
+/* Inventario unificado: estilos propios del módulo (no toca el shell global). */
+.iu-filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+.iu-filtros select, .iu-filtros input { min-height: 44px; }
+.iu-estado { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; background: var(--superficie-2, #eee); }
+.iu-estado.bajo { background: #fff1d6; color: #7a4b00; }
+.iu-estado.agotado, .iu-estado.negativo { background: #ffe0dd; color: #8a1c10; }
+.iu-estado.ok { background: #e0f4e4; color: #1d6a2b; }
+.iu-estado.sin_cargar { background: #e8e8f2; color: #444; }
+@media (prefers-color-scheme: dark) {
+  .iu-estado.bajo { background: #4a3510; color: #ffd48a; } .iu-estado.agotado, .iu-estado.negativo { background: #4d1d18; color: #ffb3aa; }
+  .iu-estado.ok { background: #16381d; color: #9be0a8; } .iu-estado.sin_cargar { background: #2a2a3a; color: #ccc; }
+}
+.iu-tarjetas { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.iu-cap { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 12px; border: 1px solid var(--borde, #ddd); border-radius: 12px; background: var(--superficie, #fff); }
+.iu-cap.hecho { border-color: #4caf50; }
+.iu-cap b { display: block; }
+.iu-cap small { color: var(--texto-2, #666); }
+.iu-cantidad { display: flex; align-items: center; gap: 6px; }
+.iu-cantidad button { width: 48px; height: 48px; font-size: 1.5rem; border-radius: 12px; }
+.iu-cantidad input { width: 88px; height: 48px; text-align: center; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.iu-dif.falta { color: #b3261e; font-weight: 700; } .iu-dif.sobra { color: #1d6a2b; font-weight: 700; }
+.iu-barra { position: sticky; bottom: 0; display: flex; gap: 8px; justify-content: space-between; align-items: center; padding: 10px 0; background: var(--fondo, #fff); }
+.iu-grupo-emp { border-left: 6px solid var(--c, #888); }
+@media (max-width: 640px) { .iu-tarjetas { grid-template-columns: 1fr; } }

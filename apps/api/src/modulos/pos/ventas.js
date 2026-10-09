@@ -193,12 +193,24 @@ export function rutasVentas({ db, config, ctxMgr }) {
     return f ? cargar(q, ctx, f.id) : null;
   };
 
+  // La misma venta llegó otra vez: se devuelve la que ya existe. Si la caja había entregado un comprobante provisional y el servidor aún no
+  // lo conocía (el cobro normal sí llegó pero la respuesta se perdió), se anota ahora para poder cruzar el comprobante con la factura.
+  const respuestaDuplicada = async (ctx, previa, b) => {
+    if (b?.offline?.numero_provisional && !previa.numero_provisional) {
+      await db.query(`update pos.ventas set numero_provisional = $2, vendida_at = coalesce(vendida_at, $3::timestamptz), offline_info = coalesce(offline_info, $4::jsonb) where id = $1`,
+        [previa.id, b.offline.numero_provisional, Number.isFinite(Date.parse(b.offline.vendida_at)) && Date.parse(b.offline.vendida_at) <= Date.now() ? new Date(Date.parse(b.offline.vendida_at)).toISOString() : null,
+          JSON.stringify({ cajero_nombre: b.offline.cajero_nombre ?? null, respuesta_perdida: true })]);
+      previa = await cargar(db, ctx, previa.id);
+    }
+    return { ...(await detalle(db, ctx, previa)), duplicado: true };
+  };
+
   r.post('/', requierePermiso('pos:vender'), async (req, res) => {
     const b = validar(cuerpoVenta, req.body);
     if (b.offline && (!b.id_cliente || !b.cobrar)) throw malaPeticion('Una venta sin conexión llega ya cobrada y con su id_cliente');
     if (b.id_cliente) {
       const previa = await porIdCliente(db, req.ctx, b.id_cliente);
-      if (previa) return res.status(200).json({ ...(await detalle(db, req.ctx, previa)), duplicado: true });
+      if (previa) return res.status(200).json(await respuestaDuplicada(req.ctx, previa, b));
     }
     let out;
     try {
@@ -265,7 +277,7 @@ export function rutasVentas({ db, config, ctxMgr }) {
       // Dos envíos simultáneos de la misma venta: gana el primero y el segundo recibe esa misma factura.
       if (b.id_cliente && (e.code === '23505' || /ventas_id_cliente_uk/.test(String(e.message)))) {
         const previa = await porIdCliente(db, req.ctx, b.id_cliente);
-        if (previa) return res.status(200).json({ ...(await detalle(db, req.ctx, previa)), duplicado: true });
+        if (previa) return res.status(200).json(await respuestaDuplicada(req.ctx, previa, b));
       }
       throw e;
     }

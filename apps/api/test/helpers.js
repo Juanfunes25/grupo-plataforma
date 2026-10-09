@@ -39,7 +39,7 @@ export async function iniciar() {
       let json; try { json = txt ? JSON.parse(txt) : null; } catch { json = txt; }
       return { status: r.status, body: json };
     };
-    return { get: (p) => llamar('GET', p), post: (p, b = {}) => llamar('POST', p, b), put: (p, b = {}) => llamar('PUT', p, b), del: (p) => llamar('DELETE', p) };
+    return { get: (p) => llamar('GET', p), post: (p, b = {}) => llamar('POST', p, b), put: (p, b = {}) => llamar('PUT', p, b), patch: (p, b = {}) => llamar('PATCH', p, b), del: (p) => llamar('DELETE', p) };
   };
 
   const empresaId = async (codigo) => (await db.query('select id from core.empresas where codigo = $1', [codigo])).rows[0].id;

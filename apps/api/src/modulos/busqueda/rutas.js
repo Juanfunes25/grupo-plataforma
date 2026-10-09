@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { lempiras } from '@grupo/shared';
 import { sucursalesPermitidas } from '../../lib/contexto.js';
-import { validar } from '../../lib/http.js';
+import { prohibido, validar } from '../../lib/http.js';
 import { veRestringidos } from '../documentos/servicio.js';
 
 const TZ = `'America/Tegucigalpa'`;
@@ -36,6 +36,8 @@ export function rutasBusqueda({ db }) {
     const { q, limite } = validar(esq, req.query);
     const ctx = req.ctx;
     const destino = (tipo) => ctx.modulos.find((m) => DESTINOS[tipo].includes(m.id)) ?? null;
+    // Sin ningún módulo buscable (ningún permiso de facturas, clientes, productos, personal o documentos) no hay nada que ofrecer.
+    if (!Object.keys(DESTINOS).some(destino)) throw prohibido();
     if (q.length < 2) return res.json({ q, grupos: [] });
     const like = patron(q);
     const soloDigitos = q.replace(/\D/g, '');

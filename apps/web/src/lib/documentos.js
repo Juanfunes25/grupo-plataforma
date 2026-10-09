@@ -31,13 +31,17 @@ export function imprimirHtml(html) {
     iframe.setAttribute('aria-hidden', 'true');
     iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
     let listo = false;
-    const limpiar = () => { if (listo) return; listo = true; setTimeout(() => iframe.remove(), 500); resolve(); };
+    // Al imprimir, el foco se va al iframe: sin devolverlo, los atajos del teclado (F2, Enter…) dejarían de funcionar hasta tocar la pantalla.
+    const previo = document.activeElement;
+    const devolverFoco = () => { try { window.focus(); if (previo && document.contains(previo)) previo.focus({ preventScroll: true }); } catch { /* */ } };
+    const limpiar = () => { if (listo) return; listo = true; setTimeout(() => { iframe.remove(); devolverFoco(); }, 300); devolverFoco(); resolve(); };
     iframe.onload = async () => {
       const w = iframe.contentWindow;
       const imgs = [...w.document.images].filter((i) => !i.complete);
       if (imgs.length) await Promise.race([Promise.all(imgs.map((i) => new Promise((r) => { i.onload = r; i.onerror = r; }))), new Promise((r) => setTimeout(r, 2000))]);
       w.addEventListener('afterprint', limpiar);
       w.focus(); w.print();
+      devolverFoco();
       setTimeout(limpiar, 60_000);
     };
     iframe.srcdoc = html;

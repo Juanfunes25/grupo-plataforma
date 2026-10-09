@@ -111,11 +111,12 @@ test('restauración sobre una base vacía: mismas filas, mismos totales y el inv
       ['select count(*)::int as n from inv.movimientos where empresa_id = $1', [emp]],
       ['select count(*)::int as n from inv.insumos where empresa_id = $1', [emp]],
       ['select count(*)::int as n from core.sucursales where empresa_id = $1', [emp]],
-      ['select count(*)::int as n from core.auditoria where empresa_id = $1', [emp]],
       ['select round(coalesce(sum(total),0))::int as n from pos.ventas where empresa_id = $1', [emp]],
     ]) assert.equal(await cuenta(db, sql, p), await cuenta(t.db, sql, p), sql);
     // la bitácora conserva sus hashes originales
-    const h = (d) => d.query('select id, hash, hash_anterior, created_at from core.auditoria where empresa_id = $1 order by id', [emp]).then((r) => r.rows.map((x) => `${x.id}|${x.hash}|${x.hash_anterior}|${new Date(x.created_at).toISOString()}`));
+    // (el propio «respaldo_exportado» se anota después de generar el ZIP, por eso se compara hasta el último id respaldado)
+    const tope = await cuenta(db, 'select max(id)::int as n from core.auditoria');
+    const h = (d) => d.query('select id, hash, hash_anterior, created_at from core.auditoria where empresa_id = $1 and id <= $2 order by id', [emp, tope]).then((r) => r.rows.map((x) => `${x.id}|${x.hash}|${x.hash_anterior}|${new Date(x.created_at).toISOString()}`));
     assert.deepEqual(await h(db), await h(t.db));
     // las otras empresas no vinieron (el respaldo es de una sola)
     assert.equal(await cuenta(db, `select count(*)::int as n from core.empresas`), 1);
