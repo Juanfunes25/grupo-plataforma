@@ -251,7 +251,7 @@ function Config({ op }) {
             <input value={nf.concepto} onChange={(e) => setNf({ ...nf, concepto: e.target.value })} placeholder="Concepto" aria-label="Concepto" />
             <input type="number" inputMode="decimal" value={nf.monto_mensual} onChange={(e) => setNf({ ...nf, monto_mensual: e.target.value })} placeholder={`Monto mensual${ihssSug ? ` (IHSS sugerido ${ihssSug})` : ''}`} aria-label="Monto mensual" />
             <button className="btn primario" disabled={ocupado || !nf.empleado_id || !nf.concepto || !(Number(nf.monto_mensual) > 0)} onClick={() => ejecutar(async () => { await post('/planilla/fijas', { ...nf, monto_mensual: Number(nf.monto_mensual) }, op); setNf({ ...nf, monto_mensual: '' }); fijas.recargar(); }, 'Agregada')}>Agregar</button></div>
-          <Estado d={fijas}>{(rows) => rows.length === 0 ? <small>Ninguna todavía.</small> : <table><tbody>{rows.map((f) => <tr key={f.id}><td>{f.empleado}</td><td>{f.concepto}</td><td className="der num">{lempiras(f.monto_mensual)} / mes</td>
+          <Estado d={fijas}>{(rows) => rows.length === 0 ? <small>Ninguna todavía.</small> : <table><tbody>{rows.map((f) => <tr key={f.id}><td>{f.empleado}</td><td>{f.concepto}</td><td className="der num">{lempiras(Number(f.monto_mensual) / 2)} / quincena <small>({lempiras(f.monto_mensual)} al mes)</small></td>
             <td><button className="btn fantasma" onClick={() => ejecutar(async () => { await api(`/planilla/fijas/${f.id}`, { metodo: 'DELETE', ...op }); fijas.recargar(); }, 'Quitada')}>Quitar</button></td></tr>)}</tbody></table>}</Estado></div>
       </div>
     )}</Estado>
