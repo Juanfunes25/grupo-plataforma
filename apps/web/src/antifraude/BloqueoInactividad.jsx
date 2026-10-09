@@ -34,7 +34,7 @@ export default function BloqueoInactividad({ minutos }) {
     setError(''); setOcupado(true);
     try {
       // Se vuelve a comprobar la credencial contra el servidor, sin cambiar la sesión actual.
-      const cuerpo = porPin ? { empresa: s.empresa, pin: secreto } : { empresa: s.empresa, usuario: s.usuario.usuario || s.usuario.email, password: secreto };
+      const cuerpo = porPin ? { empresa: s.empresa, usuario_id: s.usuario.id, pin: secreto } : { empresa: s.empresa, usuario: s.usuario.usuario || s.usuario.email, password: secreto };
       const r = await post(porPin ? '/auth/pin' : '/auth/login', cuerpo, { sinSesion: true, empresa: null });
       if (r.usuario?.id !== s.usuario.id) throw new Error('Ese PIN es de otra persona');
       registrarEvento('sesion.desbloqueo', {});

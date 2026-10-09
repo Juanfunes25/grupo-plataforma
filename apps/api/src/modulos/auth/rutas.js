@@ -116,30 +116,45 @@ export function rutasAuth({ db, config, ctxMgr }) {
   });
   r.use(mfaRutas.publicas);
 
-  // ── PIN (mostrador, cocina, bodega): solo sirve en UNA empresa ───────────
+  // ── PIN (mostrador, cocina, bodega): solo sirve en UNA empresa y para UNA persona ───────────
+  // Lista pública para la pantalla de entrada: tiendas y nombres de quienes entran con PIN (solo nombre; nunca datos sensibles).
+  r.get('/pin/opciones', async (req, res) => {
+    const emp = await empresaPorCodigo(validar(z.string().min(1), req.query.empresa));
+    if (emp.esGrupo) return res.json({ sucursales: [], usuarios: [] });
+    const [suc, usu] = await Promise.all([
+      db.query('select id, nombre, color from core.sucursales where empresa_id = $1 and activo order by orden, nombre', [emp.id]),
+      db.query(`select u.id, u.nombre, a.sucursal_ids from core.accesos a join core.usuarios u on u.id = a.usuario_id
+                 where a.empresa_id = $1 and a.activo and u.activo and a.pin_hash is not null and a.rol = any($2::text[]) order by u.nombre`, [emp.id, ROLES_CON_PIN]),
+    ]);
+    res.json({ sucursales: suc.rows, usuarios: usu.rows });
+  });
   r.post('/pin', async (req, res) => {
-    const { empresa: cod, pin } = validar(z.object({ empresa: z.string().min(1), pin: z.string().regex(PIN_RE, 'El PIN son 4 a 8 dígitos') }), req.body);
+    const { empresa: cod, usuario_id: usuarioId, sucursal_id: sucursalId, pin } = validar(z.object({
+      empresa: z.string().min(1), usuario_id: z.string().uuid('Elige quién eres'), sucursal_id: z.string().uuid().optional(), pin: z.string().regex(PIN_RE, 'El PIN son 4 a 8 dígitos'),
+    }), req.body);
     const emp = await empresaPorCodigo(cod);
     if (emp.esGrupo) throw malaPeticion('La dirección del grupo entra con correo y contraseña');
-    const clave = `${ipDe(req)}|${emp.codigo}`;
-    if (limPin.bloqueado(clave)) throw new ErrorHttp(429, 'Demasiados intentos. Espera unos minutos.');
+    const clave = `${ipDe(req)}|${emp.codigo}|${usuarioId}`;
+    if (limPin.bloqueado(clave) || limPin.bloqueado(`${ipDe(req)}|${emp.codigo}`)) throw new ErrorHttp(429, 'Demasiados intentos. Espera unos minutos.');
     const nuevo = hashPin(config, emp.id, pin);
     const viejo = hashPinAnterior(config, emp.id, pin);
     const { rows } = await db.query(
-      `select u.*, a.id as acceso_id, a.pin_hash as pin_guardado from core.accesos a join core.usuarios u on u.id = a.usuario_id
-        where a.empresa_id = $1 and a.pin_hash = any($2::text[]) and a.activo and u.activo and a.rol = any($3::text[])`,
-      [emp.id, viejo ? [nuevo, viejo] : [nuevo], ROLES_CON_PIN]);
+      `select u.*, a.id as acceso_id, a.pin_hash as pin_guardado, a.sucursal_ids from core.accesos a join core.usuarios u on u.id = a.usuario_id
+        where a.empresa_id = $1 and a.usuario_id = $2 and a.pin_hash = any($3::text[]) and a.activo and u.activo and a.rol = any($4::text[])`,
+      [emp.id, usuarioId, viejo ? [nuevo, viejo] : [nuevo], ROLES_CON_PIN]);
     const u = rows[0];
     // Rotación del pepper: el PIN entra con el anterior y se re-guarda con el nuevo (nadie tiene que cambiar su PIN).
     if (u && u.pin_guardado !== nuevo) await db.query('update core.accesos set pin_hash = $1 where id = $2', [nuevo, u.acceso_id]).catch(() => {});
     if (!u) {
-      limPin.fallo(clave);
-      await auditar(db, null, 'pin_fallido', 'usuario', null, {}, { empresaId: emp.id, ip: ipDe(req) });
+      limPin.fallo(clave); limPin.fallo(`${ipDe(req)}|${emp.codigo}`);
+      await auditar(db, null, 'pin_fallido', 'usuario', usuarioId, {}, { empresaId: emp.id, ip: ipDe(req) });
       await vigilarLoginFallido(db, { empresa: emp, clave: ipDe(req), ip: ipDe(req), via: 'pin' });   // antifraude
       throw new ErrorHttp(401, 'PIN incorrecto');
     }
+    // La tienda elegida tiene que ser una de las suyas (sin tiendas asignadas = puede entrar a cualquiera de la empresa).
+    if (sucursalId && u.sucursal_ids?.length && !u.sucursal_ids.includes(sucursalId)) throw new ErrorHttp(403, 'Esa persona no trabaja en esa tienda');
     limPin.exito(clave);
-    await auditar(db, null, 'login', 'usuario', u.id, { via: 'pin' }, { empresaId: emp.id, usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
+    await auditar(db, null, 'login', 'usuario', u.id, { via: 'pin', sucursal_id: sucursalId ?? null }, { empresaId: emp.id, usuarioId: u.id, usuarioNombre: u.nombre, ip: ipDe(req) });
     await vigilarDispositivo(db, { empresa: emp, usuario: u, dispositivo: req.headers['x-dispositivo'], navegador: req.headers['user-agent'], ip: ipDe(req) });   // antifraude
     res.json(await respuestaSesion(u, emp, 'pin', true, req));
   });

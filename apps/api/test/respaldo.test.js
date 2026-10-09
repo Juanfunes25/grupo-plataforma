@@ -165,7 +165,7 @@ test('con claves (opcional): la base restaurada permite entrar con la misma cont
     const lista = await (await fetch(`${base}/api/pos/ventas`, { headers: { authorization: `Bearer ${tk}`, 'x-empresa': 'origen' } })).json();
     assert.equal(lista.length, 4);
     // el PIN solo sirve con el mismo PIN_PEPPER; aquí es el mismo
-    const pin = await fetch(`${base}/api/auth/pin`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ empresa: 'origen', pin: '1234' }) });
+    const pin = await fetch(`${base}/api/auth/pin`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ empresa: 'origen', pin: '1234', usuario_id: (await db.query(`select a.usuario_id from core.accesos a join core.empresas e on e.id = a.empresa_id where e.codigo = 'origen' and a.pin_hash is not null limit 1`)).rows[0].usuario_id }) });
     assert.equal(pin.status, 200);
   } finally { srv.close(); await db.close(); }
 });

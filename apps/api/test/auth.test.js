@@ -53,8 +53,8 @@ test('/auth/yo devuelve permisos y módulos de la empresa activa', async () => {
 });
 
 test('PIN: entra a su empresa; el mismo PIN en otra empresa es otra persona', async () => {
-  const a = await t.cli().post('/api/auth/pin', { empresa: 'origen', pin: '4821' });
-  const b = await t.cli().post('/api/auth/pin', { empresa: 'italo', pin: '4821' });
+  const a = await t.cli().post('/api/auth/pin', { empresa: 'origen', pin: '4821', usuario_id: await t.pinUsuario('origen', '4821') });
+  const b = await t.cli().post('/api/auth/pin', { empresa: 'italo', pin: '4821', usuario_id: await t.pinUsuario('italo', '4821') });
   assert.equal(a.status, 200);
   assert.equal(b.status, 200);
   const ya = await t.cli(a.body.token, 'origen').get('/api/auth/yo');
@@ -72,14 +72,16 @@ test('token de PIN no sirve para otra empresa aunque mande X-Empresa', async () 
 test('PIN incorrecto → 401 y tras varios intentos se bloquea (429)', async () => {
   t.app.locals.limitadores?.limPin?.reiniciar();
   let ultimo;
-  for (let i = 0; i < 9; i++) ultimo = await t.cli().post('/api/auth/pin', { empresa: 'origen', pin: '0000' });
+  const quien = await t.pinUsuario('origen', '4821');
+  for (let i = 0; i < 9; i++) ultimo = await t.cli().post('/api/auth/pin', { empresa: 'origen', pin: '0000', usuario_id: quien });
   assert.equal(ultimo.status, 429);
   t.app.locals.limitadores?.limPin?.reiniciar();
 });
 
 test('un cajero NO puede entrar con correo (no tiene) ni un rol de dirección con PIN', async () => {
-  const r = await t.cli().post('/api/auth/pin', { empresa: 'origen', pin: '9999' });
+  const r = await t.cli().post('/api/auth/pin', { empresa: 'origen', pin: '9999', usuario_id: '00000000-0000-4000-8000-000000000000' });
   assert.equal(r.status, 401);
+  assert.equal((await t.cli().post('/api/auth/pin', { empresa: 'origen', pin: '4821' })).status, 400, 'sin decir quién eres no se entra');
 });
 
 test('sin token → 401; token roto → 401', async () => {
@@ -104,6 +106,6 @@ test('entrada de Dirección: dueño sí; gerente sin grupo:ver no; contador sí'
   assert.equal(conta.status, 200);
   const ger = await t.cli().post('/api/auth/login', { empresa: 'grupo', email: 'gerente@origen.hn', password: 'NuevaClave5678' });
   assert.equal(ger.status, 403);
-  const pin = await t.cli().post('/api/auth/pin', { empresa: 'grupo', pin: '4821' });
+  const pin = await t.cli().post('/api/auth/pin', { empresa: 'grupo', pin: '4821', usuario_id: '00000000-0000-4000-8000-000000000000' });
   assert.equal(pin.status, 400);
 });

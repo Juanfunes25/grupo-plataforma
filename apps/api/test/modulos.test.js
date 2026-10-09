@@ -227,7 +227,7 @@ test('Admin: usuario con acceso a dos empresas, roles distintos; desactivar lo s
   const yo = (await lo.get('/api/auth/yo')).body;
   assert.deepEqual(yo.empresas.map((e) => [e.codigo, e.rol]).sort(), [['italo', 'cajero'], ['origen', 'gerente']]);
   assert.equal((await enItalo.put(`/api/admin/usuarios/${cr.body.id}`, { activo: false })).status, 200);
-  assert.equal((await t.cli().post('/api/auth/pin', { empresa: 'italo', pin: '2468' })).status, 401);
+  assert.equal((await t.cli().post('/api/auth/pin', { empresa: 'italo', pin: '2468', usuario_id: cr.body.id })).status, 401);
   assert.equal((await t.cli().post('/api/auth/login', { empresa: 'origen', email: 'laura@grupo.hn', password: 'ClaveSegura123' })).status, 200);
 });
 

@@ -17,9 +17,12 @@ export default function Acceso() {
   const s = useSesion();
   const d = useDatos(() => get('/publico/empresas', { sinSesion: true, empresa: null }), []);
   const emp = d.datos?.find((e) => e.codigo === codigo);
+  const op = useDatos(() => (codigo === 'grupo' ? Promise.resolve({ sucursales: [], usuarios: [] }) : get(`/auth/pin/opciones?empresa=${encodeURIComponent(codigo)}`, { sinSesion: true, empresa: null })), [codigo]);
   const esGrupo = codigo === 'grupo';
   const [modo, setModo] = useState(esGrupo ? 'correo' : 'pin');
   const [pin, setPin] = useState('');
+  const [sucSel, setSucSel] = useState(null);   // tienda elegida (paso 1)
+  const [usrSel, setUsrSel] = useState(null);   // persona elegida (paso 2)
   const [correo, setCorreo] = useState('');
   const [clave, setClave] = useState('');
   const [verClave, setVerClave] = useState(false);
@@ -43,11 +46,22 @@ export default function Acceso() {
     if (r) nav(codigo === 'grupo' ? '/grupo' : `/${codigo}`, { replace: true });
   };
   const teclear = (n) => { vibrar(8); setError(''); setPin((p) => (p.length < PIN_MAX ? p + n : p)); };
-  const enviarPin = () => { if (pinRef.current.length >= 4) entrar('/auth/pin', { empresa: codigo, pin: pinRef.current }); };
+  const sucursales = op.datos?.sucursales ?? [];
+  const usuarios = op.datos?.usuarios ?? [];
+  // Con una sola tienda (o ninguna) se salta ese paso. Quien no tiene tiendas asignadas aparece en todas.
+  const sucActiva = sucSel ?? (sucursales.length === 1 ? sucursales[0] : null);
+  const hayPasoTienda = sucursales.length > 1;
+  const personas = usuarios.filter((u) => !sucActiva || !u.sucursal_ids?.length || u.sucursal_ids.includes(sucActiva.id));
+  const paso = hayPasoTienda && !sucActiva ? 'tienda' : !usrSel ? 'persona' : 'pin';
+  const enviarPin = () => {
+    if (pinRef.current.length < 4 || !usrSel) return;
+    try { if (sucActiva) localStorage.setItem(`grupo.sucursal.${codigo}`, sucActiva.id); } catch { /* */ }
+    entrar('/auth/pin', { empresa: codigo, usuario_id: usrSel.id, ...(sucActiva ? { sucursal_id: sucActiva.id } : {}), pin: pinRef.current });
+  };
 
   // Teclado físico (tablet con teclado, PC): dígitos, Retroceso, Supr/Esc limpia y Enter entra.
   useEffect(() => {
-    if (modo !== 'pin') return undefined;
+    if (modo !== 'pin' || paso !== 'pin') return undefined;
     const f = (e) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       if (/^[0-9]$/.test(e.key)) teclear(e.key);
@@ -69,7 +83,7 @@ export default function Acceso() {
         <div className="acceso-marca">
           <div className="acceso-logo"><Logo codigo={emp.logo || emp.codigo} color={emp.color} /></div>
           <h1>{emp.nombre}</h1>
-          <p>{modo === 'pin' ? 'Escribe tu PIN para entrar' : 'Entra con tu usuario y contraseña'}</p>
+          <p>{modo === 'pin' ? (paso === 'tienda' ? 'Elige tu tienda' : paso === 'persona' ? '¿Quién eres?' : `${usrSel.nombre}${sucActiva ? ` · ${sucActiva.nombre}` : ''}: escribe tu PIN`) : 'Entra con tu usuario y contraseña'}</p>
         </div>
         {!esGrupo && (
           <div className="segmento" role="tablist" aria-label="Forma de entrar">
@@ -81,8 +95,21 @@ export default function Acceso() {
           {segundo ? (
             <Suspense fallback={<Esqueleto alto={220} />}><SegundoPaso r={segundo} onCancelar={() => { setSegundo(null); setClave(''); }}
               onSesion={(resp) => { s.completar(resp); nav(codigo === 'grupo' ? '/grupo' : `/${codigo}`, { replace: true }); }} /></Suspense>
+          ) : modo === 'pin' && paso === 'tienda' ? (
+            <div style={{ display: 'grid', gap: 10 }}>
+              {op.cargando && <Esqueleto alto={120} />}
+              {sucursales.map((x) => <button key={x.id} className="btn grande bloque" style={x.color ? { borderLeft: `6px solid ${x.color}` } : undefined} onClick={() => setSucSel(x)}>{x.nombre}</button>)}
+            </div>
+          ) : modo === 'pin' && paso === 'persona' ? (
+            <div style={{ display: 'grid', gap: 10 }}>
+              {op.cargando && <Esqueleto alto={120} />}
+              {!op.cargando && personas.length === 0 && <small className="centro">No hay personas con PIN{sucActiva ? ' en esta tienda' : ''}. Pídele al administrador que te cree el acceso.</small>}
+              {personas.map((x) => <button key={x.id} className="btn grande bloque" onClick={() => { setUsrSel(x); setPin(''); setError(''); }}>{x.nombre}</button>)}
+              {hayPasoTienda && <button className="btn fantasma" onClick={() => { setSucSel(null); setUsrSel(null); }}><Icono n="atras" tam={16} /> Cambiar de tienda</button>}
+            </div>
           ) : modo === 'pin' ? (
             <>
+              <button className="btn fantasma" onClick={() => { setUsrSel(null); setPin(''); setError(''); }}><Icono n="atras" tam={16} /> No soy yo</button>
               <div className={`pin-puntos${sacude ? ' error' : ''}`} role="img" aria-label={`${pin.length} dígitos escritos`}>{Array.from({ length: Math.max(4, pin.length) }, (_, i) => <i key={i} className={i < pin.length ? 'on' : ''} />)}</div>
               <div className="teclado" role="group" aria-label="Teclado numérico">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => <button key={n} onClick={() => teclear(n)} aria-label={String(n)}>{n}</button>)}

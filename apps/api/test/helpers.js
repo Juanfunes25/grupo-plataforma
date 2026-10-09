@@ -71,14 +71,20 @@ export async function iniciar() {
     if (r.status !== 200) throw new Error(`login falló: ${r.status} ${JSON.stringify(r.body)}`);
     return r.body.token;
   }
-  async function loginPin(empresa, pin) {
-    const r = await cli().post('/api/auth/pin', { empresa, pin });
+  /** Id de la persona dueña de ese PIN en la empresa (la entrada con PIN pide quién es). */
+  async function pinUsuario(empresa, pin) {
+    const eid = await empresaId(empresa);
+    return (await db.query('select usuario_id from core.accesos where empresa_id = $1 and pin_hash = $2', [eid, hashPin(config, eid, pin)])).rows[0]?.usuario_id ?? '00000000-0000-4000-8000-000000000000';
+  }
+  async function loginPin(empresa, pin, usuarioId) {
+    // La entrada con PIN pide también quién es: se busca a quién pertenece ese PIN en la empresa.
+    const r = await cli().post('/api/auth/pin', { empresa, pin, usuario_id: usuarioId ?? await pinUsuario(empresa, pin) });
     if (r.status !== 200) throw new Error(`pin falló: ${r.status} ${JSON.stringify(r.body)}`);
     return r.body.token;
   }
 
   return {
-    db, config, app, base, cli, usuario, activarNotasCredito, login, loginPin, empresaId, sucursalId,
+    db, config, app, base, cli, usuario, activarNotasCredito, login, loginPin, pinUsuario, empresaId, sucursalId,
     cerrar: async () => { server.close(); await db.close(); if (borrarBase) await borrarBase(); },
   };
 }

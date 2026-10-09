@@ -25,3 +25,21 @@ test('alta de usuarios iniciales: crea con PIN, entra, es idempotente y rechaza 
   assert.equal((await t.db.query(`select count(*)::int n from core.usuarios where nombre = 'Vendedora Prueba'`)).rows[0].n, 1);
   assert.deepEqual(await altaUsuariosDesdeEnv(t.db, t.config, { raw: 'no es json', log: () => {} }), { creados: 0, saltados: 0 });
 });
+
+test('entrada con PIN: lista de tiendas y personas, exige quién eres, y la tienda tiene que ser suya', async () => {
+  const raw = JSON.stringify([
+    { nombre: 'Mackey Uno', accesos: [{ empresa: 'italo', rol: 'cajero', pin: '6161', sucursal: 'Mackey' }] },
+    { nombre: 'Procer Dos', accesos: [{ empresa: 'italo', rol: 'cajero', pin: '6262', sucursal: 'Próceres' }] },
+  ]);
+  await altaUsuariosDesdeEnv(t.db, t.config, { raw, log: () => {} });
+  const op = (await t.cli().get('/api/auth/pin/opciones?empresa=italo')).body;
+  assert.ok(op.sucursales.length >= 2 && op.usuarios.some((u) => u.nombre === 'Mackey Uno'));
+  assert.ok(!JSON.stringify(op).includes('pin_hash') && !JSON.stringify(op).includes('6161'), 'solo nombres, nunca claves');
+  const mackey = await t.pinUsuario('italo', '6161');
+  const sucMackey = await t.sucursalId('italo', 'mackey'), sucProceres = await t.sucursalId('italo', 'proceres');
+  const post = (b) => t.cli().post('/api/auth/pin', { empresa: 'italo', ...b });
+  assert.equal((await post({ pin: '6161' })).status, 400, 'sin decir quién eres no entra');
+  assert.equal((await post({ pin: '6262', usuario_id: mackey })).status, 401, 'el PIN de otra persona no sirve para esta');
+  assert.equal((await post({ pin: '6161', usuario_id: mackey, sucursal_id: sucProceres })).status, 403, 'no puede entrar a una tienda que no es la suya');
+  assert.equal((await post({ pin: '6161', usuario_id: mackey, sucursal_id: sucMackey })).status, 200);
+});

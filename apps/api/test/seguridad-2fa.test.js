@@ -271,11 +271,12 @@ test('rotación de llaves sin cerrar sesiones: APP_JWT_SECRET_ANTERIOR, PIN_PEPP
 
   // PIN: al cambiar el pepper, el PIN de siempre entra y queda re-guardado con el nuevo
   const antes = t.config.pinPepper;
+  const quien = await t.pinUsuario('italo', '4821');
   t.config.pinPepperAnterior = antes; t.config.pinPepper = 'pepper-nuevo-' + 'z'.repeat(20);
   try {
-    assert.ok(await t.loginPin('italo', '4821'), 'el PIN sigue entrando durante la rotación');
+    assert.ok(await t.loginPin('italo', '4821', quien), 'el PIN sigue entrando durante la rotación');
     t.config.pinPepperAnterior = '';
-    assert.ok(await t.loginPin('italo', '4821'), 'y ya quedó guardado con el pepper nuevo');
+    assert.ok(await t.loginPin('italo', '4821', quien), 'y ya quedó guardado con el pepper nuevo');
   } finally { t.config.pinPepper = antes; t.config.pinPepperAnterior = ''; }
 });
 
