@@ -70,7 +70,7 @@ export const MODULOS_DERIVADOS = {
   pos: ['pos', 'facturas', 'cierres', 'dashboard', 'reportes', 'catalogo', 'clientes', 'caja_chica', 'gerente', 'cai'],
   kds: ['kds'],
   inventario: ['inventario', 'inv_unificado'],
-  rrhh: ['rrhh', 'planilla'],
+  rrhh: ['rrhh'],   // la planilla vive solo en la Dirección del Grupo (vista consolidada)
   finanzas: ['finanzas'],
   compras: ['compras'],
   fabrica: ['piedra', 'cot_eco', 'prod_registrar', 'prod_ordenes', 'prod_recetas', 'prod_insumos', 'prod_inventario', 'prod_trazabilidad', 'prod_reporte', 'inv_unificado'],
