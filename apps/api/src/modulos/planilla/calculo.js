@@ -75,9 +75,9 @@ export function impuestoAnual(base, tramos) {
 
 /**
  * Gerencia no cobra horas extra: sus renglones quedan siempre en 0 horas (ni reporte de horas, ni novedades, ni captura).
- * Se reconoce por la sucursal (bloque «Gerencia» de la hoja). Si el dueño decide otra regla, se cambia solo aquí.
+ * Se reconoce por la sucursal (bloque «Gerencia» de la hoja) o por el puesto «Gerencia». Si el dueño decide otra regla, se cambia solo aquí.
  */
-export const sinHorasExtra = (emp) => /gerencia/i.test(String(emp?.sucursal ?? ''));
+export const sinHorasExtra = (emp) => /gerencia/i.test(String(emp?.sucursal ?? '')) || /^gerencia$/i.test(String(emp?.puesto ?? '').trim());
 
 const horasDiaDe = (jornada, P) => (jornada === 'nocturna' ? P.horas_dia_nocturna : jornada === 'mixta' ? P.horas_dia_mixta : P.horas_dia_diurna);
 

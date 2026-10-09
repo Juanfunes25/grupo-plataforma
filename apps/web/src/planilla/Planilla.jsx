@@ -129,7 +129,7 @@ const leerHoras = (txt) => {
   const n = Number(s);
   return Number.isFinite(n) && n >= 0 && n <= 300 ? Math.round(n * 100) / 100 : null;
 };
-const sinHx = (l) => !!l.detalle?.sin_horas_extra || /gerencia/i.test(l.sucursal ?? '');
+const sinHx = (l) => !!l.detalle?.sin_horas_extra || /gerencia/i.test(l.sucursal ?? '') || /^gerencia$/i.test((l.puesto ?? '').trim());
 
 /**
  * Las horas que se están escribiendo (aún sin guardar) y su guardado automático. Clave = empleado.
