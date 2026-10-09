@@ -25,6 +25,10 @@ export function haceCuanto(iso) {
 }
 
 export const CATEGORIAS_SUGERIDAS = ['Ristoris', 'Materia prima gelato', 'Insumos locales/lácteos', 'Empaque para venta', 'Empaque/insumos de producción', 'Limpieza', 'Papelería y oficina', 'Equipos y utensilios'];
+/** Materia prima de la fábrica: las tres categorías del dueño. */
+export const CATEGORIAS_FABRICA = ['MEC3', 'Ristoris', 'Otros'];
+/** Orden de las categorías: primero MEC3, Ristoris y Otros; cualquier otra, después y por nombre. */
+export const porCategoria = (a, b) => { const i = (c) => { const k = CATEGORIAS_FABRICA.indexOf(c); return k < 0 ? 99 : k; }; return i(a) - i(b) || String(a).localeCompare(String(b)); };
 export const UNIDADES_PRESET = ['u', 'kg', 'g', 'L', 'lb', 'unidad'];
 
 export const coincide = (nombre, codigo, q) => {

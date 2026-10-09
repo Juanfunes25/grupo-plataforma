@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { useSesion } from '../sesion.jsx';
 import { Campo, Estado, Modal, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
 import { rget, rpost } from './api.js';
-import { SIN_CATEGORIA, Chip, coincide, conUnidad, descargarCsvFilas, enAlerta, fechaCorta, hoyIso, haceCuanto, CATEGORIAS_SUGERIDAS } from './comun.jsx';
+import { SIN_CATEGORIA, Chip, coincide, conUnidad, descargarCsvFilas, enAlerta, fechaCorta, hoyIso, haceCuanto, CATEGORIAS_FABRICA, porCategoria } from './comun.jsx';
 
 export function FiltroCategorias({ items, categoria, setCategoria }) {
-  const cats = useMemo(() => [...new Set(items.filter((i) => !i.es_equipo).map((i) => i.categoria || SIN_CATEGORIA))].sort(), [items]);
+  const cats = useMemo(() => [...new Set(items.filter((i) => !i.es_equipo).map((i) => i.categoria || SIN_CATEGORIA))].sort(porCategoria), [items]);
   if (cats.length <= 1) return null;
   return (
     <div className="tabs">
@@ -48,7 +48,7 @@ function NuevoInsumo({ onCerrar, onCreado }) {
   const [ejecutar, ocupado] = useAccion();
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
   async function crear() {
-    const r = await ejecutar(() => rpost('/fabrica', { ...f, categoria: f.categoria || null, peso_unitario: f.peso_unitario === '' ? null : Number(f.peso_unitario), lps_kg: f.lps_kg === '' ? null : Number(f.lps_kg) }), 'Insumo creado ✓');
+    const r = await ejecutar(() => rpost('/fabrica', { ...f, categoria: f.categoria || (f.tipo === 'mec3' ? 'MEC3' : 'Otros'), peso_unitario: f.peso_unitario === '' ? null : Number(f.peso_unitario), lps_kg: f.lps_kg === '' ? null : Number(f.lps_kg) }), 'Insumo creado ✓');
     if (r) { onCreado(); onCerrar(); } else avisar('No se pudo crear', 'mal');
   }
   return (
@@ -58,7 +58,7 @@ function NuevoInsumo({ onCerrar, onCreado }) {
         <Campo etiqueta="Tipo"><select value={f.tipo} onChange={set('tipo')}><option value="local">Compra local</option><option value="mec3">Materia prima Mec3 (con lote y vencimiento)</option></select></Campo>
         <Campo etiqueta="Unidad"><input value={f.unidad} onChange={set('unidad')} /></Campo>
       </div>
-      <Campo etiqueta="Categoría"><input list="rv-cats2" value={f.categoria} onChange={set('categoria')} /><datalist id="rv-cats2">{CATEGORIAS_SUGERIDAS.map((c) => <option key={c} value={c} />)}</datalist></Campo>
+      <Campo etiqueta="Categoría"><select value={f.categoria || (f.tipo === 'mec3' ? 'MEC3' : 'Otros')} onChange={set('categoria')}>{CATEGORIAS_FABRICA.map((c) => <option key={c} value={c}>{c}</option>)}</select></Campo>
       <div className="fila">
         <Campo etiqueta="Peso de cada envase (kg)"><input type="number" min="0" step="any" value={f.peso_unitario} onChange={set('peso_unitario')} /></Campo>
         <Campo etiqueta="Precio por kg (L)"><input type="number" min="0" step="any" value={f.lps_kg} onChange={set('lps_kg')} /></Campo>
@@ -78,7 +78,7 @@ export function Fabrica({ onAbrir, onEscanear }) {
   const grupos = useMemo(() => {
     const m = new Map();
     for (const i of filtrados) { const c = i.categoria || SIN_CATEGORIA; if (!m.has(c)) m.set(c, []); m.get(c).push(i); }
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    return [...m.entries()].sort((a, b) => porCategoria(a[0], b[0]));
   }, [filtrados]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="rejilla">
@@ -118,7 +118,7 @@ export function Reordenar({ onAbrir }) {
   const d = useDatos(() => rget('/fabrica'), []);
   const [cat, setCat] = useState('');
   const bajo = (d.datos ?? []).filter((i) => !i.es_equipo && i.stock_minimo != null && (Number(i.stock_actual) || 0) < Number(i.stock_minimo));
-  const lista = bajo.filter((i) => !cat || (i.categoria || SIN_CATEGORIA) === cat).sort((a, b) => (a.categoria || SIN_CATEGORIA).localeCompare(b.categoria || SIN_CATEGORIA) || a.nombre.localeCompare(b.nombre));
+  const lista = bajo.filter((i) => !cat || (i.categoria || SIN_CATEGORIA) === cat).sort((a, b) => porCategoria(a.categoria || SIN_CATEGORIA, b.categoria || SIN_CATEGORIA) || a.nombre.localeCompare(b.nombre));
   const faltan = (i) => Math.max(0, Number(i.stock_minimo) - (Number(i.stock_actual) || 0));
   const grupos = [...lista.reduce((m, i) => { const c = i.categoria || SIN_CATEGORIA; m.set(c, [...(m.get(c) ?? []), i]); return m; }, new Map()).entries()];
   function compartir() {

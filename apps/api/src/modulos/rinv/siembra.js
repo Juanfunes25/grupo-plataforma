@@ -54,7 +54,7 @@ async function insertarCatalogo(q, empresaId, lista) {
             as x(nombre, descripcion, tipo, pn, unidad, categoria, peso)
      on conflict (empresa_id, nombre) do nothing`,
     [empresaId, nombres, lista.map((i) => i.descripcion ?? null), lista.map((i) => i.tipo), lista.map((i) => i.part_number ?? null),
-      lista.map((i) => i.unidad), lista.map((i) => i.categoria ?? null), lista.map((i) => i.peso_unitario ?? null)]);
+      lista.map((i) => i.unidad), lista.map((i) => i.categoria ?? (i.tipo === 'mec3' ? 'MEC3' : 'Otros')), lista.map((i) => i.peso_unitario ?? null)]);
   const despues = (await q.query('select count(*)::int as n from rinv.insumos_fab where empresa_id = $1', [empresaId])).rows[0].n;
 
   const conPrecio = lista.map((i, k) => ({ ...i, nombre: nombres[k] })).filter((i) => i.lps_kg !== null && i.lps_kg !== undefined);

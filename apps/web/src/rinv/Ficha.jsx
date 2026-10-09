@@ -3,7 +3,7 @@ import { lempiras } from '@grupo/shared';
 import { useSesion } from '../sesion.jsx';
 import { Campo, Modal, useAviso } from '../ui/kit.jsx';
 import { escribirConCola, idCliente, rget, rpatch, rpost } from './api.js';
-import { CATEGORIAS_SUGERIDAS, SIN_CATEGORIA, UNIDADES_PRESET, cantidad as fmt, cuando, fechaCorta, haceCuanto } from './comun.jsx';
+import { CATEGORIAS_FABRICA, SIN_CATEGORIA, UNIDADES_PRESET, cantidad as fmt, cuando, fechaCorta, haceCuanto } from './comun.jsx';
 import Escaner from './Escaner.jsx';
 import { svgCode128 } from './codigo128.js';
 
@@ -224,7 +224,7 @@ export default function Ficha({ ambito, sucursalId, insumo, onVolver, onEscanear
               <Campo etiqueta="Categoría">
                 <div className="fila"><input list="rv-cats" style={{ flex: 1 }} value={catEd} onChange={(e) => setCatEd(e.target.value)} placeholder="Categoría" />
                   <button className="btn" disabled={ocupado} onClick={() => guardar(async () => { await rpatch(`${base}/categoria`, { categoria: catEd }); setCategoria(catEd.trim()); }, 'Categoría guardada ✓')}>Guardar</button></div>
-                <datalist id="rv-cats">{CATEGORIAS_SUGERIDAS.map((c) => <option key={c} value={c} />)}</datalist>
+                <datalist id="rv-cats">{CATEGORIAS_FABRICA.map((c) => <option key={c} value={c} />)}</datalist>
               </Campo>
               <Campo etiqueta="Mínimo de stock (avisa cuando baja de aquí)">
                 <div className="fila">

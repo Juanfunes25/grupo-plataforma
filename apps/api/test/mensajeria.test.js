@@ -217,7 +217,7 @@ test('alertas: un correo agrupado por tipo y empresa, en pausa N horas, solo lo 
   await t.db.query(`insert into doc.documentos (empresa_id, tipo, titulo, fecha_vencimiento, dias_aviso) values ($1,'permiso_operacion','Permiso de operación Mackey', $2::date + 10, 30)`, [italo.id, hoy]);
   await t.db.query(`insert into af.alertas (empresa_id, tipo, severidad, titulo, sucursal_id) values ($1,'descuento_alto','alta','Descuentos fuera de lo normal', $2)`, [italo.id, suc]);
   const cajero = (await t.db.query(`select id from core.usuarios limit 1`)).rows[0].id;
-  await t.db.query(`insert into pos.cierres_caja (empresa_id, sucursal_id, fecha, fecha_inicio, fecha_fin, cajero_id, total_ventas, diferencia) values ($1,$2,$3::date - 1, now() - interval '10 hours', now() - interval '2 hours', $4, 1000, -120)`, [italo.id, suc, hoy, cajero]);
+  await t.db.query(`insert into pos.cierres_caja (empresa_id, sucursal_id, fecha, fecha_inicio, fecha_fin, cajero_id, total_ventas, diferencia, created_at) values ($1,$2,$3::date - 1, $5::timestamptz - interval '10 hours', $5::timestamptz - interval '2 hours', $4, 1000, -120, $5::timestamptz - interval '2 hours')`, [italo.id, suc, hoy, cajero, MANANA.toISOString()]);   // relativo a MANANA, no al reloj real: si no, la prueba falla pasada esa hora
 
   const out = await evaluarAlertas({ db: t.db, empresas, ahora: MANANA });
   const tipos = out.filter((o) => o.empresa === 'italo').map((o) => o.tipo).sort();
