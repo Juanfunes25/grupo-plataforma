@@ -28,10 +28,8 @@ export function totalConteo(conteo) {
  */
 export function calcularCuadre(sistema, entradas) {
   const n = (v) => round2(Number(v || 0));
-  // Sin montos de los POS (pos_bancos null): el cierre de caja solo pide fondo y efectivo (decisión del dueño), así que la tarjeta
-  // no se cuadra aquí: se toma la del sistema y no genera diferencia. Los lotes de tarjeta se revisan contra el banco.
-  const pos = entradas.pos_bancos;
-  const tarjetaReportada = pos == null ? n(sistema.tarjeta) : round2(Object.values(pos).reduce((s, v) => s + n(v), 0));
+  const pos = entradas.pos_bancos ?? {};
+  const tarjetaReportada = round2(Object.values(pos).reduce((s, v) => s + n(v), 0));
   const fondo = n(entradas.fondo_caja);
   const salidas = n(entradas.salidas);
   const ingresos = n(entradas.ingresos);

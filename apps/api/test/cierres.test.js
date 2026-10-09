@@ -239,32 +239,3 @@ test('dashboard: KPIs, formas de pago, sucursales, productos y tendencia; solo c
   // sin fechas usa el mes en curso
   assert.equal((await gerente.get('/api/pos/dashboard')).body.desde, `${hoy.slice(0, 8)}01`);
 });
-
-test('cierre solo con Fondo de caja y Efectivo total (sin montos de los POS): la tarjeta no genera descuadre', async () => {
-  const c = calcularCuadre({ tarjeta: 200, efectivo: 500 }, { pos_bancos: null, fondo_caja: 100, efectivo_contado: 600 });
-  assert.equal(c.tarjeta_reportada, 200);
-  assert.equal(c.diferencia_tarjeta, 0);
-  assert.equal(c.diferencia_total, 0);
-  // Por la API, en una base aparte (sin los cierres de las pruebas anteriores): una venta con tarjeta y otra en efectivo;
-  // el cierre solo manda fondo y efectivo, como la pantalla.
-  const t2 = await iniciar();
-  try {
-    await sembrar(t2.db, t2.config.semillas, 'origen');
-    await t2.usuario({ nombre: 'Gerente', email: 'ger@origen.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'origen', rol: 'gerente' }] });
-    const g = t2.cli(await t2.login('origen', 'ger@origen.hn', 'ClaveSegura123'), 'origen');
-    const c2 = (await g.get('/api/pos/catalogo')).body;
-    const s2 = c2.sucursales[0].id;
-    const venta = (tipo, monto) => g.post('/api/pos/ventas', { sucursal_id: s2, items: [{ producto_id: c2.productos.find((p) => p.nombre === 'Naranja Pura').id, cantidad: 1 }], cobrar: { pagos: [{ forma_pago_id: c2.formas_pago.find((f) => f.tipo === tipo).id, monto }] } });
-    const desde = new Date(Date.now() - 1000);
-    const precio = Number(c2.productos.find((p) => p.nombre === 'Naranja Pura').precio);
-    const v1 = await venta('tarjeta', precio); assert.equal(v1.status, 201, JSON.stringify(v1.body));
-    const v2 = await venta('efectivo', 100); assert.equal(v2.status, 201, JSON.stringify(v2.body));
-    const r = await g.post('/api/pos/cierres', { sucursal_id: s2, fecha_inicio: desde.toISOString(), fecha_fin: enUnMinuto().toISOString(), fondo_caja: 0, efectivo_contado: Number(v2.body.total) });
-    assert.equal(r.status, 201, JSON.stringify(r.body));
-    const fila = (await t2.db.query('select diferencia_tarjeta, diferencia_efectivo, pos_bancos from pos.cierres_caja where id = $1', [r.body.id])).rows[0];
-    assert.equal(Number(fila.diferencia_tarjeta), 0);
-    assert.equal(Number(fila.diferencia_efectivo), 0);
-    assert.deepEqual(fila.pos_bancos, {});
-    assert.equal(r.body.descuadre, false);
-  } finally { await t2.cerrar(); }
-});
