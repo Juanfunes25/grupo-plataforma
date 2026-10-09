@@ -77,6 +77,7 @@ export default function Facturas() {
         <h1>Facturas</h1>
         <button className="btn chico" onClick={csv} disabled={visibles.length === 0}><Icono n="descargar" tam={15} /> Exportar CSV</button>
       </div>
+      {!puede('pos:reportes') && <small className="tenue">Aquí ves tus facturas de los últimos 3 días.</small>}
 
       <div className="tarjeta" style={{ display: 'grid', gap: 10 }}>
         <div className="fac-filtros">

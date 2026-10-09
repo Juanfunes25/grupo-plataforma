@@ -8,6 +8,7 @@ import { sembrarEcostoneSiVacio } from './db/ecostone-datos.js';
 import { iniciarVigilancia } from './modulos/salud/vigilancia.js';
 import { iniciarMensajeria } from './modulos/mensajeria/planificador.js';
 import { semillasPendientes } from './db/arranque.js';
+import { altaUsuariosDesdeEnv } from './db/alta-usuarios.js';
 
 const config = leerConfig();
 validarConfig(config);
@@ -25,6 +26,9 @@ if (pendientes.rinv) await sembrarSiVacio(db).catch((e) => console.error('[rinv]
 if (pendientes.italo) await sembrarCatalogoItaloSiVacio(db, { log: console.log }).catch((e) => console.error('[italo] no se pudo cargar el catálogo:', e.message));
 // Datos reales de EcoStone (piedra, insumos, recetas, clientes), si EcoStone aún no tiene productos.
 if (pendientes.ecostone) await sembrarEcostoneSiVacio(db, { log: console.log }).catch((e) => console.error('[ecostone] no se pudieron cargar los datos:', e.message));
+
+// Usuarios iniciales con PIN (variable ALTA_USUARIOS; idempotente).
+await altaUsuariosDesdeEnv(db, config).catch((e) => console.error('[alta] fallo:', e.message));
 
 const app = crearApp({ db, config });
 

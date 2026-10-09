@@ -7,7 +7,7 @@ import { armarItems, totalesDe } from './calculo.js';
 import { formatearTicket, formatearTicketPrueba, envolverTicketHtml, anchoValido } from './ticket.js';
 import { generarPdfFactura, cargarLogo } from './pdf.js';
 import { enviarFacturaPorCorreo } from '../mensajeria/envios.js';
-import { UMBRAL_RTN_OBLIGATORIO, identidadValida, fechaHN, round2 } from '@grupo/shared';
+import { UMBRAL_RTN_OBLIGATORIO, identidadValida, fechaHN, round2, sumarDias } from '@grupo/shared';
 import { verificarSecreto } from '../../auth/passwords.js';
 import { loginSupabase } from '../../auth/supabase.js';
 import { crearLimitador } from '../../lib/limitador.js';
@@ -418,6 +418,8 @@ export function rutasVentas({ db, config, ctxMgr }) {
       limite: z.coerce.number().int().min(1).max(500).default(100),
     }), req.query);
     const ver = req.ctx.permisos.has('pos:reportes');
+    // Quien no ve reportes (la cajera) solo consulta los últimos 3 días (hoy y los 2 anteriores), para no abrumar con información.
+    if (!ver) { const piso = sumarDias(fechaHN(), -2); if (!f.desde || f.desde < piso) f.desde = piso; if (f.hasta && f.hasta < piso) f.hasta = piso; }
     const suc = (await sucursalesPermitidas(db, req.ctx)).map((s) => s.id);
     const { rows } = await db.query(
       `select v.id, v.ticket_dia, v.numero_orden, v.numero_factura, v.estado, v.estado_prep, v.nombre_orden, v.canal, v.tipo_orden, v.total,
