@@ -17,8 +17,8 @@ test('barra inferior: el primer acceso es el inicio del rol y no se repite ningu
   }
 });
 
-test('barra inferior: Italo entra por el tablero, la tienda por la caja de día y por el pesaje de noche', () => {
-  assert.equal(accesosDe(['pos', 'reposicion', 'antifraude'], 'dueno')[0], 'Tablero');
+test('barra inferior: Italo entra por el despacho (tablero en pausa), la tienda por la caja de día y por el pesaje de noche', () => {
+  assert.equal(accesosDe(['pos', 'reposicion', 'antifraude'], 'dueno')[0], 'Despacho');
   assert.equal(accesosDe(['pos', 'reposicion'], 'cajero', MEDIODIA)[0], 'Facturar');
   assert.equal(accesosDe(['pos', 'reposicion'], 'cajero', new Date('2026-10-10T02:00:00Z'))[0], 'Pesaje'); // 8 p. m.
 });

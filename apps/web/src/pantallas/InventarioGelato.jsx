@@ -8,7 +8,7 @@ import Escaner from '../rinv/Escaner.jsx';
 import { Fabrica, Reordenar } from '../rinv/Insumos.jsx';
 import { CargarPedido, SacarDeBodega } from '../rinv/Cargar.jsx';
 import Sucursales from '../rinv/Sucursales.jsx';
-import { Calidad, Movimientos, PorCategoria, Valor } from '../rinv/Reportes.jsx';
+import { Movimientos, Valor } from '../rinv/Reportes.jsx';
 import Rfid from '../rinv/Rfid.jsx';
 
 const CLAVE_TAB = 'rinv.tab';
@@ -22,9 +22,10 @@ export default function InventarioGelato() {
   const { puede, sucursales } = useSesion();
   const avisar = useAviso();
   const opciones = [
-    ['insumos', '🧂 Insumos'], ['reordenar', '⚠️ Reordenar'], ['cargar', '📥 Cargar'], ['sacar', '📤 Sacar'], ['escanear', '📷 Escanear'], ['sucursales', '🏬 Sucursales'],
-    ['movimientos', '🕘 Movimientos'], ['categorias', '📊 Categorías'], ...(puede('rep:costeo') ? [['valor', '💰 Valor']] : []), ['calidad', '🧪 Calidad'], ['rfid', '🧊 RFID'],
+    ['insumos', '🧂 Insumos'], ['sacar', '📤 Sacar'], ['cargar', '📥 Cargar'], ['reordenar', '⚠️ Reordenar'], ['sucursales', '🏬 Sucursales'],
+    ['movimientos', '🕘 Movimientos'], ...(puede('rep:costeo') ? [['valor', '💰 Valor']] : []), ['rfid', '🧊 RFID'],
   ];
+
   const [tab, setTab] = useState(() => { try { const g = localStorage.getItem(CLAVE_TAB); return opciones.some(([k]) => k === g) ? g : 'insumos'; } catch { return 'insumos'; } });
   const [detalle, setDetalle] = useState(null);
   const [escaneando, setEscaneando] = useState(false);
@@ -79,15 +80,9 @@ export default function InventarioGelato() {
         {tab === 'reordenar' && <Reordenar onAbrir={(i, l) => abrir('fabrica', null, i, l)} />}
         {tab === 'cargar' && <CargarPedido onCargado={() => setClave((k) => k + 1)} />}
         {tab === 'sacar' && <SacarDeBodega />}
-        {tab === 'escanear' && (
-          <div className="tarjeta centro rejilla"><div style={{ fontSize: '2.6rem' }}>📷</div><b>Escanear código de barras</b>
-            <p className="tenue">Apunta al código del producto y se abre su ficha directo, sin buscarlo en la lista.</p><button className="btn primario grande" onClick={() => setEscaneando(true)}>Abrir la cámara</button></div>
-        )}
         {tab === 'sucursales' && <Sucursales onAbrir={abrir} />}
         {tab === 'movimientos' && <Movimientos sucursales={sucursales} />}
-        {tab === 'categorias' && <PorCategoria />}
         {tab === 'valor' && <Valor />}
-        {tab === 'calidad' && <Calidad />}
         {tab === 'rfid' && <Rfid />}
       </div>
       {escaneando && <Escaner onDetectado={alDetectar} onCerrar={() => setEscaneando(false)} />}

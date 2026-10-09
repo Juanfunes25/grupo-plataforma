@@ -82,6 +82,8 @@ export const MODULOS_DERIVADOS = {
 };
 // Empresas de fábrica/distribuidora tienen su propio catálogo e inventario: se ocultan los genéricos.
 export const MODULOS_OCULTOS_POR = { reposicion: ['inventario'], fabrica: ['catalogo', 'inventario', 'caja_chica'], distribuidora: ['catalogo', 'inventario', 'caja_chica'] };
+// En pausa por decisión del dueño: no salen en ningún menú (el código sigue ahí por si se vuelven a querer).
+export const MODULOS_EN_PAUSA = ['rep_tablero', 'caja_chica'];
 // Siempre presentes (según permiso) en cualquier empresa.
 export const MODULOS_SIEMPRE = ['admin', 'usuarios', 'sucursales', 'bitacora', 'impresora', 'documentos', 'ayuda', 'estado'];
 
@@ -92,6 +94,7 @@ export function modulosVisibles(modulosEmpresa, permisos) {
   const tiene = (p) => (permisos instanceof Set ? permisos.has(p) : permisos.includes(p));
   const sinPos = !modulosEmpresa.includes('pos');
   for (const m of modulosEmpresa) for (const o of MODULOS_OCULTOS_POR[m] ?? []) ids.delete(o);
+  for (const o of MODULOS_EN_PAUSA) ids.delete(o);
   return [...ids]
     .filter((id) => MODULOS[id] && (!MODULOS[id].permiso || tiene(MODULOS[id].permiso)) && !(sinPos && id === 'impresora'))
     .map((id) => ({ id, ...MODULOS[id] }))

@@ -88,7 +88,8 @@ test('antifraude y cotizaciones solo existen donde la empresa los enciende', () 
 
 test('reposición de gelato: el módulo de empresa muestra su grupo y oculta el inventario genérico', () => {
   const d = modulosVisibles(['pos', 'inventario', 'reposicion'], permisosDe('dueno')).map((m) => m.id);
-  for (const id of ['rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_mantenimiento', 'rep_tablero']) assert.ok(d.includes(id), id);
+  for (const id of ['rep_pesaje', 'rep_despacho', 'rep_produccion', 'rep_consumo', 'rep_costeo', 'rep_inventario', 'rep_mantenimiento']) assert.ok(d.includes(id), id);
+  assert.ok(!d.includes('rep_tablero') && !d.includes('caja_chica'), 'Tablero de gelato y Caja chica están en pausa');
   assert.ok(!d.includes('rep_incidencias'), 'Incidencias ya no es módulo de menú');
   assert.ok(!d.includes('inventario'));
   // roles de tienda: la cajera pesa y recibe; producción produce; bodega despacha
@@ -101,8 +102,8 @@ test('reposición de gelato: el módulo de empresa muestra su grupo y oculta el 
 test('gelato: cada rol entra a lo suyo y la noche cambia al mediodía (hora de Honduras)', async () => {
   const { inicioGelato, nocheDeTrabajo } = await import('../src/index.js');
   const vis = (rol) => modulosVisibles(['pos', 'reposicion'], permisosDe(rol));
-  assert.equal(inicioGelato(vis('dueno'), permisosDe('dueno')), 'gelato');
-  assert.equal(inicioGelato(vis('gerente'), permisosDe('gerente')), 'gelato');
+  assert.equal(inicioGelato(vis('dueno'), permisosDe('dueno')), 'despacho');   // el tablero está en pausa: entra al despacho
+  assert.equal(inicioGelato(vis('gerente'), permisosDe('gerente')), 'despacho');
   assert.equal(inicioGelato(vis('bodega'), permisosDe('bodega')), 'despacho');
   assert.equal(inicioGelato(vis('produccion'), permisosDe('produccion')), 'gelato-produccion');
   const noche = new Date('2026-10-09T02:00:00Z'), dia = new Date('2026-10-08T18:00:00Z');   // 8 p. m. y 12 m. en Honduras

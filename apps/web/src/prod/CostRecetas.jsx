@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { get, post, put } from '../api.js';
-import { Estado, Kpi, useAccion, useDatos } from '../ui/kit.jsx';
+import { Campo, Estado, Kpi, Modal, useAccion, useDatos } from '../ui/kit.jsx';
 import { del, lps, nf } from './util.js';
 
 function Detalle({ saborId, onVolver }) {
@@ -66,6 +66,21 @@ export default function CostRecetas() {
   const [busca, setBusca] = useState('');
   const [sel, setSel] = useState(null);
   const [ejecutar] = useAccion();
+  const [nueva, setNueva] = useState(null);   // { nombre, gramos } mientras se crea una receta de un sabor nuevo
+  const [creando, setCreando] = useState(false);
+  const crearNueva = async (forzar = false) => {
+    const nombre = nueva.nombre.trim();
+    if (!nombre || creando) return;
+    setCreando(true);
+    try {
+      const r = await post('/rep/sabores', { nombre, ...(Number(nueva.gramos) > 0 ? { gramos_pana: Number(nueva.gramos) } : {}), ...(forzar ? { forzar: true } : {}) });
+      if (r?.sabor_id) { setNueva(null); lista.recargar(); sabores.recargar(); setSel(r.sabor_id); }
+    } catch (e) {
+      if (e?.status === 409 && !forzar) { setCreando(false); if (window.confirm(`${e.message}\n\n¿Crear "${nombre}" de todos modos?`)) await crearNueva(true); return; }
+      window.alert(e.message);
+    }
+    setCreando(false);
+  };
   const filtradas = useMemo(() => { const q = busca.trim().toUpperCase(); return (lista.datos ?? []).filter((r) => !q || r.sabor_nombre.includes(q)); }, [lista.datos, busca]);
   if (sel) return <Detalle saborId={sel} onVolver={() => { setSel(null); lista.recargar(); sin.recargar(); }} />;
   const recargar = () => { lista.recargar(); sin.recargar(); };
@@ -78,7 +93,15 @@ export default function CostRecetas() {
             <div className="pg-fila" key={r.receta_id}><div className="info"><b>{r.nombre}</b><span className="pg-sub">{r.cantidad_ingredientes} ingredientes{r.costo_kg_hoy !== null ? ` · ${lps(r.costo_kg_hoy)}/kg` : ''}</span></div>
               <select defaultValue="" onChange={async (e) => { if (e.target.value && await ejecutar(() => post(`/prod/costeo/recetas/${r.receta_id}/enganchar`, { sabor_id: e.target.value }), 'Receta enlazada')) recargar(); }}><option value="">Enlazar con…</option>{libres.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}</select></div>))}
           <button className="btn chico" style={{ marginTop: 8 }} onClick={async () => { const r = await ejecutar(() => post('/prod/costeo/enganchar'), null); if (r) { window.alert(`${r.enganchadas} receta(s) enlazada(s).${r.sin_sabor.length ? `\nSin sabor: ${r.sin_sabor.join(', ')}` : ''}`); recargar(); } }}>Volver a enlazar por nombre</button></div>)}
-      <div className="tarjeta"><input type="search" placeholder="Buscar sabor…" value={busca} onChange={(e) => setBusca(e.target.value)} /></div>
+      <div className="tarjeta pg-ctl"><input type="search" placeholder="Buscar sabor…" value={busca} onChange={(e) => setBusca(e.target.value)} /><button className="btn primario" onClick={() => setNueva({ nombre: '', gramos: '' })}>+ Nueva receta de gelato</button></div>
+      {nueva && (
+        <Modal titulo="Nueva receta de gelato" onCerrar={() => setNueva(null)} tam="angosto"
+          pie={<><button className="btn" onClick={() => setNueva(null)}>Cancelar</button><button className="btn primario" disabled={creando || !nueva.nombre.trim()} onClick={() => crearNueva()}>Crear y poner ingredientes</button></>}>
+          <Campo etiqueta="Nombre del sabor"><input autoFocus value={nueva.nombre} onChange={(e) => setNueva({ ...nueva, nombre: e.target.value })} placeholder="Ej. PISTACHO" /></Campo>
+          <Campo etiqueta="Gramos por pana (opcional)" ayuda="Si lo dejas vacío se usan 3,000 g."><input type="number" inputMode="numeric" min="1" value={nueva.gramos} onChange={(e) => setNueva({ ...nueva, gramos: e.target.value })} /></Campo>
+          <small>Se crea el sabor y enseguida eliges los ingredientes con sus gramos. El costo por kg se calcula solo con los precios vigentes.</small>
+        </Modal>
+      )}
       <Estado d={lista}>{() => (
         <div className="tarjeta">{filtradas.map((r) => (
           <div className="pg-fila" key={r.sabor_id}><div className="info"><b>{r.sabor_nombre}</b><span className="pg-sub">{r.tiene_receta ? `${r.cantidad_ingredientes} ingrediente${r.cantidad_ingredientes === 1 ? '' : 's'}${r.margen_pct !== null ? ` · margen ${r.margen_pct.toFixed(0)}%` : ''}` : 'sin receta'}</span></div>

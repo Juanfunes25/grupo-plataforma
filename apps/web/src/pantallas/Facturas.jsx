@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MOTIVOS_ANULACION, MOTIVOS_REIMPRESION, fechaHN, fechaHoraHN, lempiras, sumarDias } from '@grupo/shared';
+import { MOTIVOS_ANULACION, MOTIVOS_REIMPRESION, fechaHN, fechaHoraHN, lempiras } from '@grupo/shared';
 import { get, post, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Campo, Modal, Vacio, descargarCsv, useAccion, useAviso } from '../ui/kit.jsx';
@@ -24,11 +24,6 @@ function ChipsPago({ pagos }) {
     </span>
   );
 }
-
-const PRESETS = () => {
-  const hoy = fechaHN();
-  return [['Hoy', hoy, hoy], ['Ayer', sumarDias(hoy, -1), sumarDias(hoy, -1)], ['7 días', sumarDias(hoy, -6), hoy], ['Este mes', `${hoy.slice(0, 8)}01`, hoy]];
-};
 
 import { qInicial } from '../busqueda/qInicial.js';
 
@@ -96,8 +91,6 @@ export default function Facturas() {
         </div>
         <div className="fila">
           <button className="btn primario" onClick={() => buscar({ evento: true })}>Buscar</button>
-          {PRESETS().map(([n, d, h]) => <button key={n} className="btn chico" onClick={() => poner({ desde: d, hasta: h })}>{n}</button>)}
-          <button className="btn chico fantasma" onClick={() => { setFiltros({ sucursal_id: '', desde: '', hasta: '', q: '' }); setCajero(''); setForma(''); setSoloAnuladas(false); setTimeout(buscar, 0); }}>Limpiar</button>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, flexDirection: 'row' }}><input type="checkbox" checked={soloAnuladas} onChange={(e) => setSoloAnuladas(e.target.checked)} /> Solo anuladas</label>
         </div>
       </div>
