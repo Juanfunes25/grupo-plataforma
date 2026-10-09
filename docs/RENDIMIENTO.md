@@ -81,7 +81,76 @@ Base de prueba: 120 000 ventas (Italo, 12 meses). Mediana de 3 llamadas.
 
 El total creció porque **otros módulos nuevos** (ayuda, cobranza, planilla, compras, tablero, mensajería, sin conexión) y los míos (seguridad, asistente fiscal, estado del sistema) se sumaron. Todo lo mío va en partes que solo se descargan al abrir esa pantalla. Dependencias pesadas revisadas: la mayor es `react-dom` (130 kB, inevitable); el generador de QR (`qrcode`) solo se descarga al activar los dos pasos o imprimir etiquetas; no hay librerías de gráficas ni de fechas (se dibuja a mano). Imágenes: un solo logo PNG de 8 kB; los iconos de la app son los de instalación.
 
-**Recomendaciones pendientes** (archivos de otros módulos, no se tocaron):
-* `ayuda/contenido.js` (12 kB) y parte de `Layout.jsx` (25 kB) viajan en el JavaScript de entrada; cargar el contenido de ayuda solo al abrir la ayuda.
+**Recomendaciones pendientes**:
+* ~~`ayuda/contenido.js` en el JavaScript de entrada~~ — hecho en la segunda ronda (sección 6).
 * El service worker precarga **todas** las pantallas. Para los celulares de gerentes conviene precargar solo el núcleo (entrada, vendor, caja, facturas, cierres) y guardar las demás al visitarlas (`runtimeCaching`). Requiere confirmar con la mejora de «ventas sin conexión» qué pantallas deben funcionar sin red.
 * En producción, habilitar **HTTP/2** en el servicio (Render/Railway ya lo hacen) para que los 25–30 archivos de arranque no esperen turno.
+
+
+## 6. Segunda ronda (octubre 2026)
+
+Misma máquina y método. Teléfono simulado = Pixel 7, CPU 4× más lenta, 1,6 Mbps y 150 ms; caché vacía; mediana de 3.
+Servidor con PGlite y la base de demostración (catálogo real de Italo y EcoStone).
+
+### Peso
+
+| | Antes | Después |
+|---|---|---|
+| JavaScript de entrada (`index-*.js`) | 121,7 kB · **41,2 kB gzip** | 98,1 kB · **33,4 kB gzip** (−19 %) |
+| CSS de entrada | 14,0 kB gzip | 13,4 kB gzip |
+| `vendor-react` (en caché aparte) | 53,8 kB gzip | igual |
+
+Salieron de la entrada y se descargan al usarse: pantalla de acceso (solo la ve quien no tiene sesión), verificación en dos
+pasos (opcional y apagada), búsqueda Ctrl+K y el texto de la ayuda (se pide después del primer dibujo; `ayuda/rol.js` queda
+en la entrada porque el menú lo necesita).
+
+### Carga de pantallas
+
+| Pantalla | Teléfono FCP / LCP antes | Después | Escritorio LCP antes → después |
+|---|---|---|---|
+| Acceso (PIN) | 1 256 / 1 256 ms | **980 / 1 304 ms** | 148 → 92 ms |
+| POS (cajero) | 980 / 2 080 ms | 980 / **1 900 ms** | 300 → 164 ms |
+| Cierre de caja | 1 008 / 2 200 ms | 980 / **2 076 ms** | 488 → 448 ms |
+| Dirección del grupo | 1 012 / 2 160 ms | 984 / **2 028 ms** | 216 → 396 ms (ruido: varía ±200 ms entre vueltas) |
+
+Qué cambió:
+1. **El código de la pantalla se pide en paralelo con la sesión.** Al abrir o recargar `/italo/pos`, `App.jsx` adelanta la
+   descarga de la pantalla mientras `/auth/yo` responde (antes esperaba la sesión para empezar). Un viaje de red menos.
+2. **POS**: la cuadrícula de productos es un componente memorizado (agregar a la orden, el aviso «+ producto» y el
+   autoguardado ya no vuelven a dibujar los ~160 botones del catálogo). El catálogo guardado en el equipo se muestra al
+   instante y se actualiza cuando contesta el servidor (que de todos modos recalcula precios al guardar y cobrar).
+   Medido en Playwright: dos toques seguidos 130–200 ms en teléfono simulado.
+
+### Servidor
+
+| Qué | Antes | Después |
+|---|---|---|
+| Arranque normal (ya migrado y sembrado), mediana de 5 | **1 235 ms** | **871 ms** (−30 %) |
+| Importar el código del API (`app.js`) | 565 ms | ~350 ms |
+| Consultas a la base en el arranque normal | 12 seguidas | **2** |
+| `GET /pos/ventas/cambios` (la caja lo pregunta cada 8 s) con 120 000 ventas | 22,6 ms | **2,1 ms** |
+| `POST /pos/ventas` (orden abierta) | 31,1 ms | 27,0 ms |
+| `PUT /pos/ventas/:id` (autoguardado) | 31,6 ms | 28,4 ms |
+| Venta + cobro en borrador | 70,2 ms | 52,9 ms |
+
+1. **Arranque**: exceljs (~250 ms), nodemailer y el módulo de Planilla se cargan la primera vez que se usan, no al arrancar.
+   Las migraciones leen la tabla de control con una consulta (la preparación con candado y RLS solo corre en una base nueva)
+   y las tres cargas iniciales (reposición, catálogo de Italo, datos de EcoStone) se revisan juntas en una sola consulta
+   (`db/arranque.js`). En Render con Supabase cada consulta es un viaje de red: 10 viajes menos en cada arranque, y en el
+   plan gratuito el servidor arranca cada vez que despierta.
+2. **Líneas de la venta en una sola sentencia** (`jsonb_to_recordset`) en vez de un insert por línea; el cobro reutiliza la
+   configuración ya leída.
+3. **Migración 0095**: índice `(sucursal_id, updated_at)` en `pos.ventas`. El sondeo de la caja recorría todo el historial
+   de la sucursal y crecía cada día; ahora lee solo lo abierto o tocado en 3 días.
+
+Las lecturas pesadas (tablero, dashboard, reportes, catálogo) ya tenían caché e índices de la primera ronda: con la base de
+demostración responden en 2–10 ms y no cambiaron.
+
+### Recomendaciones (dependen de Render, no se tocaron)
+
+* **El plan gratuito se duerme tras 15 minutos sin visitas** y la primera persona que entra espera el arranque completo
+  (decenas de segundos en el plan gratis). Lo que más ayuda: un plan sin suspensión (Starter). Un «despertador» externo cada
+  10 minutos lo evita pero va contra el uso previsto del plan gratuito.
+* Cada despertar cuenta como «caída» en Estado del sistema (no hubo latido) y, tras 3 en un día, se manda correo al dueño.
+  En el plan gratuito eso es ruido normal; con un plan sin suspensión desaparece.
+* Poner la base de Supabase y el servicio de Render en la **misma región** (cada consulta es un viaje de red).
