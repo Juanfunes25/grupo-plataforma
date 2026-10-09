@@ -196,12 +196,12 @@ test('CAI: el catálogo avisa cuando el rango se agota o vence, y una sucursal s
   assert.equal(cat.fiscal[suc].agotado, false);
   assert.equal(cat.fiscal[suc].vencido, false);
   const pe = (await t.db.query('select * from pos.puntos_emision where sucursal_id = $1', [suc])).rows[0];
-  await t.db.query(`update pos.puntos_emision set es_borrador = false, cai = '2F4851-96A881-B76670-CE6CCE-48D250-32', correlativo_desde = 1, correlativo_hasta = 100, correlativo_actual = 95, fecha_limite_emision = (current_date + 5) where id = $1`, [pe.id]);
+  await t.db.query(`update pos.puntos_emision set es_borrador = false, cai = '2F4851-96A881-B76670-CE6CCE-48D250-32', correlativo_desde = 1, correlativo_hasta = 100, correlativo_actual = 95, fecha_limite_emision = ((now() at time zone 'America/Tegucigalpa')::date + 5) where id = $1`, [pe.id]);
   let f = (await caja.get('/api/pos/catalogo')).body.fiscal[suc];
   assert.equal(f.alerta, true);
   assert.equal(f.restantes, 6);
   assert.ok(f.dias_restantes <= 5);
-  await t.db.query('update pos.puntos_emision set fecha_limite_emision = (current_date - 1) where id = $1', [pe.id]);
+  await t.db.query(`update pos.puntos_emision set fecha_limite_emision = ((now() at time zone 'America/Tegucigalpa')::date - 1) where id = $1`, [pe.id]);
   f = (await caja.get('/api/pos/catalogo')).body.fiscal[suc];
   assert.equal(f.vencido, true);
   await t.db.query('update pos.puntos_emision set activo = false where id = $1', [pe.id]);
