@@ -10,6 +10,7 @@ import InventarioGrupo from '../inventario/InventarioGrupo.jsx';
 import Consolidado from '../fin/Consolidado.jsx';
 import { pedirRecorrido } from '../ayuda/recorridoEstado.js';
 import TableroGrupo from '../tablero/TableroGrupo.jsx';
+import AlertasCai from '../fiscal/AlertasCai.jsx';
 
 const PERIODOS = () => { const h = fechaHN(); return { 'Este mes': [`${h.slice(0, 8)}01`, h], '7 días': [sumarDias(h, -6), h], '30 días': [sumarDias(h, -29), h], Hoy: [h, h] }; };
 const ROLES = [['ventas', 'Ventas'], ['gerente', 'Manager'], ['admin', 'Administrador'], ['dueno', 'Dueño de la empresa'], ['cajero', 'Cajero'], ['produccion', 'Producción / cocina'], ['bodega', 'Bodega'], ['contador', 'Contador'], ['solo_lectura', 'Solo lectura']];
@@ -22,6 +23,7 @@ export default function Grupo() {
   return (
     <div className="pagina" style={{ maxWidth: 1360 }}>
       <div className="encabezado-pagina"><div><h1>Dirección del grupo</h1><small>Las cuatro empresas en una sola vista. Cada empresa lleva su propio inventario y operación; aquí ves y controlas todo.</small></div><button className="btn chico" onClick={() => pedirRecorrido('dueno')}>Ayuda</button></div>
+      <AlertasCai alcance="grupo" />
       <Tabs tabs={tabs} valor={tab} onCambio={setTab} />
       {tab === 'hoy' && <TableroGrupo />}
       {tab === 'resumen' && <Resumen />}

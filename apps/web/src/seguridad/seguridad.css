@@ -26,3 +26,5 @@
 .semaforo { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; }
 .semaforo.ok { background: var(--ok, #2e9e5b); } .semaforo.aviso { background: var(--aviso, #d99a00); } .semaforo.critico { background: var(--peligro, #d64545); }
 @media (max-width: 600px) { .rejilla-codigos { grid-template-columns: 1fr 1fr; font-size: .92rem; } .lista-verif li { grid-template-columns: 24px 1fr; } .lista-verif li > :last-child { grid-column: 2; } }
+.casilla { display: flex !important; flex-direction: row !important; flex-wrap: nowrap; align-items: flex-start; gap: 10px; color: var(--texto); }
+.casilla input[type=checkbox] { flex: none; margin-top: 3px; }

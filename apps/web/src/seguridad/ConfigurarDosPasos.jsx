@@ -17,7 +17,7 @@ export function CodigosRecuperacion({ codigos, onListo, textoListo = 'Ya los gua
         <button type="button" className="btn" onClick={copiar}>Copiar</button>
         <button type="button" className="btn" onClick={() => window.print()}>Imprimir</button>
       </div>
-      <label className="fila" style={{ alignItems: 'center', gap: 10 }}><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} /> Confirmo que los guardé</label>
+      <label className="casilla"><input type="checkbox" checked={ok} onChange={(e) => setOk(e.target.checked)} /> Confirmo que los guardé</label>
       <button type="button" className="btn primario" disabled={!ok} onClick={onListo}>{textoListo}</button>
     </div>
   );

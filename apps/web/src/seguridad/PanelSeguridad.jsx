@@ -16,7 +16,7 @@ function Politica({ d, onCambio }) {
   return (
     <div className="tarjeta" style={{ display: 'grid', gap: 14 }}>
       <h2>Reglas de acceso</h2>
-      <label className="fila" style={{ alignItems: 'flex-start', gap: 10 }}>
+      <label className="casilla">
         <input type="checkbox" checked={p.mfa_obligatoria_direccion} disabled={!d.puede_cambiar || ocupado}
           onChange={(e) => cambiar({ mfa_obligatoria_direccion: e.target.checked }, e.target.checked ? 'Ahora es obligatoria para dueños y administradores' : 'Ya no es obligatoria')} />
         <span><b>Verificación en dos pasos obligatoria para dueños y administradores</b><br />

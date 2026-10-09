@@ -27,7 +27,7 @@ function Respaldo({ e, recargar }) {
     <div className="tarjeta" style={{ display: 'grid', gap: 12 }}>
       <h2>Copia exportable de {contexto?.empresa?.nombre}</h2>
       <p style={{ margin: 0 }}>Un ZIP con todos los datos de esta empresa (una tabla por archivo, en CSV para Excel y JSON para restaurar). Supabase ya hace sus propias copias de la base; esta es <b>tuya</b>, sirve fuera de Supabase y se restaura con el script de <code>docs/RESPALDOS.md</code>.</p>
-      <label className="fila" style={{ gap: 8 }}><input type="checkbox" checked={claves} onChange={(x) => setClaves(x.target.checked)} /> Incluir contraseñas y PIN cifrados (para restaurar todo sin reasignarlos; trátalo como secreto)</label>
+      <label className="casilla"><input type="checkbox" checked={claves} onChange={(x) => setClaves(x.target.checked)} /> Incluir contraseñas y PIN cifrados (para restaurar todo sin reasignarlos; trátalo como secreto)</label>
       <div className="fila"><button className="btn primario" disabled={ocupado} onClick={async () => { if (await ejecutar(() => descargarRespaldo(claves).then(() => true), 'Copia descargada')) { aviso('Guárdala en un lugar seguro'); recargar(); } }}>{ocupado ? 'Generando…' : 'Descargar copia de la empresa'}</button></div>
       <small>{mia ? `Última copia de esta empresa: ${fechaHoraHN(mia.fecha)} por ${mia.por ?? '—'} (${mia.tablas} tablas).` : 'Todavía no has descargado una copia de esta empresa.'} Cambia de empresa para descargar las otras.</small>
     </div>

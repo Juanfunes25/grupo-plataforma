@@ -57,7 +57,7 @@ function Resumen({ a, ir, recargar }) {
           <span className={`punto ${i.estado}`} aria-label={i.estado}>{ICONO[i.estado]}</span>
           <div><b>{i.titulo}</b><br /><small>{i.detalle}</small>
             {i.id === 'impresora' && i.confirmar?.length > 0 && <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>{i.confirmar.map((c) => (
-              <label key={c.id} className="fila" style={{ gap: 8 }}><input type="checkbox" onChange={(e) => confirmar(c, e.target.checked)} /> {c.sucursal}: ya imprimí una prueba y sale bien</label>))}</div>}
+              <label key={c.id} className="casilla"><input type="checkbox" onChange={(e) => confirmar(c, e.target.checked)} /> {c.sucursal}: ya imprimí una prueba y sale bien</label>))}</div>}
             {i.id === 'impresora' && i.estado === 'ok' && <div style={{ marginTop: 6 }}><button className="btn chico fantasma" onClick={async () => { for (const s of a.sucursales.filter((x) => x.factura)) await post('/fiscal/confirmaciones', { id: `impresora_${s.id}`, confirmado: false }); recargar(); }}>Desmarcar</button></div>}
           </div>
           {(PESTANA[i.pestana] ?? null) && i.estado !== 'ok' && <button className="btn chico" onClick={() => ir(PESTANA[i.pestana])}>Resolver</button>}
