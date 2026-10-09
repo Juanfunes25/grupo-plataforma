@@ -7,7 +7,6 @@ import { api, get, patch, post, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Tabs, useAviso } from '../ui/kit.jsx';
 import { BotonesPanas, CatalogoInsumos, CatalogoSabores, Esqueleto, FajaConexion, useSucursalesRep } from './comun.jsx';
-import { Historial } from './Historial.jsx';
 import { alVolverLaSenal, contarPendientes, cuandoTexto, fechaCorta, guardarCache, hoyIso, idCliente, leerCache, postConCola, reducirFoto, sincronizar, sumarDias, vibrar } from './lib.js';
 
 const del = (ruta) => api(ruta, { metodo: 'DELETE' });
@@ -235,7 +234,7 @@ export default function Pesaje() {
     );
   }
 
-  const tabs = [['sabores', 'Pesar gelato'], ['insumos', `Pedir insumos${carrito.length ? ` (${carrito.length})` : ''}`], ['recepcion', `Recibir${porConfirmar?.length ? ` (${porConfirmar.length})` : ''}`], ['catalogo', 'Mis sabores'], ...(puede('rep:ver') ? [['historial', 'Reportes']] : [])];
+  const tabs = [['sabores', 'Pesar gelato'], ['insumos', `Pedir insumos${carrito.length ? ` (${carrito.length})` : ''}`], ['recepcion', `Recibir${porConfirmar?.length ? ` (${porConfirmar.length})` : ''}`], ['catalogo', 'Mis sabores']];
 
   const totalSabores = sabores.length;
   const faltanPesar = Math.max(0, totalSabores - totalGuardados - pendientesPesaje.length);
@@ -441,7 +440,6 @@ export default function Pesaje() {
         </>
       )}
 
-      {tab === 'historial' && <Historial sucursalId={sid} />}
 
       {tab !== 'recepcion' && hayPendientes && (
         <div className="rep-barra-fija">
