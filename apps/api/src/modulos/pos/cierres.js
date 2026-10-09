@@ -120,7 +120,9 @@ export function rutasCierres({ db }) {
       const suc = await resolverSucursal(q, ctx, b.sucursal_id);
       const cfg = await configCierre(q, ctx.empresa.id);
       const ciego = esCiego(ctx, cfg);
-      for (const banco of cfg.bancos) if (!(banco in b.pos)) throw malaPeticion(`Falta el cierre del POS ${banco} (usa 0 si no hubo)`);
+      // Sin montos de los POS es lo normal (la pantalla solo pide Fondo de caja y Efectivo total); si vienen, tienen que venir todos.
+      const conPos = Object.keys(b.pos).length > 0;
+      if (conPos) for (const banco of cfg.bancos) if (!(banco in b.pos)) throw malaPeticion(`Falta el cierre del POS ${banco} (usa 0 si no hubo)`);
       for (const banco of Object.keys(b.pos)) if (!cfg.bancos.includes(banco)) throw malaPeticion(`El POS «${banco}» no está configurado`);
       if (b.conteo) {
         const validas = new Set(DENOMINACIONES.map((d) => String(d.valor)));
@@ -138,7 +140,7 @@ export function rutasCierres({ db }) {
 
       // El sistema se recalcula aquí; nunca se toma lo que mande la pantalla.
       const s = await sistemaDelRango(q, { empresaId: ctx.empresa.id, sucursalId: suc.id, desde: b.fecha_inicio, hasta: b.fecha_fin });
-      const cuadre = calcularCuadre({ tarjeta: s.tarjeta, efectivo: s.efectivo }, { pos_bancos: b.pos, fondo_caja: b.fondo_caja, salidas: b.salidas, ingresos: b.ingresos, efectivo_contado: b.efectivo_contado });
+      const cuadre = calcularCuadre({ tarjeta: s.tarjeta, efectivo: s.efectivo }, { pos_bancos: conPos ? b.pos : null, fondo_caja: b.fondo_caja, salidas: b.salidas, ingresos: b.ingresos, efectivo_contado: b.efectivo_contado });
       const noCuadra = hayDescuadre(cuadre);
       const obs = (b.observaciones ?? '').trim();
       if (noCuadra && !ciego && !obs) throw malaPeticion('El cierre no cuadra: escribe en Observaciones qué pasó con la diferencia');

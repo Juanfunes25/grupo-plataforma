@@ -4,7 +4,8 @@ export const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const n = (v) => r2(Number(v || 0));
 
 export function calcularCuadre(sistema, e) {
-  const tarjetaReportada = r2(Object.values(e.pos ?? {}).reduce((s, v) => s + n(v), 0));
+  // Sin montos de los POS (la pantalla ya no los pide) la tarjeta se toma del sistema: no genera diferencia.
+  const tarjetaReportada = Object.keys(e.pos ?? {}).length === 0 ? n(sistema.tarjeta) : r2(Object.values(e.pos).reduce((s, v) => s + n(v), 0));
   const diferenciaTarjeta = r2(tarjetaReportada - n(sistema.tarjeta));
   const efectivoEsperado = r2(n(e.fondo_caja) + n(sistema.efectivo) + n(e.ingresos) - n(e.salidas));
   const diferenciaEfectivo = r2(n(e.efectivo_contado) - efectivoEsperado);
