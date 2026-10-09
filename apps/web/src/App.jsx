@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import './lib/fuentes.css';   // Inter y Barlow Condensed alojadas aquí (sin Google Fonts)
 import './lib/errores.js';   // reporta al servidor los errores de pantalla
 import { useSesion } from './sesion.jsx';
 import Entrada from './pantallas/Entrada.jsx';

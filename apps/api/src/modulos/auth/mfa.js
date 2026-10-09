@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { hashSecreto, verificarSecreto } from '../../auth/passwords.js';
-import { cifrarSecreto, descifrarSecreto, generarCodigosRecuperacion, nuevoSecretoTotp, normalizarCodigoRecuperacion, uriOtpauth, verificarTotp } from '../../auth/mfa.js';
+import { cifrarSecreto, descifrarSecreto, generarCodigosRecuperacion, necesitaRecifrar, nuevoSecretoTotp, normalizarCodigoRecuperacion, uriOtpauth, verificarTotp } from '../../auth/mfa.js';
 import { verificarDesafio } from '../../auth/tokens.js';
 import { auditarSeguridad } from './sesiones.js';
 import { ErrorHttp, malaPeticion, noAutenticado, prohibido, validar } from '../../lib/http.js';
@@ -32,8 +32,11 @@ async function codigosRestantes(db, usuarioId) {
 export async function comprobarSegundoPaso(db, config, usuarioId, codigo, { permitirRecuperacion = true } = {}) {
   const m = (await db.query('select secreto_cifrado, ultimo_paso, confirmado from core.usuarios_mfa where usuario_id = $1', [usuarioId])).rows[0];
   if (!m?.confirmado) return null;
-  const paso = verificarTotp(descifrarSecreto(config, m.secreto_cifrado), codigo, { ultimoPaso: m.ultimo_paso });
+  const secreto = descifrarSecreto(config, m.secreto_cifrado);
+  const paso = verificarTotp(secreto, codigo, { ultimoPaso: m.ultimo_paso });
   if (paso !== null) {
+    // Rotación de llaves: el secreto se re-guarda con la llave vigente la primera vez que su dueño lo usa.
+    if (necesitaRecifrar(config, m.secreto_cifrado)) await db.query('update core.usuarios_mfa set secreto_cifrado = $2 where usuario_id = $1', [usuarioId, cifrarSecreto(config, secreto)]).catch(() => {});
     // Condicional: dos peticiones simultáneas con el mismo código no pasan las dos.
     const r = await db.query('update core.usuarios_mfa set ultimo_paso = $2 where usuario_id = $1 and (ultimo_paso is null or ultimo_paso < $2)', [usuarioId, paso]);
     return r.rowCount ? 'totp' : null;

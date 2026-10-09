@@ -39,10 +39,22 @@ export function ProveedorSesion({ children }) {
     setCargando(true);
     try {
       // La entrada "grupo" no es una empresa: se usa la primera que el usuario pueda ver.
-      const base = await get('/auth/yo', { empresa: null });
-      const real = codigo && codigo !== 'grupo' && base.empresas.some((e) => e.codigo === codigo) ? codigo : base.empresas[0]?.codigo;
+      // Arranque rápido: con la empresa ya conocida se pide todo en UNA llamada (antes eran dos seguidas, y en una red lenta cada una cuesta ~0,3 s).
+      // Si ya no tiene acceso a esa empresa, se cae al camino de siempre.
+      let completo = null, real = null;
+      if (codigo && codigo !== 'grupo') {
+        try {
+          const r = await get('/auth/yo', { empresa: codigo });
+          if (r.contexto && r.empresas.some((e) => e.codigo === codigo)) { completo = r; real = codigo; }
+        } catch (e) { if (e.status === 401 || e.status === 0) throw e; }
+      }
+      if (!completo) {
+        const base = await get('/auth/yo', { empresa: null });
+        real = codigo && codigo !== 'grupo' && base.empresas.some((e) => e.codigo === codigo) ? codigo : base.empresas[0]?.codigo;
+        fijarEmpresa(real);
+        completo = real ? await get('/auth/yo', { empresa: real }) : base;
+      }
       fijarEmpresa(real);
-      const completo = real ? await get('/auth/yo', { empresa: real }) : base;
       try { localStorage.setItem(`grupo.yo.${real}`, JSON.stringify(completo)); } catch { /* sin caché */ }   // para abrir la caja SIN conexión
       setYo(completo);
       const k = `grupo.sucursal.${real}`;

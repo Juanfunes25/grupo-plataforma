@@ -7,7 +7,7 @@ import { problemaClave } from '../../auth/politica.js';
 import { auditarSeguridad, crearSesion, revocarSesiones, rutasSesiones } from './sesiones.js';
 import { esDireccion, estadoMfa, rutasMfa } from './mfa.js';
 import { loginSupabase } from '../../auth/supabase.js';
-import { hashPin, PIN_RE } from '../../auth/pin.js';
+import { hashPin, hashPinAnterior, PIN_RE } from '../../auth/pin.js';
 import { crearLimitador } from '../../lib/limitador.js';
 import { auditar } from '../../lib/auditoria.js';
 import { ErrorHttp, malaPeticion, validar } from '../../lib/http.js';
@@ -121,11 +121,15 @@ export function rutasAuth({ db, config, ctxMgr }) {
     if (emp.esGrupo) throw malaPeticion('La dirección del grupo entra con correo y contraseña');
     const clave = `${ipDe(req)}|${emp.codigo}`;
     if (limPin.bloqueado(clave)) throw new ErrorHttp(429, 'Demasiados intentos. Espera unos minutos.');
+    const nuevo = hashPin(config, emp.id, pin);
+    const viejo = hashPinAnterior(config, emp.id, pin);
     const { rows } = await db.query(
-      `select u.* from core.accesos a join core.usuarios u on u.id = a.usuario_id
-        where a.empresa_id = $1 and a.pin_hash = $2 and a.activo and u.activo and a.rol = any($3::text[])`,
-      [emp.id, hashPin(config, emp.id, pin), ROLES_CON_PIN]);
+      `select u.*, a.id as acceso_id, a.pin_hash as pin_guardado from core.accesos a join core.usuarios u on u.id = a.usuario_id
+        where a.empresa_id = $1 and a.pin_hash = any($2::text[]) and a.activo and u.activo and a.rol = any($3::text[])`,
+      [emp.id, viejo ? [nuevo, viejo] : [nuevo], ROLES_CON_PIN]);
     const u = rows[0];
+    // Rotación del pepper: el PIN entra con el anterior y se re-guarda con el nuevo (nadie tiene que cambiar su PIN).
+    if (u && u.pin_guardado !== nuevo) await db.query('update core.accesos set pin_hash = $1 where id = $2', [nuevo, u.acceso_id]).catch(() => {});
     if (!u) {
       limPin.fallo(clave);
       await auditar(db, null, 'pin_fallido', 'usuario', null, {}, { empresaId: emp.id, ip: ipDe(req) });

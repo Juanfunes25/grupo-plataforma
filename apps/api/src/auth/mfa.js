@@ -61,7 +61,10 @@ export const uriOtpauth = ({ secreto, cuenta, emisor = 'Grupo Plataforma' }) =>
 // ─── Cifrado del secreto en reposo (AES-256-GCM) ───
 // La llave sale de MFA_KEY; si no existe, del APP_JWT_SECRET. Para rotar APP_JWT_SECRET sin perder los 2FA ya
 // activados, fija MFA_KEY con el valor ANTERIOR antes de cambiarlo (ver docs/SEGURIDAD.md).
-const llave = (config) => crypto.createHash('sha256').update(`mfa-v1:${config.mfaKey || config.jwtSecret}`).digest();
+const derivar = (k) => crypto.createHash('sha256').update(`mfa-v1:${k}`).digest();
+const llave = (config) => derivar(config.mfaKey || config.jwtSecret);
+// Para descifrar se prueban también las llaves de una rotación en curso.
+const llavesViejas = (config) => [config.jwtSecret, config.jwtSecretAnterior, config.mfaKey].filter(Boolean).map(derivar);
 
 export function cifrarSecreto(config, texto) {
   const iv = crypto.randomBytes(12);
@@ -69,12 +72,23 @@ export function cifrarSecreto(config, texto) {
   const ct = Buffer.concat([c.update(String(texto), 'utf8'), c.final()]);
   return `v1.${iv.toString('base64url')}.${c.getAuthTag().toString('base64url')}.${ct.toString('base64url')}`;
 }
-export function descifrarSecreto(config, guardado) {
+/** ¿El secreto guardado está cifrado con una llave que ya no es la vigente? (hay que re-cifrarlo) */
+export function necesitaRecifrar(config, guardado) {
+  try { descifrarCon(llave(config), guardado); return false; } catch { return true; }
+}
+function descifrarCon(k, guardado) {
   const [v, iv, tag, ct] = String(guardado).split('.');
   if (v !== 'v1') throw new Error('formato de secreto desconocido');
-  const d = crypto.createDecipheriv('aes-256-gcm', llave(config), Buffer.from(iv, 'base64url'));
+  const d = crypto.createDecipheriv('aes-256-gcm', k, Buffer.from(iv, 'base64url'));
   d.setAuthTag(Buffer.from(tag, 'base64url'));
   return Buffer.concat([d.update(Buffer.from(ct, 'base64url')), d.final()]).toString('utf8');
+}
+export function descifrarSecreto(config, guardado) {
+  let ultimo;
+  for (const k of [llave(config), ...llavesViejas(config)]) {
+    try { return descifrarCon(k, guardado); } catch (e) { ultimo = e; }
+  }
+  throw ultimo;
 }
 
 // ─── Códigos de recuperación: 10 códigos de un solo uso, formato XXXXX-XXXXX ───

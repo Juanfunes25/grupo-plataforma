@@ -13,8 +13,18 @@ export async function firmarSesion(config, { usuarioId, tokenVersion, empresaCod
   return jwt.sign(enc(config.jwtSecret));
 }
 
+/** Verifica con la llave vigente y, durante una rotación, también con la anterior (APP_JWT_SECRET_ANTERIOR). */
+async function verificar(config, token) {
+  const llaves = [config.jwtSecret, config.jwtSecretAnterior].filter(Boolean);
+  let ultimo;
+  for (const k of llaves) {
+    try { return await jwtVerify(token, enc(k), { issuer: 'grupo-plataforma', algorithms: ['HS256'] }); } catch (e) { ultimo = e; }
+  }
+  throw ultimo;
+}
+
 export async function verificarSesion(config, token) {
-  const { payload } = await jwtVerify(token, enc(config.jwtSecret), { issuer: 'grupo-plataforma', algorithms: ['HS256'] });
+  const { payload } = await verificar(config, token);
   // Un desafío de verificación en dos pasos (paso intermedio del login) NUNCA sirve como sesión.
   if (payload.prop || !['password', 'pin'].includes(payload.via)) throw new Error('no es una sesión');
   return { usuarioId: payload.sub, tokenVersion: payload.tv, empresaFija: payload.emp ?? null, via: payload.via, sesionId: payload.sid ?? null };
@@ -36,7 +46,7 @@ export async function firmarDesafio(config, { usuarioId, empresaCodigo, fase }) 
 }
 
 export async function verificarDesafio(config, token) {
-  const { payload } = await jwtVerify(token, enc(config.jwtSecret), { issuer: 'grupo-plataforma', algorithms: ['HS256'] });
+  const { payload } = await verificar(config, token);
   if (payload.prop !== 'mfa') throw new Error('no es un desafío');
   return { usuarioId: payload.sub, empresaCodigo: payload.emp, fase: payload.fase };
 }

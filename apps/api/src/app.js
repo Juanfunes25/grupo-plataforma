@@ -9,6 +9,7 @@ import { rutasPublicas, rutasAuth } from './modulos/auth/rutas.js';
 import { montarModulos } from './modulos/indice.js';
 import { crearRegistroErrores } from './lib/errores.js';
 import { crearLimitador } from './lib/limitador.js';
+import { crearCache } from './lib/cache.js';
 
 /**
  * Construye la aplicación Express. Recibe db y config: así los tests corren el
@@ -88,20 +89,44 @@ export function crearApp({ db, config, log = console.error }) {
 
   // Todo lo de negocio: sesión + empresa activa obligatorias.
   const negocio = express.Router();
-  negocio.use(ctxMgr.autenticar, ctxMgr.conEmpresa);
+  // Caché de lecturas pesadas (catálogo, dashboard, tableros, gerente): se borra con cualquier cambio de la empresa. Ver lib/cache.js.
+  const cache = crearCache({ activo: config.cacheApi !== false });
+  app.locals.cache = cache;
+  negocio.use(ctxMgr.autenticar, ctxMgr.conEmpresa, cache.middleware);
   montarModulos(negocio, { db, config, ctxMgr, errores });
   app.use('/api', negocio);
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 
   // Frontend compilado (PWA) servido por el mismo servicio.
   if (fs.existsSync(config.webDist)) {
+    // Caché: lo que cambia de nombre con cada compilación (assets/…-hash.js) no vence nunca; fuentes e iconos un día; la entrada y el service worker, siempre revisados.
+    const cacheDe = (f) => {
+      const b = path.basename(f);
+      if (b === 'sw.js' || b === 'index.html' || b === 'registerSW.js') return 'no-cache';
+      if (/[\\/]assets[\\/]/.test(f)) return 'public, max-age=31536000, immutable';
+      if (/\.(woff2?|png|svg|ico|webmanifest|json)$/.test(f)) return 'public, max-age=86400';
+      return null;
+    };
+    // Brotli precomprimido al compilar (scripts/precomprimir.mjs): menos bytes que gzip y sin gastar CPU en cada petición.
+    const raiz = path.resolve(config.webDist);
+    const existeBr = new Map();
+    app.use((req, res, next) => {
+      if ((req.method !== 'GET' && req.method !== 'HEAD') || req.path.startsWith('/api') || !/\bbr\b/.test(req.headers['accept-encoding'] ?? '')) return next();
+      let f;
+      try { f = path.join(raiz, decodeURIComponent(req.path)); } catch { return next(); }
+      if (!f.startsWith(raiz + path.sep) || !/\.(js|css|html|svg|json|webmanifest|txt)$/.test(f)) return next();
+      if (!existeBr.has(f)) existeBr.set(f, fs.existsSync(`${f}.br`));
+      if (!existeBr.get(f)) return next();
+      res.setHeader('Content-Encoding', 'br');
+      res.setHeader('Vary', 'Accept-Encoding');
+      res.type(path.extname(f));
+      const c = cacheDe(f); if (c) res.setHeader('Cache-Control', c);
+      res.sendFile(`${f}.br`, (err) => { if (err) next(err); });
+    });
     app.use(express.static(config.webDist, {
-      setHeaders(res, f) {
-        if (path.basename(f) === 'sw.js' || path.basename(f) === 'index.html') res.setHeader('Cache-Control', 'no-cache');
-        else if (/\.(js|css|woff2?|png|svg)$/.test(f)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-      },
+      setHeaders(res, f) { const c = cacheDe(f); if (c) res.setHeader('Cache-Control', c); },
     }));
-    app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(config.webDist, 'index.html')));
+    app.get(/^(?!\/api).*/, (_req, res) => { res.setHeader('Cache-Control', 'no-cache'); res.sendFile(path.join(config.webDist, 'index.html')); });
   }
 
   // Deja el error a mano para el registro de arriba (res.on('finish')) y sigue al manejador normal.

@@ -21,9 +21,13 @@ export function leerConfig(env = process.env) {
     webDist: path.resolve(env.WEB_DIST || path.join(aqui, '..', '..', 'web', 'dist')),
     // Secreto con el que el API firma las sesiones (obligatorio en producción).
     jwtSecret: env.APP_JWT_SECRET || (produccion ? '' : 'dev-secreto-solo-para-desarrollo-local-0123456789'),
+    // Rotación sin cerrar sesiones: durante el cambio se deja la llave vieja aquí (solo para VERIFICAR; todo lo nuevo se firma con la nueva).
+    jwtSecretAnterior: env.APP_JWT_SECRET_ANTERIOR || '',
     sesionHoras: num(env.SESION_HORAS, 12),
     // Pepper del PIN: cambiarlo invalida todos los PIN (hay que reasignarlos).
     pinPepper: env.PIN_PEPPER || env.APP_JWT_SECRET || 'dev-pepper-solo-para-desarrollo-local',
+    // Pepper anterior: los PIN que aún estén con él siguen entrando y se re-guardan con el nuevo en el primer acceso.
+    pinPepperAnterior: env.PIN_PEPPER_ANTERIOR || '',
     // Si hay Supabase Auth, el correo+contraseña se valida contra él.
     supabaseUrl: env.SUPABASE_URL || '',
     supabaseAnonKey: env.SUPABASE_ANON_KEY || '',

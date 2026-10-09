@@ -1,0 +1,10 @@
+/* Fuentes alojadas en el propio servicio (antes venían de Google Fonts): sin conexiones a terceros, sin hoja de estilos que bloquee
+   el primer dibujo y disponibles sin internet (el service worker las guarda). Solo el subconjunto latino, que incluye ñ, tildes y ¿¡. */
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/fuentes/inter-latin-wght.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow Condensed'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fuentes/barlow-condensed-latin-500.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow Condensed'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fuentes/barlow-condensed-latin-600.woff2') format('woff2'); }
+@font-face { font-family: 'Barlow Condensed'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fuentes/barlow-condensed-latin-700.woff2') format('woff2'); }
+
+/* Letra de reserva con las MEDIDAS de la definitiva: mientras llega el archivo, el texto ocupa el mismo espacio y la pantalla no «salta» al cambiar (CLS). */
+@font-face { font-family: 'Inter Fallback'; src: local('Arial'), local('Helvetica Neue'), local('Helvetica'); size-adjust: 106.4%; ascent-override: 91.1%; descent-override: 22.7%; line-gap-override: 0%; }
+@font-face { font-family: 'Barlow Fallback'; src: local('Arial'), local('Helvetica'); size-adjust: 67%; ascent-override: 149%; descent-override: 29.9%; line-gap-override: 0%; }

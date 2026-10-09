@@ -59,7 +59,7 @@ export default function Acceso() {
   }); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (d.datos && !emp) return <main className="acceso"><div className="aviso-caja mal" role="alert">Empresa no encontrada.</div><button className="btn" onClick={() => nav('/')}>Volver al inicio</button></main>;
-  if (!emp) return <main className="acceso" aria-busy="true"><div className="acceso-card"><Esqueleto alto={120} /><Esqueleto alto={300} /></div></main>;
+  if (!emp) return <main className="acceso" aria-busy="true"><div className="acceso-card" style={{ minHeight: 'min(780px, calc(100svh - 40px))' }}><Esqueleto alto={120} /><Esqueleto alto={300} /></div></main>;   // misma altura que la tarjeta real: sin salto al llegar los datos
 
   const cambiarModo = (m) => { setModo(m); setError(''); };
   return (

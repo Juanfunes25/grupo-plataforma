@@ -9,7 +9,7 @@ export default defineConfig({
     VitePWA({
       // «prompt»: la versión nueva se descarga sola y la app avisa con un botón (no recarga a media venta); ver ui/AvisoVersion.jsx.
       registerType: 'prompt',
-      workbox: { cleanupOutdatedCaches: true, skipWaiting: false, clientsClaim: true, navigateFallbackDenylist: [/^\/api\//, /^\/manifiestos\//, /^\/icons\//] },
+      workbox: { globPatterns: ['**/*.{js,css,html,woff2}'], cleanupOutdatedCaches: true, skipWaiting: false, clientsClaim: true, navigateFallbackDenylist: [/^\/api\//, /^\/manifiestos\//, /^\/icons\//] },
       // Manifiesto base (sin empresa). Al entrar a una empresa, la app cambia al de public/manifiestos/<empresa>.webmanifest
       // (iconos, color y atajos propios; cada empresa se instala como su propia app).
       manifest: {
@@ -25,5 +25,16 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // React y el enrutador cambian poco: en un archivo aparte se quedan en la caché del teléfono aunque la app se actualice todos los días.
+        manualChunks(id) {
+          if (/node_modules\/(react|react-dom|scheduler|react-router|react-router-dom|@remix-run\/router)\//.test(id)) return 'vendor-react';
+          return undefined;
+        },
+      },
+    },
+  },
   server: { port: 5180, proxy: { '/api': 'http://localhost:4300' } },
 });

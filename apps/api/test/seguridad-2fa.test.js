@@ -255,3 +255,47 @@ test('el PIN de mostrador no lleva 2FA y no puede iniciarla', async () => {
   assert.equal((await caja.get('/api/auth/2fa/estado')).body.disponible, false);
   assert.equal((await caja.post('/api/auth/2fa/iniciar')).status, 403);
 });
+
+test('rotación de llaves sin cerrar sesiones: APP_JWT_SECRET_ANTERIOR, PIN_PEPPER_ANTERIOR y MFA_KEY', async () => {
+  const { firmarSesion, verificarSesion } = await import('../src/auth/tokens.js');
+  const vieja = { jwtSecret: 'v'.repeat(40), sesionHoras: 1 };
+  const tok = await firmarSesion(vieja, { usuarioId: '00000000-0000-4000-8000-000000000001', tokenVersion: 1, via: 'password' });
+  const nueva = { jwtSecret: 'n'.repeat(40), sesionHoras: 1 };
+  await assert.rejects(() => verificarSesion(nueva, tok));
+  assert.equal((await verificarSesion({ ...nueva, jwtSecretAnterior: vieja.jwtSecret }, tok)).via, 'password');
+  // un secreto cualquiera no entra aunque exista el «anterior»
+  await assert.rejects(() => verificarSesion({ jwtSecret: 'x'.repeat(40), jwtSecretAnterior: 'y'.repeat(40) }, tok));
+  // el 2FA ya activado se sigue descifrando con la llave anterior
+  const g = cifrarSecreto(vieja, 'JBSWY3DPEHPK3PXP');
+  assert.equal(descifrarSecreto({ ...nueva, jwtSecretAnterior: vieja.jwtSecret }, g), 'JBSWY3DPEHPK3PXP');
+
+  // PIN: al cambiar el pepper, el PIN de siempre entra y queda re-guardado con el nuevo
+  const antes = t.config.pinPepper;
+  t.config.pinPepperAnterior = antes; t.config.pinPepper = 'pepper-nuevo-' + 'z'.repeat(20);
+  try {
+    assert.ok(await t.loginPin('italo', '4821'), 'el PIN sigue entrando durante la rotación');
+    t.config.pinPepperAnterior = '';
+    assert.ok(await t.loginPin('italo', '4821'), 'y ya quedó guardado con el pepper nuevo');
+  } finally { t.config.pinPepper = antes; t.config.pinPepperAnterior = ''; }
+});
+
+test('al rotar la llave del 2FA, el secreto se re-cifra solo la primera vez que se usa', async () => {
+  const { necesitaRecifrar } = await import('../src/auth/mfa.js');
+  const vieja = t.config.jwtSecret;
+  const uid = (await t.db.query(`select id from core.usuarios where email = 'dueno@grupo.hn'`)).rows[0].id;
+  const antes = (await t.db.query('select secreto_cifrado from core.usuarios_mfa where usuario_id = $1', [uid])).rows[0].secreto_cifrado;
+  assert.equal(necesitaRecifrar(t.config, antes), false);
+  const original = { jwt: t.config.jwtSecret, ant: t.config.jwtSecretAnterior };
+  t.config.jwtSecretAnterior = vieja; t.config.jwtSecret = 'rotado-' + 'q'.repeat(40);
+  try {
+    assert.equal(necesitaRecifrar(t.config, antes), true);
+    const { comprobarSegundoPaso } = await import('../src/modulos/auth/mfa.js');
+    const { descifrarSecreto } = await import('../src/auth/mfa.js');
+    const secreto = descifrarSecreto(t.config, antes);
+    assert.equal(await comprobarSegundoPaso(t.db, t.config, uid, unaVez(secreto, 1)), 'totp');
+    const despues = (await t.db.query('select secreto_cifrado from core.usuarios_mfa where usuario_id = $1', [uid])).rows[0].secreto_cifrado;
+    assert.equal(necesitaRecifrar(t.config, despues), false);
+    t.config.jwtSecretAnterior = '';   // ya se puede quitar la llave anterior
+    assert.equal(descifrarSecreto(t.config, despues), secreto);
+  } finally { t.config.jwtSecret = original.jwt; t.config.jwtSecretAnterior = original.ant; }
+});
