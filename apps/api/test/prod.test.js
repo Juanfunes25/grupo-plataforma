@@ -1,3 +1,4 @@
+import { fechaHN } from '@grupo/shared';
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { iniciar } from './helpers.js';
@@ -6,7 +7,7 @@ import { consumoSegunReceta, repartirFifo, desviacion } from '../src/modulos/pro
 import { costoKgReceta, precioVigente } from '../src/modulos/prod/costeo.js';
 
 let tokProd, t, ger, prod, bod, otra, eid, sabor, sabor2, insA, insB, rinvA, rinvB;
-const hoy = new Date().toISOString().slice(0, 10);
+const hoy = fechaHN();
 
 before(async () => {
   t = await iniciar();

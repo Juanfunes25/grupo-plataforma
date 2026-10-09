@@ -40,13 +40,13 @@ test('abrir turno NO es necesario: el primer cobro lo abre solo; se puede volver
   const venta = (n) => ({ items: [{ producto_id: prod('Naranja Pura').id, cantidad: n }], cobrar: { pagos: [{ forma_pago_id: fp('efectivo'), monto: 100 * n }] } });
   const emp = (await t.db.query(`select id from core.empresas where codigo = 'origen'`)).rows[0].id;
   // Con exigir_turno = true se rechaza y se revierte todo
-  await t.db.query(`insert into core.config (empresa_id, clave, valor) values ($1, 'pos', '{"exigir_turno": true}'::jsonb)`, [emp]);
+  await t.db.query(`insert into core.config (empresa_id, clave, valor) values ($1, 'pos', '{"exigir_turno": true}'::jsonb) on conflict (empresa_id, clave) do update set valor = core.config.valor || '{"exigir_turno": true}'::jsonb`, [emp]);
   const r = await caja.post('/api/pos/ventas', venta(1));
   assert.equal(r.status, 409);
   assert.match(r.body.error, /turno/i);
   assert.equal((await caja.get('/api/pos/ventas')).body.length, 0);
   // Por defecto: vende y el turno se abre solo, con fondo 0
-  await t.db.query(`delete from core.config where empresa_id = $1 and clave = 'pos'`, [emp]);
+  await t.db.query(`update core.config set valor = valor - 'exigir_turno' where empresa_id = $1 and clave = 'pos'`, [emp]);
   const ok = await caja.post('/api/pos/ventas', venta(1));
   assert.equal(ok.status, 201, JSON.stringify(ok.body));
   const turno = (await caja.get('/api/pos/turno/actual')).body;

@@ -8,8 +8,10 @@ test('sin desde: arma los ultimos N dias anclados a hasta', () => {
   assert.equal(r.hasta, '2026-08-20');
 });
 
+import { hoyNegocio } from './fechaNegocio.js';
+
 test('sin dias ni hasta: usa 30 dias hasta hoy', () => {
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyNegocio();
   const r = resolverRango({});
   assert.equal(r.hasta, hoy);
 });
@@ -25,11 +27,11 @@ test('con desde: arma un periodo calendarizado exacto', () => {
 });
 
 test('con desde sin hasta: hasta es hoy', () => {
-  const hoy = new Date();
-  const desde = new Date(hoy);
-  desde.setDate(desde.getDate() - 30); // dentro del tope de 180 dias
+  const hoy = hoyNegocio();
+  const desde = new Date(`${hoy}T12:00:00Z`);
+  desde.setUTCDate(desde.getUTCDate() - 30); // dentro del tope de 180 dias
   const r = resolverRango({ desde: desde.toISOString().slice(0, 10) });
-  assert.equal(r.hasta, hoy.toISOString().slice(0, 10));
+  assert.equal(r.hasta, hoy);
 });
 
 test('rechaza fechas con formato invalido', () => {

@@ -1,3 +1,4 @@
+import { fechaHN } from '@grupo/shared';
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { iniciar } from './helpers.js';
@@ -130,7 +131,7 @@ test('bitácora: filtros por acción, usuario, texto y fechas; paginación; veri
   const busq = (await admin.get('/api/admin/auditoria?q=Luis')).body;
   assert.ok(busq.length >= 1 && busq.every((a) => JSON.stringify(a).includes('Luis')));
   assert.equal((await admin.get('/api/admin/auditoria?q=zzz-no-existe-zzz')).body.length, 0);
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = fechaHN();
   assert.ok((await admin.get(`/api/admin/auditoria?desde=${hoy}&hasta=${hoy}`)).body.length >= 1);
   assert.equal((await admin.get('/api/admin/auditoria?desde=2001-01-01&hasta=2001-01-02')).body.length, 0);
   assert.equal((await admin.get('/api/admin/auditoria?desde=mañana')).status, 400);

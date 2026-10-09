@@ -1,3 +1,4 @@
+import { fechaHN } from '@grupo/shared';
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { iniciar } from './helpers.js';
@@ -96,7 +97,7 @@ async function fetchPatch(cli, ruta, cuerpo) {
 
 test('lotes Mec3: entrada abre lote con vencimiento a un año, salidas FIFO y alerta de vencimiento', async () => {
   const pasta = await crear('PASTA TEST MEC3', { tipo: 'mec3', unidad: 'unidad', peso_unitario: 2 });
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = fechaHN();
   const hace = (d) => new Date(Date.now() - d * 86400000).toISOString().slice(0, 10);
   let r = await bod.post('/api/rinv/fabrica/entradas-lote', { items: [{ id: pasta.id, unidades: 4, peso_unitario: 2, cliente_id: 'e1' }], fecha: hace(400), motivo: 'Pedido viejo' });
   assert.equal(r.body.guardados, 1); assert.equal(await stockDe(pasta.id), 8);
@@ -185,7 +186,7 @@ test('insumos por sucursal: stock propio por tienda, mínimos compartidos, matri
   await bod.post(`/api/rinv/sucursal/${sucId}/entradas-lote`, { items: [{ id: n.body.id, cantidad: 10, cliente_id: 'l1' }] });
   assert.equal(lote.body.resultados[0].cantidad, 40);
   assert.equal((await bod.get(`${base}/movimientos`)).body.length, 4);
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = fechaHN();
   const mv = (await bod.get(`/api/rinv/movimientos?desde=${hoy}&hasta=${hoy}&ambito=sucursal&busqueda=vasos`)).body;
   assert.ok(mv.length >= 4 && mv.every((m) => m.ambito === 'sucursal'));
   assert.equal((await bod.get(`/api/rinv/reportes/mensual?meses=3`)).body.meses.length, 3);

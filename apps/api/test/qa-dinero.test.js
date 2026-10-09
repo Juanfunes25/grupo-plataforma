@@ -1,3 +1,4 @@
+import { fechaHN } from '@grupo/shared';
 // QA · dinero, bitácora y datos. Cubre lo que se rompe solo bajo carga o con datos raros:
 //  · totales fiscales que SIEMPRE cuadran al centavo (barrido aleatorio de carritos);
 //  · doble toque y cobros en paralelo: un número de factura por venta, sin huecos ni repetidos;
@@ -127,7 +128,7 @@ test('pedido de insumos de la tienda: un reintento del MISMO envío (cola sin se
   const sucMackey = await t.sucursalId('italo', 'mackey');
   await t.usuario({ nombre: 'Caja Mackey', accesos: [{ empresa: 'italo', rol: 'cajero', pin: '4821', sucursal_ids: [sucMackey] }] });
   const tienda = t.cli(await t.loginPin('italo', '4821'), 'italo');
-  const fecha = new Date().toISOString().slice(0, 10);
+  const fecha = fechaHN();
   const cuerpo = { sucursal_id: sucMackey, fecha, cliente_id: 'envio-1', items: [{ insumo_texto: 'Vasos 8oz', cantidad: '2 cajas' }] };
   const a = await tienda.post('/api/rep/pedidos', cuerpo);
   assert.equal(a.status, 201, JSON.stringify(a.body));
