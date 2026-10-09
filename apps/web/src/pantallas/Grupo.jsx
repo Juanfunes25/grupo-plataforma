@@ -6,6 +6,7 @@ import { BarrasH, Campo, Columnas, Estado, Kpi, Modal, Tabs, useAccion, useDatos
 import { Anillo, InformeEmpresa, ListaHallazgos } from '../ui/GerenteDigital.jsx';
 import GrupoDocumentos from '../documentos/GrupoDocumentos.jsx';
 import PanelRrhh from '../rrhh/Directorio.jsx';
+import PlanillaGrupo from '../planilla/PlanillaGrupo.jsx';
 import InventarioGrupo from '../inventario/InventarioGrupo.jsx';
 import Consolidado from '../fin/Consolidado.jsx';
 import { pedirRecorrido } from '../ayuda/recorridoEstado.js';
@@ -19,7 +20,7 @@ const rolNombre = (id) => ROLES.find((r) => r[0] === id)?.[1] ?? id;
 export default function Grupo() {
   const { usuario } = useSesion();
   const [tab, setTab] = useState('hoy');
-  const tabs = [['hoy', 'Hoy'], ['resumen', 'Resumen del periodo'], ['gerente', 'Gerente digital'], ['finanzas', 'Finanzas del grupo'], ['alertas', 'Alertas'], ['inventario', 'Inventario'], ['rrhh', 'Recursos humanos'], ['documentos', 'Documentos'], ...(usuario?.es_dueno_grupo ? [['usuarios', 'Administradores y accesos']] : [])];
+  const tabs = [['hoy', 'Hoy'], ['resumen', 'Resumen del periodo'], ['gerente', 'Gerente digital'], ['finanzas', 'Finanzas del grupo'], ['alertas', 'Alertas'], ['inventario', 'Inventario'], ['rrhh', 'Recursos humanos'], ...(usuario?.es_dueno_grupo ? [['planilla', 'Planilla']] : []), ['documentos', 'Documentos'], ...(usuario?.es_dueno_grupo ? [['usuarios', 'Administradores y accesos']] : [])];
   return (
     <div className="pagina" style={{ maxWidth: 1360 }}>
       <div className="encabezado-pagina"><div><h1>Dirección del grupo</h1><small>Las cuatro empresas en una sola vista. Cada empresa lleva su propio inventario y operación; aquí ves y controlas todo.</small></div><button className="btn chico" onClick={() => pedirRecorrido('dueno')}>Ayuda</button></div>
@@ -32,6 +33,7 @@ export default function Grupo() {
       {tab === 'alertas' && <Alertas />}
       {tab === 'inventario' && <InventarioGrupo />}
       {tab === 'rrhh' && <PanelRrhh grupo />}
+      {tab === 'planilla' && usuario?.es_dueno_grupo && <PlanillaGrupo />}
       {tab === 'documentos' && <GrupoDocumentos />}
       {tab === 'usuarios' && <Administradores />}
     </div>
