@@ -152,3 +152,21 @@ stock negativo o dormido, producto por vencer, faltantes de caja, alertas de con
 cada empresa y las compara (ranking, brecha de margen, dependencia de una sola empresa, operaciones sin conciliar).
 Las reglas y umbrales están en `analisis.js` y se prueban con datos sintéticos. Una capa de redacción con IA (Claude) puede
 sumarse después para explicar los hallazgos en conversación; hoy no depende de ningún servicio externo.
+
+## 10. Finanzas del grupo y Compras (mejoras 16 y 17)
+
+**Compras** (`apps/api/src/modulos/compras`, esquema `cmp`, migración 0060). Orden de compra por empresa: borrador → enviada → recibida
+parcial/total → cerrada (o anulada). Proveedores = fichas comunes `core.terceros` (`es_proveedor`). Compra en lempiras o dólares con tipo de cambio
+editable en la orden y, aparte, el del día de la factura al recibir. Cada recepción deja una fila inalterable en `cmp.precios` (historial por
+proveedor; el comparativo muestra la variación y, en dólares, cuánto se debe al precio y cuánto al tipo de cambio). Documento imprimible y correo
+(usa `lib/correo.js`; sin Gmail configurado queda «pendiente»).
+
+*Punto de integración con los inventarios* (`compras/recepcion.js`, sin duplicar su lógica): `inv` → `inv.compras` + `inv.ingresar()`;
+`fab` (EcoStone) → `fab.mover_insumo(…'compra'…)` (costo promedio ponderado); `rinv_fab` (Italo/Mec3) → stock + kardex + lote + `rinv.precios_fab`
+y `prod.costeo_precios` por nombre (alimenta el costeo del gelato); `rep_suc` → `rinv.stock_suc`; `dis` (DISERCO) → `dis.mover(…'compra'…)`.
+Costos siempre sin ISV. Lo que entra por una orden queda marcado con `recepcion_id` para no contarlo dos veces en el flujo de caja.
+
+**Finanzas** (`apps/api/src/modulos/fin`): `estados.js` (estado de resultados por sucursal, flujo de caja, por cobrar, por pagar, presupuesto,
+saldos entre empresas), `extra.js` (rutas de la empresa activa), `consolidado.js` (Dirección, con eliminación de operaciones internas) y
+`excel.js` (libros .xlsx). Por cobrar = facturas a crédito (`fin.abonos_credito`) + cotizaciones aprobadas leídas de `crm.cxc` (fuente única de
+Cobranza). Por pagar = recepciones de órdenes a crédito + gastos con `pagado = false`. El flujo cuenta el dinero cuando se mueve.
