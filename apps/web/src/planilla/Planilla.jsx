@@ -1,7 +1,7 @@
 // Planilla: la hoja quincenal/semanal de la empresa (Empleado · DIAS · SALARIO DIARIO · TOTAL QUINCENAL · POR HORA · HORAS EXTRAS ·
 // TOTAL HX · deducciones · TOTAL · cuenta · OBSERVACIONES), pre-llenada desde RRHH y editable celda por celda antes de aprobar.
 // Solo dueño / administrador con rrhh:sensible. Los parámetros de ley están «por confirmar con el contador».
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { fechaHN, lempiras, numero } from '@grupo/shared';
 import { almacen, api, empresaActual, get, patch, post, put, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
@@ -29,7 +29,7 @@ export default function Planilla() { return <div className="pagina"><div classNa
 export function PlanillaPanel({ empresa }) {
   const [tab, setTab] = useState('planillas');
   const op = empresa ? { empresa } : undefined;
-  const tabs = [['planillas', 'Planillas'], ['novedades', 'Horas extra y bonos'], ['config', 'Pago y deducciones fijas'], ['contable', 'Resumen contable'], ['parametros', 'Parámetros']];
+  const tabs = [['planillas', 'Planillas'], ['novedades', 'Bonos y novedades'], ['config', 'Pago y deducciones fijas'], ['contable', 'Resumen contable'], ['parametros', 'Parámetros']];
   return (
     <>
       <Tabs tabs={tabs} valor={tab} onCambio={setTab} />
@@ -56,6 +56,11 @@ function Planillas({ op }) {
     <>
       <AvisoConfirmar op={op} />
       <div className="pl-acciones"><button className="btn primario" onClick={() => setNueva(true)}>+ Nueva planilla</button></div>
+      {(d.datos ?? []).filter((p) => p.estado === 'borrador').slice(0, 3).map((p) => (
+        <button key={p.id} className="pl-seguir" onClick={() => setAbierta(p.id)}>
+          <span><b>{p.etiqueta}</b><small>En borrador · {p.empleados} empleados · {lempiras(p.total)}</small></span>
+          <span className="pl-seguir-ir">{PERIODICAS.includes(p.tipo) ? 'Poner horas y aprobar →' : 'Revisar y aprobar →'}</span>
+        </button>))}
       <Estado d={d}>{(rows) => rows.length === 0 ? <Vacio titulo="Todavía no hay planillas">Crea la primera: se llena sola con los empleados de RRHH.</Vacio> : (
         <div className="tarjeta pad0"><div className="tabla-wrap"><table>
           <thead><tr><th>Planilla</th><th>Periodo</th><th className="der">Empleados</th><th className="der">Total</th><th>Estado</th></tr></thead>
@@ -72,27 +77,36 @@ function Planillas({ op }) {
   );
 }
 
+/** Primer día de la semana de pago que contiene `iso` (inicio: 1 = lunes … 7 = domingo). Fechas de Honduras, sin UTC del navegador. */
+function inicioSemana(iso, inicio = 1) {
+  const ms = Date.parse(`${iso}T12:00:00Z`);
+  const dia = ((new Date(ms).getUTCDay() + 6) % 7) + 1;
+  const atras = (dia - Math.round(Number(inicio) || 1) + 7) % 7;
+  return new Date(ms - atras * 86400000).toISOString().slice(0, 10);
+}
+
 function Nueva({ op, onCerrar, onListo }) {
   const cfg = useDatos(() => get('/planilla/config', op), [op?.empresa]);
   const hoy = fechaHN();
   const [f, setF] = useState({ tipo: '', anio: hoy.slice(0, 4), mes: String(Number(hoy.slice(5, 7))), quincena: Number(hoy.slice(8)) <= 15 ? '1' : '2', desde: '' });
   const [ejecutar, ocupado] = useAccion();
   const tipo = f.tipo || (cfg.datos?.periodicidad_empresa ?? 'quincena');
+  const desde = f.desde || (cfg.datos ? inicioSemana(hoy, cfg.datos.semana.inicio_dia) : '');
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const crear = () => ejecutar(async () => {
     const cuerpo = { tipo };
-    if (tipo === 'semanal') cuerpo.desde = f.desde;
+    if (tipo === 'semanal') cuerpo.desde = desde;
     if (['quincena', 'mensual'].includes(tipo)) { cuerpo.anio = Number(f.anio); cuerpo.mes = Number(f.mes); if (tipo === 'quincena') cuerpo.quincena = Number(f.quincena); }
     if (['aguinaldo', 'catorceavo'].includes(tipo)) cuerpo.anio = Number(f.anio);
     onListo(await post('/planilla/planillas', cuerpo, op));
   }, 'Planilla armada desde RRHH');
   const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
   return (
-    <Modal titulo="Nueva planilla" tam="angosto" onCerrar={onCerrar} pie={<button className="btn primario" disabled={ocupado || (tipo === 'semanal' && !f.desde)} onClick={crear}>Armar planilla</button>}>
+    <Modal titulo="Nueva planilla" tam="angosto" onCerrar={onCerrar} pie={<button className="btn primario" disabled={ocupado || (tipo === 'semanal' && !desde)} onClick={crear}>Armar planilla</button>}>
       <div style={{ display: 'grid', gap: 12 }}>
         <Campo etiqueta="Tipo" ayuda={cfg.datos ? `La empresa paga ${TIPOS[cfg.datos.periodicidad_empresa].toLowerCase()} por defecto. Solo entran los empleados con esa periodicidad.` : ''}>
           <select value={tipo} onChange={set('tipo')}>{Object.entries(TIPOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Campo>
-        {tipo === 'semanal' && <Campo etiqueta="Primer día de la semana" ayuda="Debe ser el día en que empieza la semana de pago (por defecto lunes)."><input type="date" value={f.desde} onChange={set('desde')} /></Campo>}
+        {tipo === 'semanal' && <Campo etiqueta="Primer día de la semana" ayuda="Ya viene la semana actual. Debe empezar el día en que empieza la semana de pago (por defecto lunes)."><input type="date" value={desde} onChange={set('desde')} /></Campo>}
         {['quincena', 'mensual'].includes(tipo) && <><Campo etiqueta="Mes"><select value={f.mes} onChange={set('mes')}>{MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></Campo>
           <Campo etiqueta="Año"><input type="number" value={f.anio} onChange={set('anio')} /></Campo></>}
         {tipo === 'quincena' && <Campo etiqueta="Quincena"><select value={f.quincena} onChange={set('quincena')}><option value="1">1 al 15</option><option value="2">16 al fin de mes</option></select></Campo>}
@@ -102,37 +116,141 @@ function Nueva({ op, onCerrar, onListo }) {
   );
 }
 
+const PERIODICAS = ['semanal', 'quincena', 'mensual'];
+const ANTERIOR = { semanal: 'semana anterior', quincena: 'quincena anterior', mensual: 'mes anterior' };
+const PERIODO = { semanal: 'semana', quincena: 'quincena', mensual: 'mes' };
+const r2 = (n) => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const horaHN = () => new Date().toLocaleTimeString('es-HN', { timeZone: 'America/Tegucigalpa', hour: '2-digit', minute: '2-digit' });
+/** Lo que se escribe en el campo de horas → número (coma o punto decimal; vacío = 0). null si no sirve. */
+const leerHoras = (txt) => {
+  const s = String(txt ?? '').trim().replace(',', '.');
+  if (s === '') return 0;
+  if (!/^\d*\.?\d*$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 && n <= 300 ? Math.round(n * 100) / 100 : null;
+};
+const sinHx = (l) => !!l.detalle?.sin_horas_extra || /gerencia/i.test(l.sucursal ?? '');
+
+/**
+ * Las horas que se están escribiendo (aún sin guardar) y su guardado automático. Clave = empleado.
+ * Se guardan solas un momento después de dejar de escribir, en un solo envío; también al pasar a revisar, aprobar o cerrar.
+ */
+function useHorasPendientes({ planillaId, op, onGuardado }) {
+  const [sucias, setSucias] = useState({});              // { empleado_id: texto }
+  const [estado, setEstado] = useState({ fase: 'quieto' });  // quieto | guardando | guardado | error
+  const ref = useRef({ sucias, enCurso: null });
+  ref.current.sucias = sucias;
+  const guardar = useCallback(async () => {
+    if (ref.current.enCurso) { await ref.current.enCurso; }
+    const envio = Object.entries(ref.current.sucias).map(([empleado_id, txt]) => ({ empleado_id, txt, horas: leerHoras(txt) })).filter((x) => x.horas !== null);
+    if (!envio.length) return true;
+    setEstado({ fase: 'guardando' });
+    const tarea = (async () => {
+      try {
+        const r = await put(`/planilla/planillas/${planillaId}/horas`, { horas: envio.map(({ empleado_id, horas }) => ({ empleado_id, horas })) }, op);
+        onGuardado(r.planilla);
+        // solo se limpian los campos que no se volvieron a tocar mientras se guardaba
+        setSucias((s) => { const n = { ...s }; for (const x of envio) if (n[x.empleado_id] === x.txt) delete n[x.empleado_id]; return n; });
+        setEstado({ fase: 'guardado', n: r.guardadas, hora: horaHN() });
+        return true;
+      } catch (e) { setEstado({ fase: 'error', mensaje: e.message }); return false; }
+    })();
+    ref.current.enCurso = tarea;
+    const ok = await tarea;
+    ref.current.enCurso = null;
+    return ok;
+  }, [planillaId, op, onGuardado]);
+  // guardado automático: 900 ms después de la última tecla
+  useEffect(() => {
+    if (!Object.keys(sucias).length || estado.fase === 'guardando' || estado.fase === 'error') return undefined;
+    const t = setTimeout(guardar, 900);
+    return () => clearTimeout(t);
+  }, [sucias, estado.fase, guardar]);
+  const poner = useCallback((empleado_id, txt) => { setSucias((s) => ({ ...s, [empleado_id]: txt })); setEstado((e) => (e.fase === 'error' ? { fase: 'quieto' } : e)); }, []);
+  const ponerVarias = useCallback((mapa) => setSucias((s) => ({ ...s, ...mapa })), []);
+  const malas = Object.values(sucias).filter((t) => leerHoras(t) === null).length;
+  return { sucias, poner, ponerVarias, guardar, estado, malas, pendientes: Object.keys(sucias).length };
+}
+
+/** Horas, TOTAL HX y TOTAL de un renglón con lo que se está escribiendo (el servidor confirma al guardar). */
+function estimar(l, txt, recargo) {
+  if (txt === undefined) return { horas: Number(l.horas_extra), total_hx: Number(l.total_hx), total: Number(l.total), cambia: false };
+  const h = leerHoras(txt);
+  if (h === null || sinHx(l)) return { horas: Number(l.horas_extra), total_hx: Number(l.total_hx), total: Number(l.total), cambia: false, mala: h === null };
+  const hx = r2(h * Number(l.por_hora) * (1 + recargo / 100));
+  return { horas: h, total_hx: hx, total: r2(Number(l.total) - Number(l.total_hx) + hx), cambia: h !== Number(l.horas_extra) };
+}
+
 function Hoja({ id, op, onCerrar }) {
   const { usuario } = useSesion();
   const d = useDatos(() => get(`/planilla/planillas/${id}`, op), [id]);
+  const [fresca, setFresca] = useState(null);             // la planilla que devolvió el último guardado de horas
+  useEffect(() => { setFresca(null); }, [d.datos]);
+  const p0 = fresca ?? d.datos;
   const [ejecutar, ocupado] = useAccion();
   const confirmar = useConfirmar(); const pedir = usePedirTexto(); const avisar = useAviso();
   const [dedDe, setDedDe] = useState(null);
+  const [vista, setVista] = useState(null);
+  const hx = useHorasPendientes({ planillaId: id, op, onGuardado: setFresca });
   const run = (fn, ok) => ejecutar(async () => { await fn(); await d.recargar(); }, ok);
+  const conHoras = p0 && p0.estado === 'borrador' && PERIODICAS.includes(p0.tipo);
+  const v = vista ?? (conHoras ? 'horas' : 'hoja');
+  const recargo = Number(p0?.parametros?.valores?.he_diurna_pct ?? 0);
+  // lo que se ve: con las horas que se están escribiendo
+  const vivo = p0 ? p0.lineas.reduce((t, l) => { const e = estimar(l, hx.sucias[l.empleado_id], recargo); t.horas += e.horas; t.total_hx += e.total_hx; t.total += e.total; return t; }, { horas: 0, total_hx: 0, total: 0 }) : null;
+  /** Antes de revisar, aprobar o cerrar: que no quede nada sin guardar. */
+  const asegurar = async () => {
+    if (hx.malas) { avisar(`Hay ${hx.malas} número(s) de horas que no se entienden: corrígelos (ejemplo: 4 o 2.5)`, 'mal'); return false; }
+    return hx.guardar();
+  };
+  const cerrar = async () => { if (!hx.pendientes || (await asegurar())) onCerrar(); else if (await confirmar({ titulo: 'Hay horas sin guardar', mensaje: 'Si cierras ahora se pierden las horas que no se guardaron.', textoOk: 'Cerrar sin guardar', peligro: true })) onCerrar(); };
+  const aprobar = async () => {
+    if (!(await asegurar())) return;
+    if (await confirmar({ titulo: 'Aprobar planilla', mensaje: `Total a pagar ${lempiras(vivo.total)} a ${p0.lineas.length} empleado(s).\nAl aprobarla queda inalterable. Solo el dueño puede reabrirla, con motivo.`, textoOk: 'Aprobar' })) run(() => post(`/planilla/planillas/${p0.id}/aprobar`, {}, op), 'Planilla aprobada');
+  };
+  const irA = async (sig) => { if (sig === 'hoja' && hx.pendientes && !(await asegurar())) return; setVista(sig); };
+  const pie = !p0 ? null : (
+    <div className="pl-pie">
+      <div className="pl-pie-tot" aria-live="polite">
+        {!['aguinaldo', 'catorceavo'].includes(p0.tipo) && <span>{numero(vivo.horas, 2)} h extra · HX {lempiras(vivo.total_hx)}</span>}
+        <b>Total a pagar {lempiras(vivo.total)}</b>
+        {conHoras && <EstadoGuardado hx={hx} />}
+      </div>
+      {conHoras && v === 'horas' && <button className="btn primario" disabled={ocupado} onClick={() => irA('hoja')}>Revisar totales →</button>}
+      {conHoras && v === 'hoja' && <button className="btn" onClick={() => irA('horas')}>← Horas extra</button>}
+      {p0.estado === 'borrador' && v === 'hoja' && <button className="btn primario" disabled={ocupado} onClick={aprobar}>Aprobar planilla</button>}
+    </div>
+  );
   return (
-    <Modal titulo={d.datos ? d.datos.etiqueta : 'Planilla'} tam="ancho" onCerrar={onCerrar}>
-      <Estado d={d}>{(p) => {
+    <Modal titulo={p0 ? p0.etiqueta : 'Planilla'} tam="ancho" onCerrar={cerrar} pie={pie}>
+      <Estado d={d}>{() => {
+        const p = p0;
         const edita = p.estado === 'borrador';
         const decimo = p.tipo === 'aguinaldo' || p.tipo === 'catorceavo';
         const celda = (l, campo, extra = {}) => (
-          <input type="number" inputMode="decimal" step="any" min="0" defaultValue={l[campo]} disabled={!edita || ocupado} aria-label={`${campo} de ${l.nombre}`} {...extra}
-            onBlur={(e) => { if (String(e.target.value) === String(l[campo]) || e.target.value === '') return; run(() => patch(`/planilla/planillas/${p.id}/lineas/${l.id}`, { [campo]: Number(e.target.value) }, op)); }} />);
+          <input key={`${l.id}-${l[campo]}`} type="number" inputMode="decimal" step="any" min="0" defaultValue={l[campo]} disabled={!edita || ocupado || (campo === 'horas_extra' && sinHx(l))} aria-label={`${campo} de ${l.nombre}`} {...extra}
+            onBlur={(e) => {
+              if (String(e.target.value) === String(l[campo]) || e.target.value === '') return;
+              if (campo === 'horas_extra') { hx.poner(l.empleado_id, e.target.value); return; }   // las horas van por la captura: el renglón no se «congela»
+              run(() => patch(`/planilla/planillas/${p.id}/lineas/${l.id}`, { [campo]: Number(e.target.value) }, op));
+            }} />);
         const texto = (l, campo, cls) => (
-          <input className={cls} defaultValue={l[campo] ?? ''} disabled={!edita || ocupado} aria-label={`${campo} de ${l.nombre}`}
+          <input key={`${l.id}-${l[campo] ?? ''}`} className={cls} defaultValue={l[campo] ?? ''} disabled={!edita || ocupado} aria-label={`${campo} de ${l.nombre}`}
             onBlur={(e) => { if (e.target.value === (l[campo] ?? '')) return; run(() => patch(`/planilla/planillas/${p.id}/lineas/${l.id}`, { [campo]: e.target.value }, op)); }} />);
         return (
           <div style={{ display: 'grid', gap: 10 }}>
             <div><span className={`iu-estado ${ESTADOS[p.estado][1]}`}>{ESTADOS[p.estado][0]}</span> <small>{TIPOS[p.tipo]} · {p.desde} al {p.hasta} · pago {p.fecha_pago ?? '—'}</small></div>
             {p.por_confirmar && <div className="pl-aviso-conf">Calculada con parámetros <b>por confirmar con el contador</b>.</div>}
+            {conHoras && <Tabs estilo="pildora" tabs={[['horas', '1 · Horas extra'], ['hoja', '2 · Revisar y aprobar']]} valor={v} onCambio={irA} />}
+            {v === 'horas' ? <HorasRapidas p={p} hx={hx} recargo={recargo} op={op} /> : (<>
             <div className="rejilla cols-4">
               <Kpi acento etiqueta="Total a pagar" valor={lempiras(p.totales.total)} /><Kpi etiqueta="Empleados" valor={p.totales.empleados} sub={p.control.sin_cuenta ? `${p.control.sin_cuenta} sin número de cuenta` : 'Todos con cuenta'} />
               <Kpi etiqueta={decimo ? 'Total días × diario' : 'Sueldos + horas extra'} valor={lempiras(p.totales.total_quincenal + p.totales.total_hx)} /><Kpi etiqueta="Deducciones" valor={lempiras(p.totales.total_deducciones)} /></div>
-            {p.advertencias.filter((a) => a.nivel !== 'info' || true).length > 0 && (
+            {p.advertencias.length > 0 && (
               <details><summary><b>{p.advertencias.length}</b> aviso(s) para revisar</summary>
                 <ul>{p.advertencias.map((a, i) => <li key={i}>{a.empleado ? <b>{a.empleado}: </b> : null}{a.mensaje}</li>)}</ul></details>)}
             <div className="pl-acciones">
-              {edita && <button className="btn" disabled={ocupado} onClick={() => run(() => post(`/planilla/planillas/${p.id}/recalcular`, {}, op), 'Recalculada (lo corregido a mano se conserva)')}>Volver a llenar desde RRHH</button>}
-              {edita && <button className="btn primario" disabled={ocupado} onClick={async () => { if (await confirmar({ titulo: 'Aprobar planilla', mensaje: 'Al aprobarla queda inalterable. Solo el dueño puede reabrirla, con motivo.', textoOk: 'Aprobar' })) run(() => post(`/planilla/planillas/${p.id}/aprobar`, {}, op), 'Planilla aprobada'); }}>Aprobar y cerrar</button>}
+              {edita && <button className="btn" disabled={ocupado} onClick={() => run(() => post(`/planilla/planillas/${p.id}/recalcular`, {}, op), 'Recalculada (lo corregido a mano y las horas extra escritas se conservan)')}>Volver a llenar desde RRHH</button>}
               {p.estado === 'aprobada' && <button className="btn primario" disabled={ocupado} onClick={() => run(() => post(`/planilla/planillas/${p.id}/pagar`, {}, op), 'Marcada como pagada')}>Marcar pagada</button>}
               {p.estado === 'aprobada' && usuario?.es_dueno_grupo && <button className="btn" disabled={ocupado} onClick={async () => { const motivo = await pedir({ titulo: 'Reabrir planilla', etiqueta: 'Motivo', obligatorio: true, minimo: 5, textoOk: 'Reabrir' }); if (motivo) run(() => post(`/planilla/planillas/${p.id}/reabrir`, { motivo }, op), 'Planilla reabierta'); }}>Reabrir</button>}
               {['aprobada', 'pagada'].includes(p.estado) && !p.gasto_id && <button className="btn" disabled={ocupado} onClick={() => run(() => post(`/planilla/planillas/${p.id}/finanzas`, {}, op), 'Enviada a Finanzas')}>Enviar a Finanzas</button>}
@@ -150,11 +268,92 @@ function Hoja({ id, op, onCerrar }) {
               </tbody></table></div></div>
             <small>Control: suma de renglones {lempiras(p.control.suma_de_renglones)} {p.control.cuadra ? '= total de la planilla ✓' : '≠ total (revisar)'} · costo total de la empresa {lempiras(p.totales.costo_empresa)}</small>
             {p.reaperturas?.length > 0 && <details><summary>Historial de reaperturas ({p.reaperturas.length})</summary><ul>{p.reaperturas.map((r, i) => <li key={i}>{new Date(r.cuando).toLocaleString('es-HN', { timeZone: 'America/Tegucigalpa' })} · {r.por}: {r.motivo}</li>)}</ul></details>}
+            </>)}
             {dedDe && <Deducciones linea={dedDe} edita={edita} onCerrar={() => setDedDe(null)} onGuardar={(deducciones) => { run(() => patch(`/planilla/planillas/${p.id}/lineas/${dedDe.id}`, { deducciones }, op), 'Deducciones guardadas'); setDedDe(null); }} />}
           </div>
         );
       }}</Estado>
     </Modal>
+  );
+}
+
+function EstadoGuardado({ hx }) {
+  const { estado: e, pendientes, malas, guardar } = hx;
+  if (malas) return <small className="pl-guardado mal">{malas} número(s) por corregir</small>;
+  if (e.fase === 'error') return <small className="pl-guardado mal">No se guardó: {e.mensaje} <button className="btn fantasma chico" onClick={guardar}>Reintentar</button></small>;
+  if (e.fase === 'guardando') return <small className="pl-guardado">Guardando…</small>;
+  if (pendientes) return <small className="pl-guardado">{pendientes} cambio(s) por guardar…</small>;
+  if (e.fase === 'guardado') return <small className="pl-guardado ok">✓ Guardado a las {e.hora}{e.n ? ` · ${e.n} empleado(s)` : ''}</small>;
+  return <small className="pl-guardado">Se guarda solo al escribir</small>;
+}
+
+/**
+ * Captura rápida de HORAS EXTRAS, como la columna de la hoja: todos los empleados de la planilla por sucursal,
+ * un campo grande por empleado (teclado numérico en el teléfono) con el valor de su hora al lado; TOTAL HX y TOTAL
+ * se recalculan al instante; Enter baja al siguiente; se guarda solo.
+ */
+function HorasRapidas({ p, hx, recargo, op }) {
+  const caja = useRef(null);
+  const avisar = useAviso(); const confirmar = useConfirmar();
+  const [ejecutar, ocupado] = useAccion();
+  const siguiente = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const campos = [...caja.current.querySelectorAll('input[data-hx]:not(:disabled)')];
+    const sig = campos[campos.indexOf(e.currentTarget) + 1];
+    if (sig) { sig.focus(); sig.select(); } else { e.currentTarget.blur(); hx.guardar(); }
+  };
+  const copiar = () => ejecutar(async () => {
+    const r = await get(`/planilla/planillas/${p.id}/horas-anteriores`, op);
+    if (!r.planilla) { avisar(`No hay ${ANTERIOR[p.tipo]} para copiar`, 'mal'); return; }
+    const aqui = new Map(p.lineas.filter((l) => !sinHx(l)).map((l) => [l.empleado_id, l]));
+    const usar = r.horas.filter((h) => aqui.has(h.empleado_id));
+    if (!usar.length) { avisar(`«${r.planilla.etiqueta}» no tiene horas extra de estos empleados`, 'mal'); return; }
+    const reemplaza = usar.filter((h) => Number(aqui.get(h.empleado_id).horas_extra) > 0 && Number(aqui.get(h.empleado_id).horas_extra) !== h.horas).length;
+    if (!(await confirmar({ titulo: `Copiar horas de la ${ANTERIOR[p.tipo]}`, textoOk: 'Copiar',
+      mensaje: `Se pondrán las horas extra de «${r.planilla.etiqueta}» en ${usar.length} empleado(s).${reemplaza ? `\n${reemplaza} ya tenían horas distintas: se reemplazan.` : ''}\nLos demás no cambian. Puedes corregir cualquier número después.` }))) return;
+    hx.ponerVarias(Object.fromEntries(usar.map((h) => [h.empleado_id, String(h.horas)])));
+    avisar(`Horas copiadas en ${usar.length} empleado(s): se están guardando`);
+  });
+  let i = 0;
+  return (
+    <div ref={caja} className="pl-hx">
+      <div className="pl-hx-ayuda">
+        <small>Escribe las <b>horas extra</b> de cada empleado de esta {PERIODO[p.tipo]}. Valor de la hora = salario diario ÷ 8{recargo ? ` + ${recargo} %` : ' (tarifa normal)'}. <b>Enter</b> pasa al siguiente. Se guarda solo.</small>
+        <button className="btn chico" disabled={ocupado} onClick={copiar}>Copiar horas de la {ANTERIOR[p.tipo]}</button>
+      </div>
+      <div className="pl-hx-cab" aria-hidden="true"><span>Empleado · valor de la hora</span><span>Horas extra</span><span>Total HX</span><span>Total a pagar</span></div>
+      {p.grupos.map((g) => {
+        const sub = g.lineas.reduce((t, l) => { const e = estimar(l, hx.sucias[l.empleado_id], recargo); t.h += e.horas; t.hx += e.total_hx; return t; }, { h: 0, hx: 0 });
+        return (
+          <section key={g.sucursal} className="pl-hx-grupo" aria-label={g.sucursal}>
+            <h4><span>{g.sucursal}</span><small>{numero(sub.h, 2)} h · {lempiras(sub.hx)}</small></h4>
+            {g.lineas.map((l) => {
+              const txt = hx.sucias[l.empleado_id];
+              const e = estimar(l, txt, recargo);
+              const bloqueada = sinHx(l);
+              const capturada = l.detalle?.horas_captura !== undefined;
+              const auto = Number(l.detalle?.horas_auto ?? 0);
+              const n = i++;
+              return (
+                <div key={l.empleado_id} className={`pl-hx-fila${e.mala ? ' mala' : ''}${txt !== undefined ? ' sucia' : ''}`}>
+                  <label className="pl-hx-emp" htmlFor={`hx-${l.empleado_id}`}><b>{l.nombre}</b>
+                    <small>{l.puesto ? `${l.puesto} · ` : ''}{bloqueada ? 'Gerencia: no cobra horas extra' : `${lempiras(l.por_hora)} la hora`}
+                      {!bloqueada && capturada && auto > 0 && auto !== e.horas ? ` · reloj y anotadas: ${numero(auto, 2)} h` : ''}</small></label>
+                  <input id={`hx-${l.empleado_id}`} data-hx={n} className="pl-hx-in" type="text" inputMode="decimal" enterKeyHint="next" autoComplete="off"
+                    value={bloqueada ? '0' : (txt ?? String(Number(l.horas_extra)))} disabled={bloqueada} aria-invalid={e.mala || undefined}
+                    aria-label={`Horas extra de ${l.nombre}`} onFocus={(ev) => ev.target.select()} onKeyDown={siguiente}
+                    onChange={(ev) => hx.poner(l.empleado_id, ev.target.value)} />
+                  <div className="pl-hx-num pl-hx-thx"><small>Total HX</small>{L(e.total_hx)}</div>
+                  <div className="pl-hx-num pl-hx-tot"><small>A pagar</small><b>{L(e.total)}</b></div>
+                </div>
+              );
+            })}
+          </section>
+        );
+      })}
+      {p.lineas.length === 0 && <Vacio titulo="Esta planilla no tiene empleados">Revisa en RRHH que tengan salario y la periodicidad de pago de esta planilla.</Vacio>}
+    </div>
   );
 }
 
@@ -164,7 +363,7 @@ function GrupoFilas({ g, decimo, p, celda, texto, abrirDed, op }) {
     <>
       <tr className="pl-suc"><td colSpan={decimo ? 6 : 12}>{g.sucursal}</td></tr>
       {g.lineas.map((l) => (
-        <tr key={l.id} className={l.editado ? 'pl-editado' : ''}>
+        <tr key={l.empleado_id} className={l.editado ? 'pl-editado' : ''}>
           <td>{l.nombre}<br /><small>{l.puesto}</small></td><td>{celda(l, 'dias')}</td><td>{celda(l, 'salario_diario')}</td><td className="der num">{L(l.total_quincenal)}</td>
           {!decimo && <><td>{celda(l, 'por_hora')}</td><td>{celda(l, 'horas_extra')}</td><td>{celda(l, 'total_hx')}</td>
             <td><button className="btn fantasma" onClick={() => abrirDed(l)} title="Ver o editar las deducciones">{L(l.total_deducciones)}{l.deducciones.length ? ` (${l.deducciones.length})` : ''}</button></td><td className="der num"><b>{L(l.total)}</b></td></>}
@@ -205,7 +404,7 @@ function Novedades({ op }) {
   const agregar = () => ejecutar(async () => { await post('/planilla/novedades', { empleado_id: f.empleado_id, fecha: f.fecha, tipo: f.tipo, concepto: f.concepto || null, ...(horas ? { horas: Number(f.horas) } : { monto: Number(f.monto) }) }, op); setF({ ...f, horas: '', monto: '', concepto: '' }); d.recargar(); }, 'Anotado');
   return (
     <>
-      <small>Lo que se anota aquí entra solo a la planilla del periodo. Las horas extra también se sugieren desde el reporte de horas.</small>
+      <small>Bonos, descuentos y horas extra de un día puntual: entran solos a la planilla del periodo. <b>Para las horas extra de toda la quincena es más rápido</b> abrir la planilla en borrador y escribirlas en «1 · Horas extra».</small>
       <div className="tarjeta" style={{ display: 'grid', gap: 10, marginTop: 8 }}>
         <Campo etiqueta="Empleado"><select value={f.empleado_id} onChange={(e) => setF({ ...f, empleado_id: e.target.value })}><option value="">Elige…</option>{(emps.datos ?? []).map((e) => <option key={e.id} value={e.id}>{e.nombre}</option>)}</select></Campo>
         <Campo etiqueta="Tipo"><select value={f.tipo} onChange={(e) => setF({ ...f, tipo: e.target.value })}>{Object.entries(NOMBRES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></Campo>

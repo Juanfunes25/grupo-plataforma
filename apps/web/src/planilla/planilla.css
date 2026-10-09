@@ -5,7 +5,7 @@
 .pl-hoja input.pl-txt { width: 130px; text-align: left; }
 .pl-hoja input.pl-cuenta { width: 120px; text-align: left; }
 .pl-hoja td, .pl-hoja th { white-space: nowrap; }
-.pl-hoja .pl-suc td { background: var(--superficie-2, #f1f1f1); font-weight: 700; }
+.pl-hoja .pl-suc td { background: var(--panel-2, #f1f1f1); color: var(--texto); font-weight: 700; }
 .pl-hoja .pl-tot td { font-weight: 700; border-top: 2px solid var(--borde, #999); }
 .pl-hoja tr.pl-editado td:first-child { box-shadow: inset 3px 0 0 #d98e04; }
 .pl-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
@@ -16,3 +16,48 @@
 .pl-param { display: grid; grid-template-columns: 1fr 130px 90px; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--borde, #ddd); }
 .pl-param small { color: var(--texto-2, #666); display: block; }
 @media (max-width: 640px) { .pl-param { grid-template-columns: 1fr 100px; } .pl-param > :last-child { grid-column: 1 / -1; } }
+
+/* Planillas en borrador: un toque para seguir donde se quedó */
+.pl-seguir { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; text-align: left; margin: 0 0 10px; padding: 12px 14px; min-height: var(--tap, 44px);
+  border: 1px solid var(--borde); border-left: 4px solid var(--acento); border-radius: var(--r-m, 10px); background: var(--panel); color: var(--texto); cursor: pointer; font: inherit; }
+.pl-seguir small { display: block; color: var(--tenue); }
+.pl-seguir-ir { font-weight: 700; color: var(--acento); white-space: nowrap; }
+
+/* Pie de la planilla: totales en vivo + siguiente paso */
+.pl-pie { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; width: 100%; justify-content: flex-end; }
+.pl-pie-tot { display: grid; gap: 2px; margin-right: auto; min-width: 0; font-variant-numeric: tabular-nums; }
+.pl-pie-tot b { font-size: 1.1rem; }
+.pl-pie-tot span { color: var(--tenue); font-size: var(--t-s, .9rem); }
+.pl-guardado { color: var(--tenue); }
+.pl-guardado.ok { color: var(--ok-texto, var(--ok)); }
+.pl-guardado.mal { color: var(--peligro-texto, var(--peligro)); }
+.modal-pie .pl-pie-tot { flex: 1 1 100%; }
+@media (min-width: 701px) { .modal-pie .pl-pie-tot { flex: 1 1 auto; } }
+
+/* Captura rápida de horas extra (como la columna HORAS EXTRAS de la hoja) */
+.pl-hx { display: grid; gap: 12px; }
+.pl-hx-ayuda { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.pl-hx-ayuda small { flex: 1 1 260px; }
+.pl-hx-cab, .pl-hx-fila { display: grid; grid-template-columns: minmax(0, 1fr) 110px 120px 130px; gap: 10px; align-items: center; }
+.pl-hx-cab { font-size: var(--t-xs, .78rem); color: var(--tenue); text-transform: uppercase; letter-spacing: .03em; padding: 0 12px; }
+.pl-hx-cab span:not(:first-child) { text-align: right; }
+.pl-hx-grupo { border: 1px solid var(--borde); border-radius: var(--r-m, 10px); overflow: hidden; background: var(--panel); }
+.pl-hx-grupo h4 { display: flex; justify-content: space-between; gap: 8px; margin: 0; padding: 8px 12px; background: var(--panel-2); font-size: 1rem; }
+.pl-hx-grupo h4 small { color: var(--tenue); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pl-hx-fila { padding: 8px 12px; border-top: 1px solid var(--borde); }
+.pl-hx-fila.sucia { background: var(--info-fondo, transparent); }
+.pl-hx-emp { display: grid; min-width: 0; cursor: pointer; }
+.pl-hx-emp b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-hx-emp small { color: var(--tenue); }
+.pl-hx-in { width: 100%; min-height: 48px; font-size: 1.25rem; font-weight: 700; text-align: right; padding: 6px 10px; font-variant-numeric: tabular-nums; }
+.pl-hx-fila.mala .pl-hx-in { border-color: var(--peligro); box-shadow: 0 0 0 2px var(--peligro); }
+.pl-hx-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pl-hx-num small { display: none; }
+@media (max-width: 640px) {
+  .pl-hx-cab { display: none; }
+  .pl-hx-fila { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "emp in" "thx tot"; row-gap: 4px; }
+  .pl-hx-in { width: 108px; justify-self: end; }
+  .pl-pie-tot b { font-size: 1rem; }
+  .pl-hx-emp { grid-area: emp; } .pl-hx-in { grid-area: in; } .pl-hx-thx { grid-area: thx; text-align: left; } .pl-hx-tot { grid-area: tot; }
+  .pl-hx-num small { display: inline; color: var(--tenue); margin-right: 6px; }
+}
