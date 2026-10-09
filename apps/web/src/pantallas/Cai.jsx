@@ -4,6 +4,7 @@ import { get, put } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Campo, Estado, Modal, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
 import { colorDe, nombreCorto } from '../ui/sucursales.js';
+import ContenidoFiscal from '../fiscal/Asistente.jsx';
 
 const CAI_VALIDO = /^[0-9A-F]{6}(-[0-9A-F]{6}){4}-[0-9A-F]{2}$/;
 // Acepta el CAI pegado con o sin guiones o espacios (mismo criterio que el servidor).
@@ -131,5 +132,5 @@ export function ContenidoCai() {
 }
 
 export default function Cai() {
-  return <div className="pagina"><div className="encabezado-pagina"><h1>CAI / Puntos de emisión</h1></div><ContenidoCai /></div>;
+  return <div className="pagina"><div className="encabezado-pagina"><h1>CAI / Emisión · Asistente fiscal</h1></div><ContenidoFiscal /></div>;
 }

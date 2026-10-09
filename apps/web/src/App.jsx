@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import './lib/errores.js';   // reporta al servidor los errores de pantalla
 import { useSesion } from './sesion.jsx';
 import Entrada from './pantallas/Entrada.jsx';
 import Acceso from './pantallas/Acceso.jsx';
@@ -53,11 +54,16 @@ const Incidencias = lazy(() => import('./pantallas/Incidencias.jsx'));
 const Mantenimiento = lazy(() => import('./pantallas/Mantenimiento.jsx'));
 const Cobranza = lazy(() => import('./crm/Cobranza.jsx'));
 const Documentos = lazy(() => import('./pantallas/Documentos.jsx'));
+const EstadoSistema = lazy(() => import('./sistema/Estado.jsx'));
+const MiSeguridad = lazy(() => import('./seguridad/MiSeguridad.jsx'));
 const Impresora = lazy(() => import('./pantallas/Impresora.jsx'));
 const Ayuda = lazy(() => import('./ayuda/Ayuda.jsx'));
 const MiApp = lazy(() => import('./pantallas/MiApp.jsx'));
 
-const PANTALLAS = { cobranza: Cobranza, pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, compras: Compras, terceros: Terceros, admin: Admin, gerente: Gerente,
+const Planilla = lazy(() => import('./planilla/Planilla.jsx'));
+const InventarioUnificado = lazy(() => import('./inventario/InventarioUnificado.jsx'));
+
+const PANTALLAS = { estado: EstadoSistema, planilla: Planilla, 'inventario-unificado': InventarioUnificado, cobranza: Cobranza, pos: Pos, cocina: Cocina, ventas: Ventas, catalogo: Catalogo, inventario: Inventario, personal: Personal, finanzas: Finanzas, compras: Compras, terceros: Terceros, admin: Admin, gerente: Gerente,
   facturas: Facturas, cierres: Cierres, 'caja-chica': CajaChica, reportes: Reportes, dashboard: Dashboard, antifraude: Antifraude, bitacora: Bitacora,
   cai: Cai, usuarios: Usuarios, sucursales: Sucursales, cotizaciones: Cotizaciones, impresora: Impresora,
   piedra: Piedra, 'registrar-produccion': RegistrarProduccion, produccion: Fabricacion, recetas: Recetas, insumos: Insumos, 'inventario-piedra': InventarioPiedra,
@@ -83,6 +89,12 @@ function Modulo() {
   return <Suspense fallback={<Cargando />}><Pantalla /></Suspense>;
 }
 
+function Seguridad() {
+  const s = useSesion();
+  const nav = useNavigate();
+  return <Suspense fallback={<Cargando />}><MiSeguridad alSalir={() => { s.salir(); nav('/'); }} /></Suspense>;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -91,6 +103,7 @@ export default function App() {
       <Route path="/app" element={<Suspense fallback={<Cargando />}><MiApp /></Suspense>} />
       <Route path="/grupo" element={<Protegida><Layout esGrupo><Suspense fallback={<Cargando />}><Grupo /></Suspense></Layout></Protegida>} />
       <Route path="/:empresa" element={<Protegida><Layout><Hub /></Layout></Protegida>} />
+      <Route path="/:empresa/seguridad" element={<Protegida><Layout><Seguridad /></Layout></Protegida>} />
       <Route path="/:empresa/:ruta" element={<Protegida><Layout><Modulo /></Layout></Protegida>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -85,19 +85,25 @@ function FichaUsuario({ u, roles, sucursales, soyDueno, yo, onCerrar, onGuardado
         <Campo etiqueta="Nombre completo"><input value={f.nombre} onChange={set('nombre')} autoFocus /></Campo>
         <Campo etiqueta="Rol en esta empresa"><SelectorRol valor={f.rol} onChange={set('rol')} roles={roles.roles} asignables={asignables} /></Campo>
       </div>
-      {rol && <small>{direccion ? 'Este rol entra con correo y contraseña.' : 'Puede entrar con PIN de 4 a 8 dígitos en la caja (y con correo si se lo das).'}</small>}
+      {rol && <small>{direccion ? 'Este rol entra con correo y contraseña.' : 'Puede entrar con PIN de 4 a 6 dígitos en la caja (y con correo si se lo das).'}</small>}
       {f.nuevo && (
         <div className="rejilla cols-2">
           <Campo etiqueta={direccion ? 'Correo (obligatorio para este rol)' : 'Correo (opcional si usa PIN)'} ayuda="Si el correo ya existe en el grupo, se le da acceso a esta empresa con la misma cuenta."><input type="email" value={f.email} onChange={set('email')} /></Campo>
           {(direccion || f.email) && <Campo etiqueta="Contraseña inicial (mín. 8)"><input type="text" value={f.password} onChange={set('password')} autoComplete="off" /></Campo>}
-          {rol?.con_pin && <Campo etiqueta="PIN (4 a 8 dígitos)" ayuda="Único dentro de la empresa"><input inputMode="numeric" value={f.pin} onChange={(e) => setF({ ...f, pin: e.target.value.replace(/\D/g, '') })} maxLength={8} /></Campo>}
+          {rol?.con_pin && <Campo etiqueta="PIN (4 a 6 dígitos)" ayuda="Único dentro de la empresa"><input inputMode="numeric" value={f.pin} onChange={(e) => setF({ ...f, pin: e.target.value.replace(/\D/g, '') })} maxLength={6} /></Campo>}
         </div>
       )}
       {faltaAcceso && <div className="aviso-caja">Indica un correo o un PIN para que pueda entrar.</div>}
       {!f.nuevo && rol?.con_pin && (
-        <div className="fila"><input inputMode="numeric" placeholder={f.tiene_pin ? 'Cambiar PIN…' : 'Asignar PIN…'} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} maxLength={8} style={{ maxWidth: 200 }} />
+        <div className="fila"><input inputMode="numeric" placeholder={f.tiene_pin ? 'Cambiar PIN…' : 'Asignar PIN…'} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} maxLength={6} style={{ maxWidth: 200 }} />
           <button className="btn" disabled={pin.length < 4 || ocupado} onClick={async () => { if (await ejecutar(() => post(`/admin/usuarios/${f.id}/pin`, { pin }), 'PIN guardado')) { setPin(''); setF({ ...f, tiene_pin: true }); } }}>Guardar PIN</button>
           {f.tiene_pin && <button className="btn fantasma" onClick={async () => { if (await ejecutar(() => post(`/admin/usuarios/${f.id}/pin`, { pin: null }), 'PIN quitado')) setF({ ...f, tiene_pin: false }); }}>Quitar PIN</button>}</div>
+      )}
+      {!f.nuevo && f.id !== yo && (
+        <div className="fila">
+          <button className="btn chico" disabled={ocupado} onClick={async () => { if (window.confirm(`¿Cerrar todas las sesiones abiertas de ${f.nombre}?`)) await ejecutar(() => post(`/admin/usuarios/${f.id}/cerrar-sesiones`), 'Sesiones cerradas'); }}>Cerrar sus sesiones</button>
+          {f.email && <button className="btn chico fantasma" disabled={ocupado} onClick={async () => { if (window.confirm(`¿Reiniciar la verificación en dos pasos de ${f.nombre}? Tendrá que configurarla de nuevo.`)) await ejecutar(() => post(`/admin/usuarios/${f.id}/reiniciar-2fa`), 'Verificación reiniciada'); }}>Reiniciar sus dos pasos</button>}
+        </div>
       )}
       <Campo etiqueta="Sucursal" ayuda="Con una sucursal fija solo ve y cobra en esa; sin marcar, en todas."><SelectorSucursal ids={f.sucursal_ids} onChange={(ids) => setF({ ...f, sucursal_ids: ids })} sucursales={sucursales} /></Campo>
       {rol && (
@@ -121,7 +127,7 @@ function ModalAccesoTienda({ sucursales, onCerrar, onCreado }) {
   return (
     <Modal titulo="Crear acceso de tienda" onCerrar={onCerrar} tam="angosto" pie={<button className="btn primario" disabled={ocupado || !s || pin.length < 4} onClick={guardar}>Crear acceso</button>}>
       <Campo etiqueta="Sucursal"><select value={suc} onChange={(e) => setSuc(e.target.value)}><option value="">Elige la sucursal…</option>{sucursales.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}</select></Campo>
-      <Campo etiqueta="PIN de la tienda (4 a 8 dígitos)" ayuda="No puede repetirse con el de otra persona o tienda."><input inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} maxLength={8} /></Campo>
+      <Campo etiqueta="PIN de la tienda (4 a 6 dígitos)" ayuda="No puede repetirse con el de otra persona o tienda."><input inputMode="numeric" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} maxLength={6} /></Campo>
       <div className="aviso-caja">Todo el personal de la tienda entra con este mismo PIN y solo ve su sucursal. Por eso lo que se haga (pesaje, recepción, caja) queda registrado a nombre de la tienda y no de una persona. Se crea como «{s ? `Tienda ${s.nombre}` : 'Tienda …'}» con rol Cajero.</div>
     </Modal>
   );

@@ -51,3 +51,4 @@ export const qs = (o) => {
   const s = p.toString();
   return s ? `?${s}` : '';
 };
+export const del = (ruta, o) => api(ruta, { metodo: 'DELETE', ...o });

@@ -5,6 +5,7 @@ import { crearApp } from './app.js';
 import { sembrarSiVacio } from './modulos/rinv/siembra.js';
 import { sembrarCatalogoItaloSiVacio } from './db/italo-catalogo.js';
 import { sembrarEcostoneSiVacio } from './db/ecostone-datos.js';
+import { iniciarVigilancia } from './modulos/salud/vigilancia.js';
 import { iniciarMensajeria } from './modulos/mensajeria/planificador.js';
 
 const config = leerConfig();
@@ -28,9 +29,12 @@ const app = crearApp({ db, config });
 
 // Correo y avisos (cola de envíos, resumen diario y alertas por correo): temporizador interno, sin cron externo.
 iniciarMensajeria({ db, config });
+// Latido cada minuto, caídas detectadas al arrancar y aviso por correo si se repiten (Estado del sistema).
+iniciarVigilancia({ db, config, errores: app.locals.errores });
 const servidor = app.listen(config.puerto, () => console.log(`[api] escuchando en :${config.puerto}`));
 
 const cerrar = async () => { servidor.close(); await db.close().catch(() => {}); process.exit(0); };
 process.on('SIGTERM', cerrar);
 process.on('SIGINT', cerrar);
-process.on('unhandledRejection', (e) => console.error('[unhandledRejection]', e));
+process.on('unhandledRejection', (e) => { console.error('[unhandledRejection]', e); app.locals.errores.registrar({ origen: 'servidor', mensaje: `unhandledRejection: ${e?.message ?? e}`, pila: e?.stack }); });
+process.on('uncaughtException', (e) => { console.error('[uncaughtException]', e); app.locals.errores.registrar({ origen: 'servidor', mensaje: `uncaughtException: ${e?.message ?? e}`, pila: e?.stack }).finally(() => process.exit(1)); });

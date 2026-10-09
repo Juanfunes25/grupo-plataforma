@@ -3,7 +3,8 @@ import { useSesion } from '../sesion.jsx';
 import { Tabs } from '../ui/kit.jsx';
 import { ContenidoUsuarios } from './Usuarios.jsx';
 import { ContenidoEmpresa, ContenidoSucursales } from './Sucursales.jsx';
-import { ContenidoCai } from './Cai.jsx';
+import ContenidoFiscal from '../fiscal/Asistente.jsx';
+import PanelSeguridad from '../seguridad/PanelSeguridad.jsx';
 import { ContenidoBitacora } from './Bitacora.jsx';
 import { ContenidoCorreo } from '../mensajeria/Correo.jsx';
 
@@ -14,7 +15,8 @@ export default function Admin({ inicial }) {
   const tabs = [
     ...(puede('admin:usuarios') ? [['usuarios', 'Usuarios y accesos']] : []),
     ...(puede('admin:empresa') ? [['sucursales', 'Sucursales'], ['empresa', 'Datos de la empresa']] : []),
-    ...(puede('pos:fiscal') ? [['fiscal', 'Facturación (CAI)']] : []),
+    ...(puede('pos:fiscal') ? [['fiscal', 'Fiscal y CAI']] : []),
+    ...(puede('admin:usuarios') ? [['seguridad', 'Seguridad y permisos']] : []),
     ...(puede('admin:usuarios') ? [['correo', 'Correo y avisos']] : []),
     ...(puede('auditoria:ver') ? [['auditoria', 'Bitácora']] : []),
   ];
@@ -26,7 +28,8 @@ export default function Admin({ inicial }) {
       {tab === 'usuarios' && <ContenidoUsuarios />}
       {tab === 'sucursales' && <ContenidoSucursales />}
       {tab === 'empresa' && <ContenidoEmpresa />}
-      {tab === 'fiscal' && <ContenidoCai />}
+      {tab === 'fiscal' && <ContenidoFiscal />}
+      {tab === 'seguridad' && <PanelSeguridad />}
       {tab === 'correo' && <ContenidoCorreo />}
       {tab === 'auditoria' && <ContenidoBitacora />}
     </div>

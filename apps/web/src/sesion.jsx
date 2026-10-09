@@ -20,6 +20,9 @@ export function ProveedorSesion({ children }) {
   const [sucursalId, setSucursalId] = useState(null);
 
   const salir = useCallback(() => {
+    // La sesión también se cierra en el servidor (si falla la red, igual se cierra aquí).
+    const t = almacen.leer()?.token;
+    if (t) fetch('/api/auth/salir', { method: 'POST', headers: { authorization: `Bearer ${t}`, 'content-type': 'application/json' }, body: '{}', keepalive: true }).catch(() => {});
     almacen.guardar(null); fijarEmpresa(null);
     setGuardada(null); setYo(null); setEmpresa(null); setSucursalId(null);
   }, []);
@@ -66,9 +69,15 @@ export function ProveedorSesion({ children }) {
 
   const entrar = useCallback(async (ruta, cuerpo) => {
     const r = await post(ruta, cuerpo, { sinSesion: true, empresa: null });
+    if (r.requiere_2fa || r.requiere_configurar_2fa) return r;   // falta el segundo paso: la pantalla de acceso lo pide y llama a completar()
     const s = { token: r.token, empresa: r.empresa, via: ruta.endsWith('pin') ? 'pin' : 'password' };
     almacen.guardar(s); setGuardada(s); setEmpresa(r.empresa);
     return r;
+  }, []);
+  /** Cierra el login de dos pasos con la respuesta que trae el token. */
+  const completar = useCallback((r) => {
+    const s = { token: r.token, empresa: r.empresa, via: 'password' };
+    almacen.guardar(s); setGuardada(s); setEmpresa(r.empresa);
   }, []);
 
   const cambiarEmpresa = useCallback((codigo) => { const s = almacen.leer(); if (s) almacen.guardar({ ...s, empresa: codigo }); setEmpresa(codigo); }, []);
@@ -86,9 +95,9 @@ export function ProveedorSesion({ children }) {
       empresa, contexto: yo?.contexto, empresas: yo?.empresas ?? [], permisos,
       puede: (p) => permisos.has(p), modulos: renombrar(yo?.contexto?.modulos ?? [], yo?.contexto?.empresa?.codigo),
       sucursales, sucursalId, sucursal: sucursales.find((s) => s.id === sucursalId) ?? null,
-      elegirSucursal, entrar, salir, cambiarEmpresa, recargar: () => cargar(empresa),
+      elegirSucursal, entrar, completar, salir, cambiarEmpresa, recargar: () => cargar(empresa),
     };
-  }, [guardada, cargando, yo, empresa, sucursalId, entrar, salir, cambiarEmpresa, elegirSucursal, cargar]);
+  }, [guardada, cargando, yo, empresa, sucursalId, entrar, completar, salir, cambiarEmpresa, elegirSucursal, cargar]);
 
   return <Ctx.Provider value={valor}>{children}</Ctx.Provider>;
 }

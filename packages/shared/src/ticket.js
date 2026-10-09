@@ -20,6 +20,8 @@ export function ajustar(texto, w) {
   return out;
 }
 const centradas = (t, w) => ajustar(t, w).map((r) => centrar(r, w));
+// «*** TEXTO ***» solo si cabe; en papel de 58 mm el texto va sin asteriscos, en dos renglones limpios.
+const enmarcado = (t, w) => (t.length + 8 <= w ? `*** ${t} ***` : t);
 
 /** Encabezado con los datos de la empresa y la sucursal (el logo, si hay, lo pone la página HTML encima de estos renglones). */
 function encabezado(t, empresa, sucursal, ancho) {
@@ -44,7 +46,7 @@ export function formatearTicket({ empresa, sucursal, venta, lineas, pagos, punto
   t.push(raya);
   if (copia > 0) { t.push(centrar(`*** COPIA #${copia} ***`, ancho)); t.push(...centradas(`REIMPRESION #${copia} - NO ES ORIGINAL`, ancho)); t.push(raya); }
   if (venta.estado === 'anulada') { t.push(centrar('*** ANULADA ***', ancho)); t.push(raya); }
-  if (venta.es_borrador_fiscal) { t.push(...centradas(`*** ${LEYENDA_BORRADOR} ***`, ancho)); t.push(...centradas('(etapa de pruebas: no es una factura valida)', ancho)); t.push(raya); }
+  if (venta.es_borrador_fiscal) { t.push(...centradas(enmarcado(LEYENDA_BORRADOR, ancho), ancho)); t.push(...centradas('(etapa de pruebas: no es una factura valida)', ancho)); t.push(raya); }
   t.push(centrar('FACTURA', ancho));
   if (venta.numero_factura) t.push(centrar(venta.numero_factura, ancho));
   if (punto && !punto.es_borrador && punto.cai) {
@@ -102,7 +104,7 @@ export function formatearTicketProvisional({ empresa, sucursal, cajero, cliente,
   t.push(centrar('*** COMPROBANTE PROVISIONAL ***', ancho));
   t.push(...centradas('VENTA SIN CONEXION - NO ES FACTURA', ancho));
   t.push(...centradas('Su factura fiscal se emite en cuanto la caja recupere la conexion. Conserve este comprobante.', ancho));
-  if (borrador) t.push(...centradas(`*** ${LEYENDA_BORRADOR} ***`, ancho));
+  if (borrador) t.push(...centradas(enmarcado(LEYENDA_BORRADOR, ancho), ancho));
   t.push(raya);
   t.push(`No. provisional: ${numero}`);
   t.push(`Fecha: ${fechaHoraHN(fecha ?? new Date())}`);

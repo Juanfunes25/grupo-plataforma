@@ -6,6 +6,7 @@ import { Campo, Esqueleto, vibrar, useAccion, useDatos } from '../ui/kit.jsx';
 import Logo from '../ui/Logo.jsx';
 import Icono from '../ui/Icono.jsx';
 import { aplicarAcento } from '../lib/acento.js';
+import SegundoPaso from '../seguridad/SegundoPaso.jsx';
 
 const PIN_MAX = 8;
 
@@ -24,6 +25,7 @@ export default function Acceso() {
   const [error, setError] = useState('');
   const [sacude, setSacude] = useState(false);
   const [ejecutar, ocupado] = useAccion();
+  const [segundo, setSegundo] = useState(null);   // respuesta del login que pide el segundo paso (verificación en dos pasos)
   const pinRef = useRef(pin);
   pinRef.current = pin;
 
@@ -36,6 +38,7 @@ export default function Acceso() {
       try { return await s.entrar(ruta, cuerpo); }
       catch (e) { setError(e.message); setPin(''); setSacude(true); vibrar([60, 40, 60]); setTimeout(() => setSacude(false), 450); throw e; }
     });
+    if (r?.requiere_2fa || r?.requiere_configurar_2fa) { setSegundo(r); return; }
     if (r) nav(codigo === 'grupo' ? '/grupo' : `/${codigo}`, { replace: true });
   };
   const teclear = (n) => { vibrar(8); setError(''); setPin((p) => (p.length < PIN_MAX ? p + n : p)); };
@@ -74,7 +77,10 @@ export default function Acceso() {
           </div>
         )}
         <div className="tarjeta" style={{ display: 'grid', gap: 16 }}>
-          {modo === 'pin' ? (
+          {segundo ? (
+            <SegundoPaso r={segundo} onCancelar={() => { setSegundo(null); setClave(''); }}
+              onSesion={(resp) => { s.completar(resp); nav(codigo === 'grupo' ? '/grupo' : `/${codigo}`, { replace: true }); }} />
+          ) : modo === 'pin' ? (
             <>
               <div className={`pin-puntos${sacude ? ' error' : ''}`} role="img" aria-label={`${pin.length} dígitos escritos`}>{Array.from({ length: Math.max(4, pin.length) }, (_, i) => <i key={i} className={i < pin.length ? 'on' : ''} />)}</div>
               <div className="teclado" role="group" aria-label="Teclado numérico">

@@ -17,6 +17,7 @@ import LimiteError from '../ui/LimiteError.jsx';
 
 // Cambio de contraseña propio (solo sesiones de correo; el PIN lo administra Administración).
 function CambiarClave({ onCerrar, onListo }) {
+  const empresaSes = useSesion().empresa;
   const [f, setF] = useState({ actual: '', nueva: '', repetir: '' });
   const [ejecutar, ocupado] = useAccion();
   const avisar = useAviso();
@@ -31,6 +32,7 @@ function CambiarClave({ onCerrar, onListo }) {
       <Campo etiqueta="Nueva contraseña" ayuda="Mínimo 8 caracteres." error={f.nueva && f.nueva.length < 8 ? `Faltan ${8 - f.nueva.length} caracteres.` : null}><input type={ver ? 'text' : 'password'} autoComplete="new-password" value={f.nueva} onChange={(e) => setF({ ...f, nueva: e.target.value })} aria-invalid={Boolean(f.nueva) && f.nueva.length < 8} /></Campo>
       <Campo etiqueta="Repite la nueva contraseña" error={f.repetir && f.nueva !== f.repetir ? 'Las contraseñas no coinciden.' : null}><input type={ver ? 'text' : 'password'} autoComplete="new-password" value={f.repetir} onChange={(e) => setF({ ...f, repetir: e.target.value })} aria-invalid={Boolean(f.repetir) && f.nueva !== f.repetir} /></Campo>
       <label style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--texto)' }}><input type="checkbox" checked={ver} onChange={(e) => setVer(e.target.checked)} /> Mostrar contraseñas</label>
+      <Link to={`/${empresaSes || 'grupo'}/seguridad`} onClick={onCerrar}>Mi seguridad: verificación en dos pasos y sesiones abiertas</Link>
     </Modal>
   );
 }

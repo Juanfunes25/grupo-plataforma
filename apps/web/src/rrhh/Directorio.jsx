@@ -4,6 +4,8 @@ import { get, qs } from '../api.js';
 import { fechaHN, sumarDias } from '@grupo/shared';
 import { Estado, Kpi, Tabs, useDatos } from '../ui/kit.jsx';
 import Ficha from './Ficha.jsx';
+import PlanillaGrupo from '../planilla/PlanillaGrupo.jsx';
+import { useSesion } from '../sesion.jsx';
 import { qInicial } from '../busqueda/qInicial.js';
 import { DIAS, ESTADOS, TIPOS_AUSENCIA, claseEstado, claseVence, fechaCorta, iniciales, nombreDe, textoVence } from './util.js';
 
@@ -15,15 +17,18 @@ const RUTAS = {
 /** Panel completo: Resumen · Directorio · Calendario, con la ficha al tocar a alguien. `acciones` = botones extra junto al directorio. */
 export default function PanelRrhh({ grupo = false, acciones = null, recargaExterna = 0 }) {
   const rutas = RUTAS[grupo ? 'grupo' : 'empresa'];
+  const { usuario } = useSesion();
+  const conPlanilla = grupo && usuario?.es_dueno_grupo;
   const [tab, setTab] = useState('resumen');
   const [ficha, setFicha] = useState(null);
   const [version, setVersion] = useState(0);
   const abrir = (x) => setFicha({ id: x.empleado_id ?? x.id, empresa: x.empresa });
   return (
     <>
-      <Tabs tabs={[['resumen', 'Resumen'], ['directorio', 'Directorio'], ['calendario', 'Calendario']]} valor={tab} onCambio={setTab} />
+      <Tabs tabs={[['resumen', 'Resumen'], ['directorio', 'Directorio'], ['calendario', 'Calendario'], ...(conPlanilla ? [['planilla', 'Planilla']] : [])]} valor={tab} onCambio={setTab} />
       {tab === 'resumen' && <Resumen ruta={rutas.res} grupo={grupo} abrir={abrir} clave={version + recargaExterna} />}
       {tab === 'directorio' && <Directorio ruta={rutas.dir} grupo={grupo} abrir={abrir} acciones={acciones} clave={version + recargaExterna} />}
+      {tab === 'planilla' && conPlanilla && <PlanillaGrupo />}
       {tab === 'calendario' && <Calendario ruta={rutas.cal} abrir={abrir} clave={version + recargaExterna} />}
       {ficha && <Ficha id={ficha.id} empresa={ficha.empresa} desdeGrupo={grupo} onCerrar={() => setFicha(null)} onCambio={() => setVersion((v) => v + 1)} />}
     </>

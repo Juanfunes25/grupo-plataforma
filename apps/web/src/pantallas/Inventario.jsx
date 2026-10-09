@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { fechaHN, horaHN, lempiras, numero, sumarDias } from '@grupo/shared';
 import { get, post, put, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
@@ -10,7 +11,7 @@ export default function Inventario() {
   const tabs = [['existencias', 'Existencias'], ['vencimientos', 'Vencimientos'], ['recetas', 'Recetas y márgenes'], ['movimientos', 'Movimientos']];
   return (
     <div className="pagina">
-      <div className="encabezado-pagina"><h1>Inventario</h1></div>
+      <div className="encabezado-pagina"><h1>Inventario</h1><Link className="btn" to="../inventario-unificado" relative="path">Conteos, traslados y alertas</Link></div>
       <Tabs tabs={tabs} valor={tab} onCambio={setTab} />
       {tab === 'existencias' && <Existencias editar={puede('inv:mover')} />}
       {tab === 'vencimientos' && <Vencimientos />}

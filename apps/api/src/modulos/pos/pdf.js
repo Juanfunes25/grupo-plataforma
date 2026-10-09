@@ -132,7 +132,7 @@ export function generarPdfFactura({ empresa, sucursal, venta, lineas, pagos, pun
   if (imagen) {
     const alto = 64, ancho = Math.min(180, (imagen.w / imagen.h) * alto), altoReal = Math.min(alto, (imagen.h / imagen.w) * ancho);
     pg.ops.push(`q ${ancho.toFixed(2)} 0 0 ${altoReal.toFixed(2)} ${(MARGEN + (ANCHO - 2 * MARGEN - ancho) / 2).toFixed(2)} ${(pg.y - altoReal).toFixed(2)} cm /Im1 Do Q`);
-    pg.y -= altoReal + 10;
+    pg.y -= altoReal + 18;
   }
   fila(String(empresa.razon_social ?? empresa.nombre).toUpperCase(), { tam: 16, negrita: true, centro: true, sep: 20 });
   if (empresa.nombre && empresa.nombre !== empresa.razon_social) fila(empresa.nombre, { tam: 12, centro: true, sep: 16 });

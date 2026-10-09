@@ -1,0 +1,18 @@
+/* Planilla: estilos propios del módulo. */
+.pl-aviso-conf { border-left: 4px solid #d98e04; padding: 10px 12px; background: #fff6e0; color: #5c3b00; border-radius: 8px; margin: 8px 0; }
+@media (prefers-color-scheme: dark) { .pl-aviso-conf { background: #3b2d0c; color: #ffd48a; } }
+.pl-hoja input { width: 76px; text-align: right; padding: 6px; min-height: 36px; font-variant-numeric: tabular-nums; }
+.pl-hoja input.pl-txt { width: 130px; text-align: left; }
+.pl-hoja input.pl-cuenta { width: 120px; text-align: left; }
+.pl-hoja td, .pl-hoja th { white-space: nowrap; }
+.pl-hoja .pl-suc td { background: var(--superficie-2, #f1f1f1); font-weight: 700; }
+.pl-hoja .pl-tot td { font-weight: 700; border-top: 2px solid var(--borde, #999); }
+.pl-hoja tr.pl-editado td:first-child { box-shadow: inset 3px 0 0 #d98e04; }
+.pl-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.pl-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.pl-chip { border: 2px solid var(--c, #888); padding: 6px 14px; border-radius: 999px; background: transparent; font-weight: 600; min-height: 44px; }
+.pl-chip.activa { background: var(--c, #888); color: #fff; }
+.pl-ded { display: grid; grid-template-columns: 1fr 110px 40px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.pl-param { display: grid; grid-template-columns: 1fr 130px 90px; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--borde, #ddd); }
+.pl-param small { color: var(--texto-2, #666); display: block; }
+@media (max-width: 640px) { .pl-param { grid-template-columns: 1fr 100px; } .pl-param > :last-child { grid-column: 1 / -1; } }
