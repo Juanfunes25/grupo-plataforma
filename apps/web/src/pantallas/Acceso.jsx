@@ -6,7 +6,7 @@ import { Campo, Esqueleto, vibrar, useAccion, useDatos } from '../ui/kit.jsx';
 import Logo from '../ui/Logo.jsx';
 import Icono from '../ui/Icono.jsx';
 import { aplicarAcento } from '../lib/acento.js';
-import { FUNCIONES_PLANTA, ponerPlanta, quitarPlanta } from '../lib/planta.js';
+import { PUESTOS, ponerPlanta, quitarPlanta } from '../lib/planta.js';
 // La verificación en dos pasos es opcional y casi nadie la usa: se descarga solo si el servidor la pide.
 const SegundoPaso = lazy(() => import('../seguridad/SegundoPaso.jsx'));
 
@@ -25,7 +25,8 @@ export default function Acceso() {
   const [sucSel, setSucSel] = useState(null);   // tienda elegida (paso 1)
   const [usrSel, setUsrSel] = useState(null);   // persona elegida (paso 2)
   const [verPlanta, setVerPlanta] = useState(false);   // submenú: Despacho · Producción · Inventario
-  const [funcion, setFuncion] = useState(null);       // función de planta elegida
+  const [funcion, setFuncion] = useState(null);       // función del puesto elegida
+  const [otros, setOtros] = useState(false);         // empresas sin tiendas: «otros usuarios» (ventas, etc.)
   const [correo, setCorreo] = useState('');
   const [clave, setClave] = useState('');
   const [verClave, setVerClave] = useState(false);
@@ -53,13 +54,18 @@ export default function Acceso() {
   const sucursales = op.datos?.sucursales ?? [];
   const usuarios = op.datos?.usuarios ?? [];
   // Con una sola tienda (o ninguna) se salta ese paso. Quien no tiene tiendas asignadas aparece en todas.
-  const esPlanta = (u) => u.rol === 'prod_despacho';   // producción y despacho: entran por «Planta», no por una tienda
-  const hayPlanta = usuarios.some(esPlanta);
+  const puesto = PUESTOS[codigo] ?? null;
+  const funcionesPuesto = puesto ? Object.entries(puesto.funciones) : [];
+  const esPlanta = (u) => !!puesto && u.rol === puesto.rol;   // personas de un puesto: entran por su botón, no por una tienda
+  const hayPlanta = !!puesto && usuarios.some(esPlanta);
+  const sinTiendas = sucursales.length === 0;
   const sucActiva = sucSel ?? (sucursales.length === 1 && !hayPlanta ? sucursales[0] : null);
   const hayPasoTienda = sucursales.length > 1 || hayPlanta;
   const personas = funcion ? usuarios.filter(esPlanta)
     : usuarios.filter((u) => !esPlanta(u) && (!sucActiva || !u.sucursal_ids?.length || u.sucursal_ids.includes(sucActiva.id)));
-  const paso = hayPasoTienda && !sucActiva && !funcion ? (verPlanta ? 'funcion' : 'tienda') : !usrSel ? 'persona' : 'pin';
+  const paso = hayPasoTienda && !sucActiva && !funcion && !otros ? (verPlanta ? 'funcion' : 'tienda') : !usrSel ? 'persona' : 'pin';
+  const elegirPuesto = () => { if (funcionesPuesto.length === 1) setFuncion(funcionesPuesto[0][0]); else setVerPlanta(true); };
+  const volverInicio = () => { setSucSel(null); setUsrSel(null); setFuncion(null); setVerPlanta(false); setOtros(false); };
   const enviarPin = () => {
     if (pinRef.current.length < 4 || !usrSel) return;
     try { if (sucActiva) localStorage.setItem(`grupo.sucursal.${codigo}`, sucActiva.id); } catch { /* */ }
@@ -91,7 +97,7 @@ export default function Acceso() {
         <div className="acceso-marca">
           <div className="acceso-logo"><Logo codigo={emp.logo || emp.codigo} color={emp.color} /></div>
           <h1>{emp.nombre}</h1>
-          <p>{modo === 'pin' ? (paso === 'tienda' ? 'Elige tu tienda' : paso === 'funcion' ? '¿Qué vas a hacer?' : paso === 'persona' ? '¿Quién eres?' : `${usrSel.nombre}${sucActiva ? ` · ${sucActiva.nombre}` : funcion ? ` · ${FUNCIONES_PLANTA[funcion].titulo}` : ''}: escribe tu PIN`) : 'Entra con tu usuario y contraseña'}</p>
+          <p>{modo === 'pin' ? (paso === 'tienda' ? 'Elige tu tienda' : paso === 'funcion' ? (puesto?.pregunta || '¿Qué vas a hacer?') : paso === 'persona' ? '¿Quién eres?' : `${usrSel.nombre}${sucActiva ? ` · ${sucActiva.nombre}` : funcion ? ` · ${puesto.funciones[funcion].titulo}` : ''}: escribe tu PIN`) : 'Entra con tu usuario y contraseña'}</p>
         </div>
         {!esGrupo && (
           <div className="segmento" role="tablist" aria-label="Forma de entrar">
@@ -106,12 +112,13 @@ export default function Acceso() {
           ) : modo === 'pin' && paso === 'tienda' ? (
             <div style={{ display: 'grid', gap: 10 }}>
               {op.cargando && <Esqueleto alto={120} />}
-              {sucursales.map((x) => <button key={x.id} className="btn grande bloque" style={x.color ? { borderLeft: `6px solid ${x.color}` } : undefined} onClick={() => setSucSel(x)}>{x.nombre}</button>)}
-              {hayPlanta && <button className="btn grande bloque primario" onClick={() => setVerPlanta(true)}>Despacho, producción e inventario</button>}
+              {(sucursales.length > 1 || !hayPlanta) && sucursales.map((x) => <button key={x.id} className="btn grande bloque" style={x.color ? { borderLeft: `6px solid ${x.color}` } : undefined} onClick={() => setSucSel(x)}>{x.nombre}</button>)}
+              {hayPlanta && <button className="btn grande bloque primario" onClick={elegirPuesto}>{puesto.boton}</button>}
+              {sucursales.length <= 1 && hayPlanta && <button className="btn grande bloque" onClick={() => setOtros(true)}>Otros usuarios</button>}
             </div>
           ) : modo === 'pin' && paso === 'funcion' ? (
             <div style={{ display: 'grid', gap: 10 }}>
-              {Object.entries(FUNCIONES_PLANTA).map(([k, f]) => <button key={k} className="btn grande bloque" onClick={() => { setFuncion(k); setVerPlanta(false); }}>{f.titulo}</button>)}
+              {funcionesPuesto.map(([k, f]) => <button key={k} className="btn grande bloque" onClick={() => { setFuncion(k); setVerPlanta(false); }}>{f.titulo}</button>)}
               <button className="btn fantasma" onClick={() => setVerPlanta(false)}><Icono n="atras" tam={16} /> Volver</button>
             </div>
           ) : modo === 'pin' && paso === 'persona' ? (
@@ -119,7 +126,7 @@ export default function Acceso() {
               {op.cargando && <Esqueleto alto={120} />}
               {!op.cargando && personas.length === 0 && <small className="centro">No hay personas con PIN{sucActiva ? ' en esta tienda' : funcion ? ' en planta' : ''}. Pídele al administrador que te cree el acceso.</small>}
               {personas.map((x) => <button key={x.id} className="btn grande bloque" onClick={() => { setUsrSel(x); setPin(''); setError(''); }}>{x.nombre}</button>)}
-              {hayPasoTienda && <button className="btn fantasma" onClick={() => { setSucSel(null); setUsrSel(null); setFuncion(null); setVerPlanta(false); }}><Icono n="atras" tam={16} /> Cambiar de tienda</button>}
+              {hayPasoTienda && <button className="btn fantasma" onClick={volverInicio}><Icono n="atras" tam={16} /> {sinTiendas ? 'Volver' : 'Cambiar de tienda'}</button>}
             </div>
           ) : modo === 'pin' ? (
             <>

@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FUNCIONES_PLANTA, leerPlanta } from '../lib/planta.js';
+import { funcionDe, leerPlanta } from '../lib/planta.js';
 import { GRUPOS_NAV, ROLES, accesosApp } from '@grupo/shared';
 import { useSesion } from '../sesion.jsx';
 import Icono from '../ui/Icono.jsx';
@@ -150,7 +150,7 @@ export default function Layout({ children, esGrupo = false }) {
   // Puesto de planta (producción y despacho): una sola pantalla, sin menús. Para cambiar de función se sale y se vuelve a entrar.
   const planta = !esGrupo ? leerPlanta(ctx.empresa.codigo) : null;
   if (planta) {
-    const f = FUNCIONES_PLANTA[planta.funcion];
+    const f = funcionDe(ctx.empresa.codigo, planta.funcion);
     if (!location.pathname.startsWith(`/${ctx.empresa.codigo}/${f.ruta}`)) return <Navigate to={`/${ctx.empresa.codigo}/${f.ruta}`} replace />;
     return (
       <div className="planta-shell">
