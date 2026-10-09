@@ -11,7 +11,7 @@
 // Credenciales SOLO en variables de entorno: GMAIL_USER y GMAIL_APP_PASSWORD (contraseña de aplicación de Gmail).
 // Si faltan, el correo se registra como «pendiente de configurar» y sale solo cuando se configuren.
 // Cada envío queda en msg.correos (enviado / pendiente / fallido) con reintentos espaciados y un límite por minuto.
-import nodemailer from 'nodemailer';
+// nodemailer se carga al mandar el primer correo (no al arrancar: ~60 ms menos en cada arranque del servidor).
 import { fechaHN } from '@grupo/shared';
 
 const MAX_INTENTOS = 5;
@@ -43,10 +43,12 @@ export function correoConfigurado() {
 
 export function remitente() { return credenciales().user || null; }
 
-function obtenerTransporte() {
+async function obtenerTransporte() {
   if (estado.transporte) return estado.transporte;
   const { user, pass } = credenciales();
   if (!user || !pass) return null;
+  const { default: nodemailer } = await import('nodemailer');
+  if (estado.transporte) return estado.transporte;
   estado.transporte = nodemailer.createTransport({ service: 'gmail', auth: { user, pass }, connectionTimeout: 15000, socketTimeout: 30000 });
   estado.transporteReal = true;
   return estado.transporte;
@@ -116,7 +118,7 @@ function textoError(e) {
 }
 
 async function envioReal(c, adjuntos) {
-  const t = obtenerTransporte();
+  const t = await obtenerTransporte();
   const { user } = credenciales();
   const de = c.de_nombre ? `"${c.de_nombre.replace(/"/g, '')}" <${user || 'plataforma@localhost'}>` : (user || 'plataforma@localhost');
   await t.sendMail({

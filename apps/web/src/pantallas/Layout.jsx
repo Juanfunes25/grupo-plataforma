@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { GRUPOS_NAV, accesosApp } from '@grupo/shared';
 import { useSesion } from '../sesion.jsx';
 import Icono from '../ui/Icono.jsx';
 import Logo from '../ui/Logo.jsx';
-import Paleta from '../ui/Paleta.jsx';
 import { aplicarAcento } from '../lib/acento.js';
 import { fijarAppEmpresa, fijarColorBarra, guardarPref, temaEfectivo, usePref } from '../lib/preferencias.js';
 import { BarraInferior, HojaMas, MenuQuiosco } from '../ui/NavApp.jsx';
@@ -14,6 +13,9 @@ import Vigilancia from '../antifraude/Vigilancia.jsx';
 import AyudaGlobal from '../ayuda/AyudaGlobal.jsx';
 import ContadorAlertas from '../antifraude/ContadorAlertas.jsx';
 import LimiteError from '../ui/LimiteError.jsx';
+
+// La búsqueda de módulos (Ctrl+K) se descarga al abrirla: no viaja en el JavaScript de entrada.
+const Paleta = lazy(() => import('../ui/Paleta.jsx'));
 
 // Cambio de contraseña propio (solo sesiones de correo; el PIN lo administra Administración).
 function CambiarClave({ onCerrar, onListo }) {
@@ -265,7 +267,7 @@ export default function Layout({ children, esGrupo = false }) {
       {menuQuiosco && <MenuQuiosco base={base} onCerrar={() => setMenuQuiosco(false)} />}
       <Vigilancia base={base} />
       <AyudaGlobal base={base} />
-      {paleta && <Paleta opciones={opcionesPaleta} onCerrar={() => setPaleta(false)} />}
+      {paleta && <Suspense fallback={null}><Paleta opciones={opcionesPaleta} onCerrar={() => setPaleta(false)} /></Suspense>}
       {cambiando && <CambiarClave onCerrar={() => setCambiando(false)} onListo={() => { setCambiando(false); salir(); }} />}
     </div>
   );

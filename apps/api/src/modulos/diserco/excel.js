@@ -1,4 +1,5 @@
-import ExcelJS from 'exceljs';
+// exceljs pesa ~250 ms al importarse: se carga la primera vez que se arma o lee un Excel, no al arrancar el servidor.
+const cargarExcel = () => import('exceljs').then((m) => m.default);
 import { DISERCO } from './config.js';
 
 const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -31,6 +32,7 @@ function parsearFecha(t) {
 // Lee un Excel de cotización (formato DISERCO u otro parecido) y devuelve los datos
 // listos para guardar, más los avisos de lo que no se pudo leer con certeza.
 export async function leerCotizacionExcel(buffer) {
+  const ExcelJS = await cargarExcel();
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
   const ws = wb.worksheets[0];
@@ -178,6 +180,7 @@ export async function leerCotizacionExcel(buffer) {
 
 // Genera el Excel de una cotización con el formato de DISERCO.
 export async function generarExcelCotizacion(cot) {
+  const ExcelJS = await cargarExcel();
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Cotización', { pageSetup: { paperSize: 1, fitToPage: true, fitToWidth: 1, fitToHeight: 0 } });
   ws.columns = [{ width: 5 }, { width: 62 }, { width: 4 }, { width: 4 }, { width: 4 }, { width: 4 }, { width: 4 }, { width: 12 }, { width: 10 }, { width: 14 }, { width: 16 }];

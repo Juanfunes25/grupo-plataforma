@@ -131,16 +131,25 @@ export function rutasVentas({ db, config, ctxMgr }) {
     return { nombre, identidad };
   }
 
+  // Todas las líneas en UNA sentencia (antes, un insert por línea). La caja guarda la orden sola cada vez que se toca, así que esto
+  // corre muchísimo: con Supabase cada sentencia es un viaje de red.
   async function guardarLineas(q, ventaId, tot) {
     await q.query('delete from pos.detalle_venta where venta_id = $1', [ventaId]);
-    for (const l of tot.lineas) {
-      await q.query(
-        `insert into pos.detalle_venta (venta_id, producto_id, nombre_producto, cantidad, precio_base, extras, precio_unitario, opciones, notas,
-                                        descuento, descuento_porcentaje, impuesto_tasa, exento, monto, orden)
-         values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11,$12,$13,$14,$15)`,
-        [ventaId, l.producto_id, l.nombre_producto, l.cantidad, l.precio_base, l.extras, l.precio_unitario, JSON.stringify(l.opciones), l.notas,
-          l.descuento, l.descuento_porcentaje, l.impuesto_tasa, l.exento, l.monto, l.orden]);
-    }
+    if (!tot.lineas.length) return;
+    const filas = tot.lineas.map((l) => ({
+      producto_id: l.producto_id, nombre_producto: l.nombre_producto, cantidad: l.cantidad, precio_base: l.precio_base, extras: l.extras,
+      precio_unitario: l.precio_unitario, opciones: l.opciones ?? [], notas: l.notas ?? null, descuento: l.descuento, descuento_porcentaje: l.descuento_porcentaje,
+      impuesto_tasa: l.impuesto_tasa, exento: l.exento, monto: l.monto, orden: l.orden,
+    }));
+    await q.query(
+      `insert into pos.detalle_venta (venta_id, producto_id, nombre_producto, cantidad, precio_base, extras, precio_unitario, opciones, notas,
+                                      descuento, descuento_porcentaje, impuesto_tasa, exento, monto, orden)
+       select $1, x.producto_id, x.nombre_producto, x.cantidad, x.precio_base, x.extras, x.precio_unitario, coalesce(x.opciones, '[]'::jsonb), x.notas,
+              x.descuento, x.descuento_porcentaje, x.impuesto_tasa, x.exento, x.monto, x.orden
+         from jsonb_to_recordset($2::jsonb) as x(producto_id uuid, nombre_producto text, cantidad numeric, precio_base numeric, extras numeric,
+              precio_unitario numeric, opciones jsonb, notas text, descuento numeric, descuento_porcentaje smallint, impuesto_tasa numeric, exento boolean,
+              monto numeric, orden int)`,
+      [ventaId, JSON.stringify(filas)]);
   }
   const camposTotales = (tot) => [tot.subtotal_exento, tot.subtotal_exonerado, tot.subtotal_gravado_15, tot.subtotal_gravado_18,
     tot.descuento, Math.max(0, ...tot.lineas.map((l) => l.descuento_porcentaje)), tot.isv_total, tot.total];
@@ -170,8 +179,7 @@ export function rutasVentas({ db, config, ctxMgr }) {
     let turno = await turnoAbierto(q, ctx, v.sucursal_id);
     if (!turno) {
       // Abrir turno NO es necesario: se abre solo (fondo 0) al primer cobro. Se puede volver a exigir con core.config 'pos'.exigir_turno = true.
-      const cfg = (await q.query(`select valor from core.config where empresa_id = $1 and clave = 'pos'`, [ctx.empresa.id])).rows[0]?.valor ?? {};
-      if (cfg.exigir_turno === true) throw conflicto('Abre tu turno de caja antes de cobrar');
+      if (cfgPos.exigir_turno === true) throw conflicto('Abre tu turno de caja antes de cobrar');   // misma configuración leída arriba (una consulta menos)
       turno = (await q.query('insert into pos.turnos (empresa_id, sucursal_id, cajero_id, fondo_inicial) values ($1,$2,$3,0) returning *', [ctx.empresa.id, v.sucursal_id, ctx.usuario.id])).rows[0];
       await auditar(q, ctx, 'turno_abierto', 'turno', turno.id, { fondo: 0, automatico: true }, { sucursalId: v.sucursal_id });
     }

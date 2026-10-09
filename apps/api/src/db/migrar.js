@@ -4,16 +4,31 @@ import { fileURLToPath } from 'node:url';
 import { leerConfig } from '../config.js';
 import { abrirDb } from './index.js';
 
+/** Migraciones ya aplicadas, o null si la tabla de control aún no existe. */
+async function leerHechas(db) {
+  try {
+    return new Set((await db.query('select nombre from public._migraciones')).rows.map((r) => r.nombre));
+  } catch (e) {
+    if (e?.code === '42P01') return null;   // undefined_table: base nueva
+    throw e;
+  }
+}
+
 /** Aplica en orden las migraciones pendientes de supabase/migrations. Idempotente. */
 export async function migrar(db, carpeta, log = console.log) {
-  await db.tx(async (q) => {
-    await q.query('select pg_advisory_xact_lock(727274)');   // arranques simultáneos: uno crea la tabla, los demás esperan
-    await q.exec(`create table if not exists public._migraciones (
-      nombre text primary key, aplicada_at timestamptz not null default now())`);
-    // En Supabase el esquema public se expone por la API REST: sin RLS (y sin políticas) esta tabla quedaría legible con la llave anónima.
-    await q.exec('alter table public._migraciones enable row level security');
-  });
-  const hechas = new Set((await db.query('select nombre from public._migraciones')).rows.map((r) => r.nombre));
+  // Arranque normal (la tabla ya existe): una sola consulta. La preparación (candado, crear la tabla, RLS) solo corre la primera vez;
+  // en Supabase cada una de esas sentencias es un viaje de red y el «alter table» pide un candado exclusivo en cada arranque.
+  let hechas = await leerHechas(db);
+  if (!hechas) {
+    await db.tx(async (q) => {
+      await q.query('select pg_advisory_xact_lock(727274)');   // arranques simultáneos: uno crea la tabla, los demás esperan
+      await q.exec(`create table if not exists public._migraciones (
+        nombre text primary key, aplicada_at timestamptz not null default now())`);
+      // En Supabase el esquema public se expone por la API REST: sin RLS (y sin políticas) esta tabla quedaría legible con la llave anónima.
+      await q.exec('alter table public._migraciones enable row level security');
+    });
+    hechas = await leerHechas(db);
+  }
   const archivos = fs.readdirSync(carpeta).filter((f) => f.endsWith('.sql')).sort();
   const aplicadas = [];
   for (const f of archivos) {

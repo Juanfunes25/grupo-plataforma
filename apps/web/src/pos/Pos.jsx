@@ -1,5 +1,5 @@
 import AvisoRecepcion from '../rep/AvisoRecepcion.jsx';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AvisoSinStock from '../eco/AvisoSinStock.jsx';
 import { MOTIVOS_DESCARTE, MOTIVOS_REIMPRESION, OPCIONES_DESCUENTO, UMBRAL_RTN_OBLIGATORIO, calcularTotales, formatearTicketProvisional, identidadValida, lempiras, nombreCortoSucursal, requiereRtn as faltaRtn, uuidCliente } from '@grupo/shared';
@@ -46,13 +46,41 @@ const buscarPorCodigo = (productos, codigo) => {
   return productos.find((p) => normalizar(p.codigo_barras) === c) ?? productos.find((p) => normalizar(p.codigo) === c) ?? null;
 };
 
+// Cuadrícula de productos. Memorizada: agregar a la orden, el aviso «+ producto» o el autoguardado vuelven a dibujar la orden,
+// pero NO los cientos de botones del catálogo (en un teléfono de gama baja eso era lo que hacía sentir lenta la caja).
+const Ficha = memo(function Ficha({ p, color, resaltado, modoEdicion, onTocar }) {
+  return (
+    <button className={`pos-prod ${p.disponible ? '' : 'agotado'}${resaltado ? ' primero' : ''}${modoEdicion ? ' editando' : ''}`} style={{ '--cc': color || 'var(--acento)' }} onClick={() => onTocar(p)}>
+      {p.favorito && <span className="pos-estrella" aria-label="Favorito">★</span>}
+      {modoEdicion === 'favorito' && !p.favorito && <span className="pos-estrella vacia" aria-hidden="true">☆</span>}
+      <span className="pn">{p.nombre}</span>
+      <span className="pp">{lempiras(p.precio)}{p.unidad !== 'unidad' ? ` / ${p.unidad}` : p.unidad_venta ? ` / ${p.unidad_venta === 'm2' ? 'm²' : p.unidad_venta}` : ''}</span>
+      {!p.disponible && <span className="chip mal">Agotado</span>}
+      {p.disponible && p.grupo_ids.length > 0 && <span className="pm">+ opciones</span>}
+    </button>
+  );
+});
+
+const Grilla = memo(function Grilla({ secciones, colores, resaltadoId, modoEdicion, onTocar }) {
+  return secciones.map((s) => (s.prods.length > 0 || s.id === 'todos') && (
+    <section key={s.id} className="pos-seccion">
+      {s.titulo && <h3 className="pos-seccion-titulo">{s.titulo}</h3>}
+      <div className="pos-grid">{s.prods.map((p) => <Ficha key={p.id} p={p} color={colores.get(p.categoria_id)} resaltado={s.id === 'busqueda' && resaltadoId === p.id} modoEdicion={modoEdicion} onTocar={onTocar} />)}</div>
+    </section>
+  ));
+});
+
+const leerCatalogoGuardado = (empresa) => { try { return JSON.parse(localStorage.getItem(cacheKey(empresa, 'cat')) || 'null'); } catch { return null; } };
+
 export default function Pos() {
   const { contexto, sucursal, puede, modulos, elegirSucursal, usuario } = useSesion();
   const avisar = useAviso();
   const navegar = useNavigate();
   const [ejecutar, ocupado] = useAccion();
   const resumenCola = useResumenCola();
-  const [cat, setCat] = useState(null);
+  // La caja abre al instante con el catálogo guardado en este equipo y se actualiza en cuanto responde el servidor
+  // (que de todos modos recalcula los precios al guardar y al cobrar).
+  const [cat, setCat] = useState(() => leerCatalogoGuardado(contexto?.empresa?.codigo));
   const [offline, setOffline] = useState(false);       // el servidor no responde: se trabaja con el catálogo guardado y las ventas van a la cola
   const [enLinea, setEnLinea] = useState(typeof navigator === 'undefined' ? true : navigator.onLine);
   const [error, setError] = useState('');
@@ -62,7 +90,7 @@ export default function Pos() {
   const [orden, setOrden] = useState(vacio);
   const [catActiva, setCatActiva] = useState('todas');
   const [busca, setBusca] = useState('');
-  const [modoEdicion, setModoEdicion] = useState(null);  // null | 'agotado' | 'favorito' (encargados)
+  const [modoEdicion, setModoEdicion] = useState(null);  // null | 'favorito' (encargados)
   const [modal, setModal] = useState(null);            // {tipo, ...}
   const [recibo, setRecibo] = useState(null);
   const [errCobro, setErrCobro] = useState('');
@@ -102,7 +130,7 @@ export default function Pos() {
   const cargarCatalogo = useCallback(async () => {
     try { const c = await get('/pos/catalogo'); setCat(c); setOffline(false); try { localStorage.setItem(cacheKey(empresa, 'cat'), JSON.stringify(c)); } catch { /* */ } }
     catch (e) {
-      let c = null; try { c = JSON.parse(localStorage.getItem(cacheKey(empresa, 'cat'))); } catch { /* */ }
+      const c = leerCatalogoGuardado(empresa);
       if (c) { setCat(c); setOffline(true); } else setError(e.message);
     }
   }, [empresa]);
@@ -286,10 +314,6 @@ export default function Pos() {
   }, []);
   const tocar = (p, cantidad = 1) => {
     vibrar(10);
-    if (modoEdicion === 'agotado') {
-      ejecutar(async () => { await patch(`/pos/catalogo/productos/${p.id}/disponible`, { disponible: !p.disponible }); await cargarCatalogo(); }, p.disponible ? `${p.nombre}: marcado como agotado` : `${p.nombre}: disponible de nuevo`);
-      return;
-    }
     if (modoEdicion === 'favorito') {
       ejecutar(async () => { await patch(`/pos/catalogo/productos/${p.id}/favorito`, { favorito: !p.favorito }); await cargarCatalogo(); }, p.favorito ? `${p.nombre}: ya no es favorito` : `${p.nombre}: ahora es favorito`);
       return;
@@ -302,6 +326,10 @@ export default function Pos() {
     else if (cantidad > 1) agregar(p, { cantidad });
     else agregar(p);
   };
+
+  const tocarRef = useRef(tocar); tocarRef.current = tocar;
+  const onTocar = useCallback((p) => tocarRef.current(p), []);
+  const colores = useMemo(() => new Map((cat?.categorias ?? []).map((c) => [c.id, c.color])), [cat]);
 
   // Lector de código de barras con el cursor fuera de cualquier campo (por ejemplo justo después de tocar un producto): se captura la
   // ráfaga de teclas y se agrega el producto al terminar con Enter. Si el cursor está en un campo de texto, esa escritura es de una persona.
@@ -586,21 +614,6 @@ export default function Pos() {
     if (p) { tocar(p, n); setBusca(''); } else if (busca.trim()) mostrarToast(`"${busca.trim()}" no encontrado`);
   };
 
-  const ficha = (p, seccion) => {
-    const c = cat.categorias.find((x) => x.id === p.categoria_id)?.color;
-    const resaltado = resultadoBusqueda?.id === p.id && seccion === 'busqueda';
-    return (
-      <button key={`${seccion}-${p.id}`} className={`pos-prod ${p.disponible ? '' : 'agotado'}${resaltado ? ' primero' : ''}${modoEdicion ? ' editando' : ''}`} style={{ '--cc': c || 'var(--acento)' }} onClick={() => tocar(p)}>
-        {p.favorito && <span className="pos-estrella" aria-label="Favorito">★</span>}
-        {modoEdicion === 'favorito' && !p.favorito && <span className="pos-estrella vacia" aria-hidden="true">☆</span>}
-        <span className="pn">{p.nombre}</span>
-        <span className="pp">{lempiras(p.precio)}{p.unidad !== 'unidad' ? ` / ${p.unidad}` : p.unidad_venta ? ` / ${p.unidad_venta === 'm2' ? 'm²' : p.unidad_venta}` : ''}</span>
-        {!p.disponible && <span className="chip mal">Agotado</span>}
-        {p.disponible && p.grupo_ids.length > 0 && <span className="pm">+ opciones</span>}
-      </button>
-    );
-  };
-
   return (
     <div className="pos">
       <AvisoRecepcion />
@@ -620,8 +633,8 @@ export default function Pos() {
           <span className="sep" style={{ flex: 1 }} />
           {puede('pos:catalogo') && !sinRed && (
             <>
+              {/* Sin botón de «agotados» en la caja: decisión del dueño (la disponibilidad se cambia en Catálogo). */}
               <button className={`btn chico${modoEdicion === 'favorito' ? ' primario' : ''}`} aria-pressed={modoEdicion === 'favorito'} onClick={() => setModoEdicion((m) => (m === 'favorito' ? null : 'favorito'))} title="Marca los productos favoritos para todas las cajas">★ Favoritos</button>
-              <button className={`btn chico${modoEdicion === 'agotado' ? ' primario' : ''}`} aria-pressed={modoEdicion === 'agotado'} onClick={() => setModoEdicion((m) => (m === 'agotado' ? null : 'agotado'))} title="Marca productos como agotados">Agotados</button>
             </>
           )}
           <button className="btn chico" onClick={() => setModal({ tipo: 'abiertas' })} disabled={sinRed} title={sinRed ? 'Requiere conexión' : 'F7'}>Abiertas{otrasAbiertas > 0 && <span className="chip aviso">{otrasAbiertas}</span>}</button>
@@ -629,7 +642,7 @@ export default function Pos() {
         </div>
 
         {sinRed && <div className="aviso-caja mal" role="status">Sin conexión: se vende solo en efectivo, con comprobante provisional; la factura sale sola al volver el internet.</div>}
-        {modoEdicion && <div className="aviso-caja" role="status">{modoEdicion === 'favorito' ? 'Toca un producto para marcarlo (o quitarlo) de Favoritos. Esc para salir.' : 'Toca un producto para marcarlo agotado (o disponible de nuevo). Esc para salir.'}</div>}
+        {modoEdicion && <div className="aviso-caja" role="status">Toca un producto para marcarlo (o quitarlo) de Favoritos. Esc para salir.</div>}
 
         <input ref={buscadorRef} className="pos-buscar" placeholder="Buscar o escanear…  (Enter agrega · 3*jugo agrega 3 · / para volver aquí)" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar producto"
           onKeyDown={(e) => { if (e.key === 'Enter') buscarEnter(); }} />
@@ -641,12 +654,7 @@ export default function Pos() {
           {catsOrdenadas.map((c) => <button key={c.id} className={catActiva === c.id ? 'on' : ''} onClick={() => setCatActiva(c.id)} style={{ '--cc': c.color || 'var(--acento)' }}>{c.nombre}</button>)}
         </div>
         <div className="pos-productos">
-          {catalogoOrdenado.map((s) => (s.prods.length > 0 || s.id === 'todos') && (
-            <section key={s.id} className="pos-seccion">
-              {s.titulo && <h3 className="pos-seccion-titulo">{s.titulo}</h3>}
-              <div className="pos-grid">{s.prods.map((p) => ficha(p, s.id))}</div>
-            </section>
-          ))}
+          <Grilla secciones={catalogoOrdenado} colores={colores} resaltadoId={resultadoBusqueda?.id ?? null} modoEdicion={modoEdicion} onTocar={onTocar} />
           {!hayResultados && (
             <div className="vacio pos-vacio">
               {cat.productos.length === 0 ? 'Aún no hay productos. Agrégalos en Catálogo.'
@@ -709,8 +717,7 @@ export default function Pos() {
               <small>Con teclado: Enter agrega · F1 muestra todos los atajos</small>
             </div>
           )}
-          {orden.lineas.map((l) => {
-            const i = orden.lineas.indexOf(l);
+          {orden.lineas.map((l, i) => {
             const t = totales.lineas[i];
             const unidad = l.producto.unidad === 'unidad' || l.producto.es_piedra;
             const piedra = Boolean(l.producto.es_piedra);

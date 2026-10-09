@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSesion } from '../sesion.jsx';
 import { get } from '../api.js';
@@ -6,7 +6,8 @@ import { Campo, Esqueleto, vibrar, useAccion, useDatos } from '../ui/kit.jsx';
 import Logo from '../ui/Logo.jsx';
 import Icono from '../ui/Icono.jsx';
 import { aplicarAcento } from '../lib/acento.js';
-import SegundoPaso from '../seguridad/SegundoPaso.jsx';
+// La verificación en dos pasos es opcional y casi nadie la usa: se descarga solo si el servidor la pide.
+const SegundoPaso = lazy(() => import('../seguridad/SegundoPaso.jsx'));
 
 const PIN_MAX = 8;
 
@@ -78,8 +79,8 @@ export default function Acceso() {
         )}
         <div className="tarjeta" style={{ display: 'grid', gap: 16 }}>
           {segundo ? (
-            <SegundoPaso r={segundo} onCancelar={() => { setSegundo(null); setClave(''); }}
-              onSesion={(resp) => { s.completar(resp); nav(codigo === 'grupo' ? '/grupo' : `/${codigo}`, { replace: true }); }} />
+            <Suspense fallback={<Esqueleto alto={220} />}><SegundoPaso r={segundo} onCancelar={() => { setSegundo(null); setClave(''); }}
+              onSesion={(resp) => { s.completar(resp); nav(codigo === 'grupo' ? '/grupo' : `/${codigo}`, { replace: true }); }} /></Suspense>
           ) : modo === 'pin' ? (
             <>
               <div className={`pin-puntos${sacude ? ' error' : ''}`} role="img" aria-label={`${pin.length} dígitos escritos`}>{Array.from({ length: Math.max(4, pin.length) }, (_, i) => <i key={i} className={i < pin.length ? 'on' : ''} />)}</div>
