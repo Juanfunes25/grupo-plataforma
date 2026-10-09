@@ -236,3 +236,73 @@ test('aguinaldo del año y bloqueo de planillas duplicadas', async () => {
   assert.equal(d.lineas.find((l) => l.nombre.startsWith('Luis')).total, 13200);
   assert.equal((await dueno.post('/api/planilla/planillas', { tipo: 'aguinaldo', anio: 2026 })).status, 409);
 });
+
+// ── Captura rápida de horas extra (como la columna HORAS EXTRAS de la hoja) ──
+test('cálculo: horas capturadas reemplazan a las sugeridas y novedades; Gerencia queda en 0', () => {
+  const cap = armarLinea({ tipo: 'quincena', emp: emp(), P, periodo: q1, horasSugeridas: 3, novedades: [{ tipo: 'he_diurna', horas: 2 }], horasCapturadas: 12 }).linea;
+  assert.equal(cap.horas_extra, 12); assert.equal(cap.total_hx, 660); assert.equal(cap.total, 6600 + 660);
+  assert.equal(cap.detalle.horas_auto, 5); assert.equal(cap.detalle.horas_captura, 12);
+  const cero = armarLinea({ tipo: 'quincena', emp: emp(), P, periodo: q1, horasSugeridas: 3, horasCapturadas: 0 }).linea;
+  assert.equal(cero.horas_extra, 0); assert.equal(cero.total_hx, 0);
+  const ger = armarLinea({ tipo: 'quincena', emp: emp({ sucursal: 'Gerencia' }), P, periodo: q1, horasSugeridas: 4, novedades: [{ tipo: 'he_diurna', horas: 6 }], horasCapturadas: 9 });
+  assert.equal(ger.linea.horas_extra, 0); assert.equal(ger.linea.total_hx, 0); assert.equal(ger.linea.detalle.sin_horas_extra, true);
+  assert.ok(ger.avisos.some((a) => /Gerencia/.test(a)));
+});
+
+test('captura rápida: guarda varias horas de una vez, recalcula, sobrevive a «volver a llenar», copia la anterior y respeta lo aprobado', async () => {
+  const ita = tt.cli(tok.dueno, 'italo');
+  const itaId = await tt.empresaId('italo');
+  const suc = async (nombre) => (await tt.db.query('insert into core.sucursales (empresa_id, nombre, alias) values ($1,$2,$3) returning id', [itaId, nombre, `pl-${nombre.toLowerCase().replace(/\s+/g, '-')}`])).rows[0].id;
+  const sTienda = await suc('Tienda Ficticia'), sGer = await suc('Gerencia');
+  const alta = async (n, ap, sueldo, sucursal) => {
+    const p = (await tt.db.query('insert into rrhh.personas (nombres, apellidos, cuenta_bancaria) values ($1,$2,$3) returning id', [n, ap, '000999'])).rows[0].id;
+    return (await tt.db.query(`insert into rrhh.empleados (persona_id, empresa_id, puesto, fecha_ingreso, salario_mensual, sucursal_id) values ($1,$2,'Cajero','2022-01-01',$3,$4) returning id`, [p, itaId, sueldo, sucursal])).rows[0].id;
+  };
+  const a = await alta('Alba', 'Captura', 13200, sTienda), b = await alta('Beto', 'Captura', 12000, sTienda), g = await alta('Gina', 'Gerente', 30000, sGer);
+  await ita.post('/api/planilla/fijas', { empleado_id: a, concepto: 'IHSS', monto_mensual: 626 });
+  const q1i = (await ita.post('/api/planilla/planillas', { tipo: 'quincena', anio: 2026, mes: 9, quincena: 1 })).body;
+  // no hay planilla anterior que copiar
+  assert.deepEqual((await ita.get(`/api/planilla/planillas/${q1i.id}/horas-anteriores`)).body, { planilla: null, horas: [] });
+  // varias de una vez
+  const r1 = await ita.put(`/api/planilla/planillas/${q1i.id}/horas`, { horas: [{ empleado_id: a, horas: 10 }, { empleado_id: b, horas: 4.5 }, { empleado_id: g, horas: 0 }] });
+  assert.equal(r1.status, 200); assert.equal(r1.body.guardadas, 2);
+  let la = r1.body.planilla.lineas.find((l) => l.empleado_id === a), lb = r1.body.planilla.lineas.find((l) => l.empleado_id === b);
+  assert.equal(la.horas_extra, 10); assert.equal(la.total_hx, 550); assert.equal(la.total, 6600 + 550 - 313); assert.equal(la.editado, false);
+  assert.equal(lb.horas_extra, 4.5); assert.equal(lb.total_hx, 225);                          // 400 diario ÷ 8 = 50 la hora, tarifa normal
+  assert.equal(r1.body.planilla.totales.total_hx, 775);
+  // lo mismo otra vez: nada que guardar
+  assert.equal((await ita.put(`/api/planilla/planillas/${q1i.id}/horas`, { horas: [{ empleado_id: a, horas: 10 }] })).body.guardadas, 0);
+  // Gerencia no cobra horas extra; negativas o un empleado ajeno no se aceptan
+  assert.equal((await ita.put(`/api/planilla/planillas/${q1i.id}/horas`, { horas: [{ empleado_id: g, horas: 5 }] })).status, 400);
+  assert.equal((await ita.put(`/api/planilla/planillas/${q1i.id}/horas`, { horas: [{ empleado_id: a, horas: -1 }] })).status, 400);
+  assert.equal((await ita.put(`/api/planilla/planillas/${q1i.id}/horas`, { horas: [{ empleado_id: e1, horas: 2 }] })).status, 404);
+  const lg = r1.body.planilla.lineas.find((l) => l.empleado_id === g);
+  assert.equal((await ita.patch(`/api/planilla/planillas/${q1i.id}/lineas/${lg.id}`, { horas_extra: 3 })).status, 400);
+  // una deducción fija nueva entra al volver a llenar, y las horas capturadas se conservan
+  await ita.post('/api/planilla/fijas', { empleado_id: b, concepto: 'IHSS', monto_mensual: 626 });
+  await ita.post(`/api/planilla/planillas/${q1i.id}/recalcular`);
+  let d = (await ita.get(`/api/planilla/planillas/${q1i.id}`)).body;
+  lb = d.lineas.find((l) => l.empleado_id === b);
+  assert.equal(lb.horas_extra, 4.5); assert.equal(lb.total, 6000 + 225 - 313);
+  // un renglón corregido a mano también acepta horas (y sigue marcado como corregido)
+  la = d.lineas.find((l) => l.empleado_id === a);
+  await ita.patch(`/api/planilla/planillas/${q1i.id}/lineas/${la.id}`, { observaciones: 'Revisado' });
+  const r2 = await ita.put(`/api/planilla/planillas/${q1i.id}/horas`, { horas: [{ empleado_id: a, horas: 8 }] });
+  la = r2.body.planilla.lineas.find((l) => l.empleado_id === a);
+  assert.equal(la.editado, true); assert.equal(la.horas_extra, 8); assert.equal(la.total_hx, 440); assert.equal(la.total, 6600 + 440 - 313);
+  assert.equal(r2.body.planilla.control.cuadra, true);
+  assert.ok((await tt.db.query(`select 1 from core.auditoria where accion = 'planilla.horas_capturadas'`)).rowCount >= 2);
+  // aprobada: inalterable
+  assert.equal((await ita.post(`/api/planilla/planillas/${q1i.id}/aprobar`)).status, 200);
+  assert.equal((await ita.put(`/api/planilla/planillas/${q1i.id}/horas`, { horas: [{ empleado_id: b, horas: 1 }] })).status, 409);
+  // la quincena siguiente puede copiar las horas de esta
+  const q2i = (await ita.post('/api/planilla/planillas', { tipo: 'quincena', anio: 2026, mes: 9, quincena: 2 })).body;
+  const ant = (await ita.get(`/api/planilla/planillas/${q2i.id}/horas-anteriores`)).body;
+  assert.equal(ant.planilla.id, q1i.id);
+  assert.deepEqual(Object.fromEntries(ant.horas.map((h) => [h.empleado_id, h.horas])), { [a]: 8, [b]: 4.5 });
+  assert.equal((await ita.put(`/api/planilla/planillas/${q2i.id}/horas`, { horas: ant.horas })).body.planilla.totales.horas_extra, 12.5);
+  // el aguinaldo no lleva horas extra; otra empresa no ve esta planilla
+  const ag = (await ita.post('/api/planilla/planillas', { tipo: 'aguinaldo', anio: 2026 })).body;
+  assert.equal((await ita.put(`/api/planilla/planillas/${ag.id}/horas`, { horas: [{ empleado_id: a, horas: 1 }] })).status, 400);
+  assert.equal((await dueno.put(`/api/planilla/planillas/${q2i.id}/horas`, { horas: [{ empleado_id: a, horas: 1 }] })).status, 404);
+});

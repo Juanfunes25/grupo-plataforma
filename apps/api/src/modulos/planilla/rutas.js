@@ -8,7 +8,7 @@ import { fechaHN } from '@grupo/shared';
 import { requierePermiso } from '../../lib/contexto.js';
 import { auditar } from '../../lib/auditoria.js';
 import { conflicto, fechaISO, malaPeticion, noEncontrado, prohibido, uuid, validar } from '../../lib/http.js';
-import { agruparPorSucursal, armarLinea, mapaParametros, PERIODICIDADES, periodoDe, recalcularRenglon, resumenContable, totalesDe } from './calculo.js';
+import { agruparPorSucursal, armarLinea, mapaParametros, PERIODICIDADES, periodoDe, recalcularRenglon, resumenContable, sinHorasExtra, totalesDe } from './calculo.js';
 import { armarReporte } from '../rrhh/horas.js';
 import { generarBoletasPdf } from './pdf.js';
 import { generarExcel } from './excel.js';
@@ -230,13 +230,17 @@ export function rutasPlanilla({ db }) {
       }
     }
     const editadas = new Map((await q.query('select * from plan.planilla_lineas where planilla_id = $1 and editado', [planilla.id])).rows.map((l) => [l.empleado_id, l]));
+    // horas extra escritas en la captura rápida: viven en el renglón (detalle.horas_captura) y sobreviven al volver a llenar
+    const capturadas = new Map((await q.query(
+      `select empleado_id, (detalle->>'horas_captura')::numeric as horas from plan.planilla_lineas where planilla_id = $1 and not editado and detalle ? 'horas_captura'`, [planilla.id])).rows
+      .map((x) => [x.empleado_id, Number(x.horas)]));
     const avisos = [];
     const nuevas = [];
     for (const emp of empleados) {
       const nombre = `${emp.nombres} ${emp.apellidos ?? ''}`.trim();
       if (editadas.has(emp.id)) continue;
       const res = armarLinea({
-        tipo: planilla.tipo, emp, P, tramos, periodo, horasSugeridas: sugeridas.get(emp.id) ?? 0,
+        tipo: planilla.tipo, emp, P, tramos, periodo, horasSugeridas: sugeridas.get(emp.id) ?? 0, horasCapturadas: capturadas.get(emp.id) ?? null,
         novedades: nov.filter((n) => n.empleado_id === emp.id), ausencias: aus.filter((a) => a.empleado_id === emp.id),
         vacaciones: vac.filter((v) => v.empleado_id === emp.id), suspensiones: sus.filter((s) => s.empleado_id === emp.id), fijas: fijas.filter((f) => f.empleado_id === emp.id),
       });
@@ -325,6 +329,7 @@ export function rutasPlanilla({ db }) {
       if (p.estado !== 'borrador') throw conflicto('La planilla ya está cerrada: reábrela (solo el dueño, con motivo) para corregir');
       const l = (await q.query('select * from plan.planilla_lineas where id = $1 and planilla_id = $2 for update', [validar(uuid, req.params.lid), p.id])).rows[0];
       if (!l) throw noEncontrado('Renglón no encontrado');
+      if (sinHorasExtra(l) && (Number(b.horas_extra) > 0 || Number(b.total_hx) > 0)) throw malaPeticion(`${l.nombre} es de Gerencia: no cobra horas extra`);
       const { P } = await cargarParametros(q);
       const n = { ...l, ...Object.fromEntries(Object.entries(b).filter(([k, v]) => v !== undefined && k !== 'deducciones')) };
       if (b.deducciones) n.deducciones = b.deducciones.map((d) => ({ ...d, tipo: l.deducciones.find((x) => x.concepto === d.concepto)?.tipo ?? 'manual' }));
@@ -341,6 +346,54 @@ export function rutasPlanilla({ db }) {
       return { ...f, totales: totalesDe(await lineasDe(q, p.id)) };
     });
     res.json(out);
+  });
+
+  /**
+   * Captura rápida de HORAS EXTRAS (como la columna de la hoja): varias de una vez, por empleado.
+   * El número es EL total de horas extra del periodo (reemplaza al sugerido por el reporte de horas y a las novedades).
+   * Renglón sin tocar → se guarda en detalle.horas_captura y se recalcula todo (deducciones, totales) sin «congelar» el renglón;
+   * renglón corregido a mano → se cambian sus horas y su TOTAL HX. Solo en borrador; Gerencia no cobra horas extra.
+   */
+  r.put('/planillas/:id/horas', async (req, res) => {
+    const b = validar(z.object({ horas: z.array(z.object({ empleado_id: uuid, horas: z.coerce.number().min(0, 'Las horas no pueden ser negativas').max(300, 'Máximo 300 horas extra en un periodo') })).min(1).max(1000) }), req.body);
+    const out = await db.tx(async (q) => {
+      const p = await cargarPlanilla(q, req, req.params.id, { bloquear: true });
+      if (p.estado !== 'borrador') throw conflicto('La planilla ya está cerrada: reábrela (solo el dueño, con motivo) para cambiar horas');
+      if (!['semanal', 'quincena', 'mensual'].includes(p.tipo)) throw malaPeticion('El aguinaldo y el catorceavo no llevan horas extra');
+      const lineas = new Map((await q.query('select * from plan.planilla_lineas where planilla_id = $1 for update', [p.id])).rows.map((l) => [l.empleado_id, l]));
+      const { P } = await cargarParametros(q);
+      const cambios = [];
+      for (const h of b.horas) {
+        const l = lineas.get(h.empleado_id);
+        if (!l) throw noEncontrado('Un empleado ya no está en esta planilla: ciérrala y vuelve a abrirla');
+        const horas = Math.round(h.horas * 100) / 100;
+        if (sinHorasExtra(l)) { if (horas > 0) throw malaPeticion(`${l.nombre} es de Gerencia: no cobra horas extra`); continue; }
+        if (Number(l.horas_extra) === horas) continue;
+        if (l.editado) {
+          const f = recalcularRenglon({ ...l, horas_extra: horas, total_hx: r2(horas * Number(l.por_hora) * (1 + P.he_diurna_pct / 100)) });
+          if (f.total < 0) throw malaPeticion(`El total de ${l.nombre} quedaría negativo`);
+          await q.query('update plan.planilla_lineas set horas_extra = $2, total_hx = $3, total = $4 where id = $1', [l.id, f.horas_extra, f.total_hx, f.total]);
+        } else {
+          await q.query(`update plan.planilla_lineas set detalle = detalle || jsonb_build_object('horas_captura', $2::numeric) where id = $1`, [l.id, horas]);
+        }
+        cambios.push({ empleado: l.nombre, antes: Number(l.horas_extra), despues: horas });
+      }
+      if (!cambios.length) return { guardadas: 0 };
+      const c = await calcular(q, p);
+      await auditar(q, req.ctx, 'planilla.horas_capturadas', 'planilla', p.id, { etiqueta: p.etiqueta, cambios, total: c.totales.total });
+      return { guardadas: cambios.length };
+    });
+    res.json({ ...out, planilla: await detalle(db, req, req.params.id) });
+  });
+
+  /** Para «copiar horas del periodo anterior»: las HORAS EXTRAS de la planilla anterior del mismo tipo (no anulada). */
+  r.get('/planillas/:id/horas-anteriores', async (req, res) => {
+    const p = await cargarPlanilla(db, req, req.params.id);
+    const ant = (await db.query(
+      `select id, etiqueta, estado from plan.planillas where empresa_id = $1 and tipo = $2 and estado <> 'anulada' and hasta < $3::date order by hasta desc, created_at desc limit 1`, [p.empresa_id, p.tipo, p.desde])).rows[0];
+    if (!ant) return res.json({ planilla: null, horas: [] });
+    const { rows } = await db.query('select empleado_id, horas_extra from plan.planilla_lineas where planilla_id = $1 and horas_extra > 0', [ant.id]);
+    res.json({ planilla: ant, horas: rows.map((x) => ({ empleado_id: x.empleado_id, horas: Number(x.horas_extra) })) });
   });
 
   r.post('/planillas/:id/recalcular', async (req, res) => {

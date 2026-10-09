@@ -73,6 +73,12 @@ export function impuestoAnual(base, tramos) {
   return r2(total);
 }
 
+/**
+ * Gerencia no cobra horas extra: sus renglones quedan siempre en 0 horas (ni reporte de horas, ni novedades, ni captura).
+ * Se reconoce por la sucursal (bloque «Gerencia» de la hoja). Si el dueño decide otra regla, se cambia solo aquí.
+ */
+export const sinHorasExtra = (emp) => /gerencia/i.test(String(emp?.sucursal ?? ''));
+
 const horasDiaDe = (jornada, P) => (jornada === 'nocturna' ? P.horas_dia_nocturna : jornada === 'mixta' ? P.horas_dia_mixta : P.horas_dia_diurna);
 
 /** Salario diario del perfil (null si no se puede). Mensual ÷ días del mes; por hora × horas de la jornada. */
@@ -113,9 +119,11 @@ export function recalcularRenglon(l) {
  *   emp: fila de rrhh.empleados (+ nombres, cuenta, banco) · P: parámetros · periodo: salida de periodoDe()
  *   novedades: [{tipo, horas, monto, concepto}] · ausencias SIN goce: [{tipo, desde, hasta, dias, minutos}] · vacaciones: [{desde, hasta, dias}]
  *   suspensiones sin goce: [{desde, hasta}] · fijas: [{concepto, monto_mensual}] · horasSugeridas: horas extra que salen del reporte de horas
+ *   horasCapturadas: HORAS EXTRAS escritas en la captura rápida (número o null). Si vienen, son EL total de horas extra del periodo
+ *   y reemplazan a las del reporte y a las anotadas como novedad (que quedan como referencia en detalle.horas_auto).
  * Devuelve { linea, avisos } o { omitido }.
  */
-export function armarLinea({ tipo, emp, P, tramos = [], periodo, novedades = [], ausencias = [], vacaciones = [], suspensiones = [], fijas = [], horasSugeridas = 0 }) {
+export function armarLinea({ tipo, emp, P, tramos = [], periodo, novedades = [], ausencias = [], vacaciones = [], suspensiones = [], fijas = [], horasSugeridas = 0, horasCapturadas = null }) {
   const avisos = [];
   const diario = salarioDiarioDe(emp, P);
   if (!diario) return { omitido: 'sin salario registrado' };
@@ -181,6 +189,14 @@ export function armarLinea({ tipo, emp, P, tramos = [], periodo, novedades = [],
     else if (n.tipo === 'bono') { otros += Number(n.monto); obs.push(`Bono ${r2(n.monto)}${n.concepto ? ` (${n.concepto})` : ''}`); }
     else deducciones.push({ concepto: n.concepto || 'Descuento', monto: r2(n.monto), tipo: 'manual' });
   }
+  const horasAuto = Math.round(horas * 100) / 100;
+  const capturada = horasCapturadas === null || horasCapturadas === undefined || horasCapturadas === '' ? null : Math.round(Number(horasCapturadas) * 100) / 100;
+  if (capturada !== null && Number.isFinite(capturada)) { horas = capturada; hx = capturada * valorHora * (1 + rec.he_diurna / 100); }
+  const gerencia = sinHorasExtra(emp);
+  if (gerencia) {
+    if (horasAuto > 0 && novedades.some((n) => n.tipo.startsWith('he_'))) avisos.push('Gerencia no cobra horas extra: las anotadas quedaron en 0.');
+    horas = 0; hx = 0;
+  }
   if (minutosTarde > 0) deducciones.push({ concepto: 'Tardanzas sin goce', monto: r2((minutosTarde / 60) * valorHora), tipo: 'manual' });
   for (const f of fijas) deducciones.push({ concepto: f.concepto, monto: r2(Number(f.monto_mensual) * periodo.fraccion), tipo: 'fija' });
 
@@ -191,7 +207,8 @@ export function armarLinea({ tipo, emp, P, tramos = [], periodo, novedades = [],
   const linea = recalcularRenglon({
     ...base, dias, por_hora: Math.round(valorHora * 10000) / 10000, horas_extra: Math.round(horas * 100) / 100, total_hx: r2(hx), otros_ingresos: r2(otros),
     deducciones, aportes_patronales: aportes, observaciones: obs.join(' · '),
-    detalle: { horas_sugeridas_reporte: Math.round(Number(horasSugeridas) * 100) / 100, dias_base: diasBase, dias_sin_goce: sinGoce, vacaciones_dias: vacDias },
+    detalle: { horas_sugeridas_reporte: Math.round(Number(horasSugeridas) * 100) / 100, horas_auto: gerencia ? 0 : horasAuto, ...(capturada !== null && !gerencia ? { horas_captura: capturada } : {}),
+      ...(gerencia ? { sin_horas_extra: true } : {}), dias_base: diasBase, dias_sin_goce: sinGoce, vacaciones_dias: vacDias },
   });
   if (linea.total < 0) avisos.push('El total a pagar es negativo: revisa las deducciones.');
   if (emp.estado === 'suspendido') avisos.push('Está marcado como suspendido: confirma si se le paga este periodo.');
