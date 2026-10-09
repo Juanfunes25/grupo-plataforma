@@ -1,6 +1,5 @@
 import AvisoRecepcion from '../rep/AvisoRecepcion.jsx';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import AvisoSinStock from '../eco/AvisoSinStock.jsx';
 import { MOTIVOS_DESCARTE, MOTIVOS_REIMPRESION, OPCIONES_DESCUENTO, UMBRAL_RTN_OBLIGATORIO, calcularTotales, formatearTicketProvisional, identidadValida, lempiras, nombreCortoSucursal, requiereRtn as faltaRtn, uuidCliente } from '@grupo/shared';
 import { get, patch, post, put, qs } from '../api.js';
@@ -75,7 +74,6 @@ const leerCatalogoGuardado = (empresa) => { try { return JSON.parse(localStorage
 export default function Pos() {
   const { contexto, sucursal, puede, modulos, elegirSucursal, usuario } = useSesion();
   const avisar = useAviso();
-  const navegar = useNavigate();
   const [ejecutar, ocupado] = useAccion();
   const resumenCola = useResumenCola();
   // La caja abre al instante con el catálogo guardado en este equipo y se actualiza en cuanto responde el servidor
@@ -603,7 +601,6 @@ export default function Pos() {
 
   const colorSuc = colorSucursal(cat.sucursales, sucursal.id);
   const catsOrdenadas = cat.categorias;
-  const puedeFacturas = modulos.some((m) => m.ruta === 'facturas');
   const otrasAbiertas = Math.max(0, abiertas - (orden.id ? 1 : 0));
   const cantidadTotal = orden.lineas.reduce((n, l) => n + (Number(l.cantidad) || 0), 0);
   const catalogoOrdenado = vista.secciones;
@@ -768,7 +765,6 @@ export default function Pos() {
           <button className="btn" disabled={!puedeDeshacer} onClick={deshacer} title="Ctrl+Z">↶ Deshacer</button>
           <button className="btn" disabled={!hayLineas || ocupado || sinRed} onClick={dejarEnEspera} title="F8">En espera</button>
           <button className="btn" disabled={sinRed} onClick={() => setModal({ tipo: 'abiertas' })} title="F7">Abiertas{otrasAbiertas > 0 ? ` (${otrasAbiertas})` : ''}</button>
-          {puedeFacturas && <button className="btn" onClick={() => navegar(`/${empresa}/facturas`)}>Facturas</button>}
         </div>
 
         {/* Efectivo y Tarjeta en extremos opuestos con un hueco ancho en medio: un toque mal apuntado cae en el vacío, nunca en el botón de al lado. */}
@@ -778,8 +774,7 @@ export default function Pos() {
           <button className="boton-cobro tarjeta" disabled={cobroBloqueado || sinRed} title={sinRed ? 'No disponible sin conexión' : undefined} onClick={() => pagoInstantaneo('tarjeta')}><Icono n="pos" tam={24} />TARJETA<kbd>F3</kbd></button>
         </div>
         {cobrando && <small className="centro">Procesando…</small>}
-        <button className="btn grande pos-btn-recibido" disabled={cobroBloqueado} onClick={abrirEfectivo}>Efectivo recibido y cambio <kbd>F4</kbd></button>
-        <button className="btn" disabled={!hayLineas || bloqueoFiscal || faltaCarne || cobrando || sinRed} onClick={abrirMasPagos}>Más formas de pago (dividir, transferencia) <kbd>F6</kbd></button>
+        <button className="btn chico pos-btn-mas" disabled={!hayLineas || bloqueoFiscal || faltaCarne || cobrando || sinRed} onClick={abrirMasPagos}>Más formas de pago <kbd>F6</kbd></button>
       </aside>
 
       {modal?.tipo === 'opciones' && (
