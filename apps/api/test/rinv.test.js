@@ -17,7 +17,7 @@ before(async () => {
   sucId = await t.sucursalId('italo', 'mackey');
   await t.usuario({ nombre: 'Gerente', email: 'g@italo.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'italo', rol: 'gerente' }, { empresa: 'origen', rol: 'gerente' }] });
   await t.usuario({ nombre: 'Bodeguero', accesos: [{ empresa: 'italo', rol: 'bodega', pin: '4141' }] });
-  await t.usuario({ nombre: 'Tienda', accesos: [{ empresa: 'italo', rol: 'cajero', pin: '5252' }] });
+  await t.usuario({ nombre: 'Tienda', accesos: [{ empresa: 'italo', rol: 'pesaje', pin: '5252' }] });
   const con = (token, emp) => Object.assign(t.cli(token, emp), { cabeceras: { authorization: `Bearer ${token}`, 'x-empresa': emp } });
   ger = con(await t.login('italo', 'g@italo.hn', 'ClaveSegura123'), 'italo');
   otra = con(await t.login('origen', 'g@italo.hn', 'ClaveSegura123'), 'origen');

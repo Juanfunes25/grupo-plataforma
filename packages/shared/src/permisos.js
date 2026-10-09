@@ -73,11 +73,19 @@ export const ROLES = {
   },
   cajero: {
     nombre: 'Cajero',
-    permisos: ['pos:vender', 'pos:caja', 'pos:descuento', 'pos:reimprimir', 'kds:ver', 'clientes:ver', 'clientes:editar', 'rrhh:asistencia', 'rep:pesar'],
+    permisos: ['pos:vender', 'pos:caja', 'pos:descuento', 'pos:reimprimir', 'kds:ver', 'clientes:ver', 'clientes:editar', 'rrhh:asistencia'],   // caja y facturas; el pesaje es un perfil aparte
+  },
+  pesaje: {
+    nombre: 'Pesaje de gelato (tienda)',
+    permisos: ['rep:pesar', 'rrhh:asistencia'],   // se usa desde el teléfono; solo ve Pesaje
   },
   produccion: {
     nombre: 'Producción / cocina',
     permisos: ['kds:ver', 'inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:registrar', 'fab:ver', 'rep:producir', 'rep:ver'],
+  },
+  prod_despacho: {
+    nombre: 'Producción y despacho',
+    permisos: ['kds:ver', 'inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:registrar', 'fab:ver', 'rep:producir', 'rep:ver', 'rep:despachar', 'rep:inventario'],   // la misma persona produce y despacha
   },
   bodega: {
     nombre: 'Bodega',
@@ -85,7 +93,7 @@ export const ROLES = {
   },
   gestor: {
     nombre: 'Gestor de proyectos',
-    permisos: ['dis:salidas', 'inv:ver', 'rrhh:asistencia'],
+    permisos: ['dis:salidas', 'inv:ver', 'rrhh:asistencia'],   // salidas; necesita ver existencias para elegir qué sacar
   },
   ventas: {
     nombre: 'Ventas',
@@ -103,7 +111,7 @@ export const ROLES = {
 
 // Roles que PUEDEN entrar con PIN (operación de mostrador/cocina/bodega).
 // Los roles de dirección exigen correo + contraseña.
-export const ROLES_CON_PIN = ['cajero', 'produccion', 'bodega', 'ventas', 'gerente', 'gestor'];
+export const ROLES_CON_PIN = ['cajero', 'pesaje', 'produccion', 'prod_despacho', 'bodega', 'ventas', 'gerente', 'gestor'];
 
 /** Conjunto efectivo de permisos de un acceso. */
 export function permisosDe(rol, extra = [], quitados = []) {

@@ -93,7 +93,8 @@ test('reposición de gelato: el módulo de empresa muestra su grupo y oculta el 
   assert.ok(!d.includes('rep_incidencias'), 'Incidencias ya no es módulo de menú');
   assert.ok(!d.includes('inventario'));
   // roles de tienda: la cajera pesa y recibe; producción produce; bodega despacha
-  assert.ok(modulosVisibles(['reposicion'], permisosDe('cajero')).map((m) => m.id).includes('rep_pesaje'));
+  assert.ok(modulosVisibles(['reposicion'], permisosDe('pesaje')).map((m) => m.id).includes('rep_pesaje'));
+  assert.ok(!modulosVisibles(['reposicion'], permisosDe('cajero')).map((m) => m.id).includes('rep_pesaje'), 'la cajera no pesa: es otro perfil');
   assert.ok(modulosVisibles(['reposicion'], permisosDe('produccion')).map((m) => m.id).includes('rep_produccion'));
   assert.ok(modulosVisibles(['reposicion'], permisosDe('bodega')).map((m) => m.id).includes('rep_despacho'));
   assert.ok(!modulosVisibles(['pos'], permisosDe('dueno')).some((m) => m.id.startsWith('rep_')));
@@ -106,10 +107,12 @@ test('gelato: cada rol entra a lo suyo y la noche cambia al mediodía (hora de H
   assert.equal(inicioGelato(vis('gerente'), permisosDe('gerente')), 'despacho');
   assert.equal(inicioGelato(vis('bodega'), permisosDe('bodega')), 'despacho');
   assert.equal(inicioGelato(vis('produccion'), permisosDe('produccion')), 'gelato-produccion');
+  assert.equal(inicioGelato(vis('prod_despacho'), permisosDe('prod_despacho')), 'despacho');   // la misma persona produce y despacha
   const noche = new Date('2026-10-09T02:00:00Z'), dia = new Date('2026-10-08T18:00:00Z');   // 8 p. m. y 12 m. en Honduras
-  assert.equal(inicioGelato(vis('cajero'), permisosDe('cajero'), noche), 'pesaje');
+  assert.equal(inicioGelato(vis('cajero'), permisosDe('cajero'), noche), null);   // la cajera nunca entra al pesaje
+  assert.equal(inicioGelato(vis('pesaje'), permisosDe('pesaje'), noche), 'pesaje');
   assert.equal(inicioGelato(vis('cajero'), permisosDe('cajero'), dia), null);   // de día entra a la caja
-  assert.equal(inicioGelato(modulosVisibles(['reposicion'], permisosDe('cajero')), permisosDe('cajero'), dia), 'pesaje');   // sin POS, siempre pesaje
+  assert.equal(inicioGelato(modulosVisibles(['reposicion'], permisosDe('pesaje')), permisosDe('pesaje'), dia), 'pesaje');   // el perfil de pesaje, siempre al pesaje
   assert.equal(inicioGelato(modulosVisibles(['pos'], permisosDe('cajero')), permisosDe('cajero')), null);
   // 09:00 HN = 15:00 UTC → anoche; 15:00 HN = 21:00 UTC → hoy
   assert.deepEqual(nocheDeTrabajo(new Date('2026-10-08T15:00:00Z')), { fecha: '2026-10-07', esHoy: false });

@@ -26,8 +26,8 @@ before(async () => {
   sucMackey = await t.sucursalId('italo', 'mackey');
   sucProceres = await t.sucursalId('italo', 'proceres');
   sucAndes = await t.sucursalId('italo', 'los_andes');
-  await t.usuario({ nombre: 'Caja Mackey', accesos: [{ empresa: 'italo', rol: 'cajero', pin: '4821', sucursal_ids: [sucMackey] }] });
-  await t.usuario({ nombre: 'Caja Próceres', accesos: [{ empresa: 'italo', rol: 'cajero', pin: '4822', sucursal_ids: [sucProceres] }] });
+  await t.usuario({ nombre: 'Caja Mackey', accesos: [{ empresa: 'italo', rol: 'pesaje', pin: '4821', sucursal_ids: [sucMackey] }] });
+  await t.usuario({ nombre: 'Caja Próceres', accesos: [{ empresa: 'italo', rol: 'pesaje', pin: '4822', sucursal_ids: [sucProceres] }] });
   await t.usuario({ nombre: 'Bodeguero', accesos: [{ empresa: 'italo', rol: 'bodega', pin: '5931' }] });
   await t.usuario({ nombre: 'Producción', accesos: [{ empresa: 'italo', rol: 'produccion', pin: '6042' }] });
   await t.usuario({ nombre: 'Gerente', email: 'ger@italo.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'italo', rol: 'gerente' }] });
@@ -340,7 +340,7 @@ test('tablero: «falta» solo con la noche cerrada; un pesaje de madrugada cuent
   const r = await dueno.get(`/api/rep/tablero?fecha=${f}`);
   assert.equal(r.body.tiendas.find((x) => x.id === sucProceres).pesados, 1);
   // acceso de tienda: un solo PIN compartido, único en la empresa, con la sucursal fija
-  const crear = (nombre, pin, suc) => dueno.post('/api/admin/usuarios', { nombre, rol: 'cajero', pin, sucursal_ids: [suc] });
+  const crear = (nombre, pin, suc) => dueno.post('/api/admin/usuarios', { nombre, rol: 'pesaje', pin, sucursal_ids: [suc] });
   assert.equal((await crear('Tienda Mackey (acceso)', '8765', sucMackey)).status, 201);
   assert.equal((await crear('Tienda Próceres (acceso)', '8765', sucProceres)).status, 409);   // PIN repetido
   const tk = cliente(await t.loginPin('italo', '8765'), 'italo');

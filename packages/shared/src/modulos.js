@@ -8,7 +8,7 @@ export const MODULOS = {
   // Operación
   pos:          { nav: 'Operación', nombre: 'Facturación',        descripcion: 'Cobrar y facturar',                       permiso: 'pos:vender',     ruta: 'pos',          icono: 'pos' },
   facturas:     { nav: 'Operación', nombre: 'Facturas',           descripcion: 'Listado, reimpresión y notas de crédito', permiso: 'pos:vender',     ruta: 'facturas',     icono: 'reportes' },
-  cierres:      { nav: 'Operación', nombre: 'Cierre de caja',     descripcion: 'Cuadre del día por sucursal',             permiso: 'pos:vender',     ruta: 'cierres',      icono: 'dinero' },
+  cierres:      { nav: 'Operación', nombre: 'Cierre de caja',     descripcion: 'Cuadre del día por sucursal',             permiso: 'pos:reportes',     ruta: 'cierres',      icono: 'dinero' },
   cotizaciones: { nav: 'Operación', nombre: 'Cotizaciones',       descripcion: 'Cotizaciones y eventos',                  permiso: 'cotizaciones:ver', ruta: 'cotizaciones', icono: 'catalogo' },
   kds:          { nav: 'Operación', nombre: 'Cocina',             descripcion: 'Pantalla de pedidos en preparación',      permiso: 'kds:ver',        ruta: 'cocina',       icono: 'cocina' },
   // Operación de gelato (Italo) — empresa con módulo 'reposicion' (viene de italo-reposicion)

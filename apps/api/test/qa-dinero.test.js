@@ -126,7 +126,7 @@ test('el cierre de caja no cuenta ventas anuladas y cuadra con los pagos netos',
 
 test('pedido de insumos de la tienda: un reintento del MISMO envío (cola sin señal) no duplica los artículos', async () => {
   const sucMackey = await t.sucursalId('italo', 'mackey');
-  await t.usuario({ nombre: 'Caja Mackey', accesos: [{ empresa: 'italo', rol: 'cajero', pin: '4821', sucursal_ids: [sucMackey] }] });
+  await t.usuario({ nombre: 'Caja Mackey', accesos: [{ empresa: 'italo', rol: 'pesaje', pin: '4821', sucursal_ids: [sucMackey] }] });
   const tienda = t.cli(await t.loginPin('italo', '4821'), 'italo');
   const fecha = fechaHN();
   const cuerpo = { sucursal_id: sucMackey, fecha, cliente_id: 'envio-1', items: [{ insumo_texto: 'Vasos 8oz', cantidad: '2 cajas' }] };
