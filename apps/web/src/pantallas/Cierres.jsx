@@ -94,7 +94,8 @@ function NuevoCierre({ sucursal, reimprimir }) {
   const contadoConteo = totalConteo(conteo);
   const efectivoContado = contando ? String(contadoConteo) : form.efectivo_contado;
   const cuadre = useMemo(() => (resumen && !ciego ? calcularCuadre(resumen, { ...form, efectivo_contado: efectivoContado }) : null), [resumen, ciego, form, efectivoContado]);
-  const faltan = bancos.some((b) => form.pos[b] === undefined || form.pos[b] === '') || efectivoContado === '';
+  // Decisión del dueño: el cierre solo pide Fondo de caja y Efectivo total (sin montos de los POS de tarjeta).
+  const faltan = efectivoContado === '';
   const noCuadra = cuadre && !faltan && (Math.abs(cuadre.diferencia_tarjeta) >= 1 || Math.abs(cuadre.diferencia_efectivo) >= 1);
   const faltaObs = noCuadra && !form.observaciones.trim();
   const puedeCerrar = resumen && !faltan && !faltaObs && !ocupado && !cargando;
@@ -102,7 +103,6 @@ function NuevoCierre({ sucursal, reimprimir }) {
   const cerrar = async () => {
     const cuerpo = {
       sucursal_id: sid, fecha_inicio: desde, fecha_fin: hasta,
-      pos: Object.fromEntries(bancos.map((b) => [b, Number(form.pos[b] || 0)])),
       efectivo_contado: Number(efectivoContado || 0), fondo_caja: Number(form.fondo_caja || 0), salidas: Number(form.salidas || 0), ingresos: Number(form.ingresos || 0),
       ...(contando ? { conteo: Object.fromEntries(Object.entries(conteo).filter(([, c]) => Number(c) > 0).map(([d, c]) => [d, Number(c)])) } : {}),
       observaciones: form.observaciones,
@@ -169,15 +169,8 @@ function NuevoCierre({ sucursal, reimprimir }) {
         <>
           <div className="cierre-bloques">
             <section className="tarjeta cierre-bloque">
-              <header><h3>Tarjeta</h3>{cuadre && bancos.every((b) => form.pos[b] !== undefined && form.pos[b] !== '') && <ChipDif valor={cuadre.diferencia_tarjeta} />}</header>
-              {!ciego && resumen && <FilaSistema etiqueta="Según sistema" valor={resumen.tarjeta} fuerte />}
-              {bancos.map((b, i) => <CampoMonto key={b} etiqueta={`Cierre POS ${b}`} valor={form.pos[b] ?? ''} onChange={setPos(b)} autoFocus={i === 0} obligatorio />)}
-              <FilaSistema etiqueta="Total de los POS" valor={bancos.reduce((s, b) => s + Number(form.pos[b] || 0), 0)} />
-            </section>
-
-            <section className="tarjeta cierre-bloque">
               <header><h3>Efectivo</h3>{cuadre && efectivoContado !== '' && <ChipDif valor={cuadre.diferencia_efectivo} />}</header>
-              <CampoMonto etiqueta="Fondo de caja" valor={form.fondo_caja} onChange={set('fondo_caja')} />
+              <CampoMonto etiqueta="Fondo de caja" valor={form.fondo_caja} onChange={set('fondo_caja')} autoFocus />
               <CampoMonto etiqueta="Efectivo total en caja" valor={efectivoContado} onChange={set('efectivo_contado')} obligatorio
                 ayuda="Todo lo que hay en la gaveta, incluido el fondo" />
             </section>
@@ -199,7 +192,7 @@ function NuevoCierre({ sucursal, reimprimir }) {
               <textarea rows={2} value={form.observaciones} onChange={(e) => set('observaciones')(e.target.value)} placeholder="Ej. voucher de L 150 pasado dos veces en el POS, se anuló al día siguiente" />
             </Campo>
             <button className="btn primario grande" disabled={!puedeCerrar} onClick={() => setConfirmar(true)}>Cerrar caja</button>
-            {faltan && <small>Llena el cierre de cada POS ({bancos.join(', ')}) y el efectivo contado (usa 0 si no hubo).</small>}
+            {faltan && <small>Escribe el efectivo total en caja (usa 0 si no hubo).</small>}
           </div>
         </>
       )}
@@ -208,7 +201,6 @@ function NuevoCierre({ sucursal, reimprimir }) {
         <Modal titulo={`Cerrar caja de ${sucursal.nombre}`} onCerrar={() => setConfirmar(false)} tam="angosto"
           pie={<><button className="btn" onClick={() => setConfirmar(false)}>Revisar</button><button className="btn primario" disabled={ocupado} onClick={cerrar}>Confirmar cierre</button></>}>
           <small>Del {fechaHora(desde)} al {fechaHora(hasta)}</small>
-          {bancos.map((b) => <FilaSistema key={b} etiqueta={`POS ${b}`} valor={Number(form.pos[b] || 0)} />)}
           <FilaSistema etiqueta="Efectivo contado" valor={Number(efectivoContado || 0)} fuerte />
           {cuadre && <>
             <div className="cierre-fila"><span>Tarjeta</span><ChipDif valor={cuadre.diferencia_tarjeta} /></div>

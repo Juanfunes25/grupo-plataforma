@@ -22,7 +22,18 @@ import { rutasCompras } from './compras/rutas.js';
 import { rutasFiscalAsistente } from './fiscal/rutas.js';
 import { rutasSistema } from './salud/rutas.js';
 import { rutasCrm } from './crm/rutas.js';
-import { rutasPlanilla } from './planilla/rutas.js';
+
+/**
+ * Monta un módulo que se importa la primera vez que alguien lo usa (no al arrancar). Para módulos poco usados que arrastran
+ * dependencias pesadas: Planilla trae exceljs (~250 ms de arranque, varias veces más en el plan gratuito de Render).
+ */
+function perezoso(cargar, deps) {
+  let listo = null;
+  return (req, res, next) => {
+    listo ??= cargar().then((fabrica) => fabrica(deps)).catch((e) => { listo = null; throw e; });
+    listo.then((r) => r(req, res, next), next);
+  };
+}
 
 /** Cada módulo expone rutas bajo /api/<modulo>. Aquí se montan todos. */
 export function montarModulos(router, deps) {
@@ -30,7 +41,7 @@ export function montarModulos(router, deps) {
   router.use('/pos', rutasPos(deps));
   router.use('/inv', rutasInv(deps));
   router.use('/rrhh', rutasRrhh(deps));
-  router.use('/planilla', rutasPlanilla(deps));
+  router.use('/planilla', perezoso(() => import('./planilla/rutas.js').then((m) => m.rutasPlanilla), deps));
   router.use('/fin', rutasFin(deps));
   router.use('/terceros', rutasTerceros(deps));
   router.use('/grupo', rutasGrupo(deps));

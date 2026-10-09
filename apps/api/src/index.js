@@ -7,6 +7,7 @@ import { sembrarCatalogoItaloSiVacio } from './db/italo-catalogo.js';
 import { sembrarEcostoneSiVacio } from './db/ecostone-datos.js';
 import { iniciarVigilancia } from './modulos/salud/vigilancia.js';
 import { iniciarMensajeria } from './modulos/mensajeria/planificador.js';
+import { semillasPendientes } from './db/arranque.js';
 
 const config = leerConfig();
 validarConfig(config);
@@ -16,14 +17,14 @@ console.log(`[db] ${config.driver === 'pg' ? 'Postgres/Supabase' : 'PGlite embeb
 const hechas = await migrar(db, config.migraciones);
 if (hechas.length) console.log(`[db] ${hechas.length} migración(es) aplicada(s)`);
 
-// Inventario de reposición: carga idempotente de los datos reales de Italo la primera vez (si no, no hace nada).
-await sembrarSiVacio(db).catch((e) => console.error('[rinv] no se pudo sembrar:', e.message));
-
-// Catálogo y clientes reales de Italo (export de WizPOS): se cargan solos la primera vez, si Italo aún no tiene productos.
-await sembrarCatalogoItaloSiVacio(db, { log: console.log }).catch((e) => console.error('[italo] no se pudo cargar el catálogo:', e.message));
-
-// Datos reales de EcoStone (piedra, insumos, recetas, clientes): se cargan solos la primera vez, si EcoStone aún no tiene productos.
-await sembrarEcostoneSiVacio(db, { log: console.log }).catch((e) => console.error('[ecostone] no se pudieron cargar los datos:', e.message));
+// Cargas iniciales (solo la primera vez; después no hacen nada). Se revisa con UNA consulta qué falta y solo se llama a lo pendiente.
+const pendientes = await semillasPendientes(db).catch((e) => { console.error('[db] no se pudo revisar las cargas iniciales:', e.message); return { rinv: true, italo: true, ecostone: true }; });
+// Inventario de reposición: carga idempotente de los datos reales de Italo la primera vez.
+if (pendientes.rinv) await sembrarSiVacio(db).catch((e) => console.error('[rinv] no se pudo sembrar:', e.message));
+// Catálogo y clientes reales de Italo (export de WizPOS), si Italo aún no tiene productos.
+if (pendientes.italo) await sembrarCatalogoItaloSiVacio(db, { log: console.log }).catch((e) => console.error('[italo] no se pudo cargar el catálogo:', e.message));
+// Datos reales de EcoStone (piedra, insumos, recetas, clientes), si EcoStone aún no tiene productos.
+if (pendientes.ecostone) await sembrarEcostoneSiVacio(db, { log: console.log }).catch((e) => console.error('[ecostone] no se pudieron cargar los datos:', e.message));
 
 const app = crearApp({ db, config });
 

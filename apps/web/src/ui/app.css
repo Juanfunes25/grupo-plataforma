@@ -60,6 +60,8 @@ tr.clic:active td { background: var(--panel-3); }
   .app-shell:has(.contenido h1) .barra-movil .t-modulo { display: none; }
   .app-shell:has(.contenido h1) .barra-movil .t-empresa { font: 600 1.2rem/1.1 'Barlow Condensed', 'Inter', sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--texto); }
   .barra-movil select { max-width: 38vw; }
+  /* Teléfonos angostos: el selector de sucursal dejaba el título del módulo en «FACTU…». */
+  @media (max-width: 440px) { .barra-movil select { max-width: 31vw; padding-inline: 8px; } .barra-movil { gap: 4px; } .barra-movil .titulo-movil b { font-size: 1.15rem; letter-spacing: .03em; } }
   .grupo-shell .barra { position: sticky; top: 0; z-index: 20; min-height: calc(54px + env(safe-area-inset-top)); padding-bottom: 6px; flex-wrap: nowrap; background: color-mix(in srgb, var(--fondo) 92%, transparent); backdrop-filter: blur(10px); }
   .grupo-shell .barra .btn, .grupo-shell .barra .usuario-chip, .grupo-shell .barra .sep { display: none; }
   .grupo-shell .barra .marca { flex: 1 1 auto; }

@@ -3,7 +3,16 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSesion } from '../sesion.jsx';
 import Icono from '../ui/Icono.jsx';
-import { AYUDA_PANTALLA, RECORRIDOS, rolDeAyuda } from './contenido.js';
+import { rolDeAyuda } from './rol.js';
+
+// El texto de la ayuda (12 kB) se descarga después del primer dibujo, no en el JavaScript de entrada.
+let contenido = null;
+const cargarContenido = () => import('./contenido.js').then((m) => { contenido = m; return m; });
+function useContenido() {
+  const [c, setC] = useState(contenido);
+  useEffect(() => { if (!c) cargarContenido().then(setC).catch(() => {}); }, [c]);
+  return c;
+}
 import { marcarVisto, yaVisto } from './recorridoEstado.js';
 import './ayuda.css';
 
@@ -19,8 +28,8 @@ function Hoja({ titulo, onCerrar, children, etiqueta }) {
   );
 }
 
-function Recorrido({ rol, onFin }) {
-  const pasos = RECORRIDOS[rol] ?? RECORRIDOS.cajero;
+function Recorrido({ rol, onFin, recorridos }) {
+  const pasos = recorridos[rol] ?? recorridos.cajero;
   const [i, setI] = useState(0);
   const p = pasos[i], ultimo = i === pasos.length - 1;
   return (
@@ -45,7 +54,8 @@ export default function AyudaGlobal({ base = '' }) {
   const [contextual, setContextual] = useState(false);
   const rol = rolDeAyuda(contexto?.rol, usuario?.es_dueno_grupo);
   const ruta = pathname.startsWith(`${base}/`) ? pathname.slice(base.length + 1).split('/')[0] : '';
-  const ayuda = AYUDA_PANTALLA[ruta];
+  const c = useContenido();
+  const ayuda = c?.AYUDA_PANTALLA[ruta];
 
   // Primera vez de este usuario con este rol.
   useEffect(() => {
@@ -65,7 +75,7 @@ export default function AyudaGlobal({ base = '' }) {
             <Link className="btn primario" to={`${base}/ayuda`} onClick={() => setContextual(false)}>Abrir el manual</Link></div>
         </Hoja>
       )}
-      {recorrido && <Recorrido rol={recorrido} onFin={terminar} />}
+      {recorrido && c && <Recorrido rol={recorrido} onFin={terminar} recorridos={c.RECORRIDOS} />}
     </>
   );
 }

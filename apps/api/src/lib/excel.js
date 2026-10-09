@@ -1,11 +1,13 @@
 // Constructor sencillo de libros de Excel para los reportes (Finanzas, Compras…).
 //   const buf = await libroExcel({ titulo: 'Estado de resultados', hojas: [{ nombre, columnas: [{ h, k, tipo, ancho }], filas, totales }] });
 // tipo: 'texto' (por defecto) · 'lempiras' · 'numero' · 'porcentaje' (el valor ya viene en %).
-import ExcelJS from 'exceljs';
+// exceljs pesa ~250 ms al importarse: se carga la primera vez que se arma o lee un Excel, no al arrancar el servidor.
+const cargarExcel = () => import('exceljs').then((m) => m.default);
 
 const FORMATOS = { lempiras: '"L" #,##0.00;[Red]-"L" #,##0.00', numero: '#,##0.00', entero: '#,##0', porcentaje: '0.0"%"' };
 
 export async function libroExcel({ titulo, subtitulo = '', hojas }) {
+  const ExcelJS = await cargarExcel();
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Plataforma del Grupo';
   wb.created = new Date();

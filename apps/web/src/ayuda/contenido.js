@@ -2,38 +2,34 @@
 // Los pasos se escriben con los nombres que el usuario ve en el menú.
 
 export const ROLES_AYUDA = [
-  { id: 'cajero', nombre: 'Cajero o ventas', resumen: 'Abrir turno, cobrar, reimprimir y cerrar caja.' },
+  { id: 'cajero', nombre: 'Cajero o ventas', resumen: 'Cobrar, reimprimir y hacer el cierre de caja.' },
   { id: 'gerente', nombre: 'Gerente de tienda', resumen: 'Cuidar la operación del día, anular, revisar cierres y números.' },
   { id: 'despachador', nombre: 'Despachador o bodega', resumen: 'Armar y enviar lo que pide cada sucursal; recibir y mover inventario.' },
   { id: 'produccion', nombre: 'Producción', resumen: 'Registrar lo que se produce y consumir insumos.' },
   { id: 'dueno', nombre: 'Dueño o administración', resumen: 'Ver el grupo en el celular, alertas, usuarios y control.' },
 ];
 
-/** Rol de la plataforma → rol de ayuda. */
-export function rolDeAyuda(rol, esDuenoGrupo) {
-  if (esDuenoGrupo) return 'dueno';
-  return { dueno: 'dueno', admin: 'dueno', contador: 'dueno', solo_lectura: 'dueno', gerente: 'gerente', cajero: 'cajero', ventas: 'cajero', bodega: 'despachador', gestor: 'despachador', produccion: 'produccion' }[rol] ?? 'cajero';
-}
+export { rolDeAyuda } from './rol.js';
 
 export const MANUAL = {
   cajero: [
-    { id: 'entrar', titulo: 'Entrar y abrir tu turno', pasos: [
+    { id: 'entrar', titulo: 'Entrar a la caja', pasos: [
       'Escribe tu PIN en la pantalla de la empresa. Solo tú debes conocerlo.',
-      'En «Facturación» toca «Abrir turno» y escribe el efectivo con que empiezas la caja (el fondo).',
-      'No se puede cobrar sin turno abierto: así el cierre del día cuadra contra tu caja.'] },
+      'Entra a «Facturación». No hay que abrir turno: la caja se abre sola con tu primer cobro.',
+      'Todo lo que cobras queda a tu nombre, así el cierre del día cuadra contra tu caja.'] },
     { id: 'cobrar', titulo: 'Tomar un pedido y cobrar', pasos: [
       'Toca los productos para agregarlos. Si tiene opciones (tamaño, extras), elígelas y confirma.',
       'Para cambiar la cantidad usa el teclado numérico; para quitar una línea, tócala y elige «Quitar».',
       'Si el cliente pide factura con su nombre o RTN, toca el cliente y búscalo o créalo. Sin eso sale como Consumidor Final.',
-      'Toca «Cobrar», elige la forma de pago (efectivo, tarjeta, transferencia) y, si es efectivo, escribe cuánto te dan: el sistema calcula el cambio.',
-      'Puedes combinar pagos con «Agregar pago». Al terminar, el ticket se imprime solo.'],
+      'Cobra con «EFECTIVO» (F2) o «TARJETA» (F3). Si te dan un billete grande, usa «Efectivo recibido y cambio» (F4): escribe cuánto te dan y el sistema calcula el cambio.',
+      'Para dividir el pago o cobrar por transferencia usa «Más formas de pago» (F6).'],
       aviso: 'Mientras no haya un CAI real activado, las facturas salen en BORRADOR y dicen «sin valor fiscal».' },
     { id: 'reimprimir', titulo: 'Reimprimir o buscar una factura', pasos: [
       'Entra a «Facturas» y escribe el número, el nombre del cliente o su RTN. También puedes usar la búsqueda (Ctrl+K o la lupa).',
       'Ábrela y toca «Reimprimir ticket». Cada reimpresión queda registrada.'] },
     { id: 'cierre', titulo: 'Cerrar tu caja', pasos: [
       'Al terminar entra a «Cierre de caja» y elige tu sucursal.',
-      'Cuenta el efectivo por denominación y escribe lo que marcan los POS de tarjeta de cada banco.',
+      'Escribe el «Fondo de caja» y el «Efectivo total en caja» que contaste. No se pide nada más.',
       'El sistema compara con lo vendido y muestra la diferencia. Si no cuadra, revisa el conteo antes de confirmar y escribe una observación.',
       'Confirma el cierre. Los turnos abiertos se cierran con él.'] },
     { id: 'caja-chica', titulo: 'Gastos pequeños de la caja', pasos: [
@@ -100,7 +96,7 @@ export const MANUAL = {
 export const RECORRIDOS = {
   cajero: [
     { t: 'Bienvenido', x: 'Este es un recorrido de un minuto. Puedes repetirlo cuando quieras desde «Ayuda».' },
-    { t: 'Abre tu turno', x: 'En Facturación toca «Abrir turno» con tu fondo de caja. Sin turno no se puede cobrar.' },
+    { t: 'Tu caja', x: 'En Facturación no hay que abrir turno: la caja se abre sola con el primer cobro.' },
     { t: 'Cobra', x: 'Toca productos, luego «Cobrar», elige la forma de pago y el ticket sale solo.' },
     { t: 'Cierra tu caja', x: 'Al final entra a «Cierre de caja», cuenta el efectivo y confirma.' },
     { t: 'Busca rápido', x: 'La lupa (o Ctrl+K) encuentra facturas, clientes y productos. El botón «?» te explica cada pantalla.' },
@@ -135,9 +131,9 @@ export const RECORRIDOS = {
 
 /** Ayuda de cada pantalla (clave = ruta del módulo). */
 export const AYUDA_PANTALLA = {
-  pos: { t: 'Facturación', p: ['Abre tu turno antes de cobrar.', 'Toca productos, luego «Cobrar» y elige la forma de pago.', 'Sin CAI real la factura sale en BORRADOR, sin valor fiscal.'] },
+  pos: { t: 'Facturación', p: ['La caja se abre sola con el primer cobro.', 'Toca productos y cobra con EFECTIVO (F2), TARJETA (F3) o «Más formas de pago».', 'Sin CAI real la factura sale en BORRADOR, sin valor fiscal.'] },
   facturas: { t: 'Facturas', p: ['Busca por número, cliente o RTN.', 'Desde la factura puedes reimprimir o (con permiso) anular indicando el motivo.'] },
-  cierres: { t: 'Cierre de caja', p: ['Cuenta el efectivo y escribe lo que marcan los POS de tarjeta.', 'La diferencia se calcula contra lo vendido; escribe una observación si no cuadra.'] },
+  cierres: { t: 'Cierre de caja', p: ['Escribe el Fondo de caja y el Efectivo total en caja.', 'La diferencia se calcula contra lo vendido; escribe una observación si no cuadra.'] },
   'caja-chica': { t: 'Caja chica', p: ['Registra salidas e ingresos pequeños con su categoría y concepto.', 'Afectan el efectivo esperado del cierre.'] },
   dashboard: { t: 'Dashboard', p: ['Arriba: hoy contra ayer (a esta hora) y contra la semana pasada.', 'Desliza hacia abajo en el celular para actualizar.', 'Más abajo está el análisis por periodo.'] },
   reportes: { t: 'Reportes', p: ['Elige el periodo y la sucursal y revisa cada pestaña.', 'El libro de ventas se baja en CSV para el contador.'] },
