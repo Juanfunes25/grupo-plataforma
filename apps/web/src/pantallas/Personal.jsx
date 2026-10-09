@@ -5,12 +5,12 @@ import { Tabs, useAccion, useAviso } from '../ui/kit.jsx';
 import PanelRrhh from '../rrhh/Directorio.jsx';
 import Ficha, { camposPersona } from '../rrhh/Ficha.jsx';
 import Form from '../rrhh/Form.jsx';
-import { Turno, Checklist } from '../rrhh/Turno.jsx';
+import { Turno } from '../rrhh/Turno.jsx';
 import { Asistencia, AusenciasLista, Horarios, ImportarFechas, VacacionesLista } from '../rrhh/Operacion.jsx';
 import { TIPOS_CONTRATO, TIPOS_PAGO } from '../rrhh/util.js';
 
 // Personal de la empresa activa: equipo (resumen, directorio, calendario, ficha), turno en tienda,
-// horarios, asistencia y horas, vacaciones, ausencias y checklist. La misma ficha se ve en Dirección del grupo.
+// horarios, asistencia y horas, vacaciones, ausencias. La misma ficha se ve en Dirección del grupo.
 export default function Personal() {
   const { puede, empresa } = useSesion();
   const ver = puede('rrhh:ver'), editar = puede('rrhh:editar');
@@ -18,7 +18,6 @@ export default function Personal() {
     ...(ver ? [['equipo', 'Equipo']] : []),
     ...(puede('rrhh:asistencia') || ver ? [['turno', 'Turno de hoy']] : []),
     ...(ver ? [['horarios', 'Horarios'], ['asistencia', 'Asistencia y horas'], ['vacaciones', 'Vacaciones'], ['ausencias', 'Ausencias y permisos']] : []),
-    ['checklist', 'Checklist de tienda'],
     ...(editar && empresa === 'italo' ? [['importar', 'Importar fechas de ingreso']] : []),
   ];
   const [tab, setTab] = useState(tabs[0]?.[0] ?? 'turno');
@@ -35,7 +34,6 @@ export default function Personal() {
       {tab === 'asistencia' && <Asistencia />}
       {tab === 'vacaciones' && <VacacionesLista onFicha={(id) => setFicha(id)} />}
       {tab === 'ausencias' && <AusenciasLista onFicha={(id) => setFicha(id)} />}
-      {tab === 'checklist' && <Checklist />}
       {tab === 'importar' && <ImportarFechas />}
       {ficha && <Ficha id={ficha} empresa={empresa} onCerrar={() => setFicha(null)} onCambio={() => setRecarga((n) => n + 1)} />}
       {nuevo && <NuevoEmpleado onCerrar={() => setNuevo(false)} onCreado={() => { setNuevo(false); setRecarga((n) => n + 1); }} />}

@@ -1,4 +1,4 @@
-// Control de turno en la tienda: marcar entrada/salida (con ubicación), checklist de apertura y cierre.
+// Control de turno en la tienda: marcar entrada/salida (con ubicación).
 import { useState } from 'react';
 import { get, post, put, qs } from '../api.js';
 import { useSesion } from '../sesion.jsx';
@@ -58,7 +58,6 @@ export function Turno() {
             })}
           </div>
           {r.empleados.length === 0 && <div className="vacio">No hay personal asignado a esta sucursal.</div>}
-          <Checklist sucursalId={suc} compacto />
         </>
       )}</Estado>
       {geo && <GeoModal sucursalId={suc} onCerrar={() => { setGeo(false); d.recargar(); }} />}
