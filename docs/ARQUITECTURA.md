@@ -77,6 +77,7 @@ Reglas de diseño:
   UPDATE/DELETE/TRUNCATE; `core.verificar_auditoria()` detecta cualquier alteración.
 - **RLS activa y sin políticas** en todas las tablas: aunque alguien exponga un esquema por la API
   REST de Supabase, `anon` y `authenticated` no ven nada. Solo el API (rol `postgres`) entra.
+- **Verificación en dos pasos (TOTP), sesiones con cierre remoto, políticas de contraseña y PIN, rotación de llaves sin cerrar sesiones**: ver `docs/SEGURIDAD.md`. **Copias exportables, restauración y estado del sistema**: `docs/RESPALDOS.md`. **Medición de rendimiento**: `docs/RENDIMIENTO.md`.
 - Secretos solo en variables de entorno. En producción el servidor se niega a arrancar sin
   `APP_JWT_SECRET` (≥ 32 caracteres) ni `DATABASE_URL`.
 
