@@ -534,16 +534,6 @@ export default function Pos() {
     setModal(null);
   };
 
-  // Cerrar la caja con ventas sin sincronizar dejaría el cuadre incompleto: primero se manda todo.
-  const intentarCerrarCaja = async () => {
-    if (resumenCola.total > 0) {
-      const r = await ejecutar(() => sincronizarAhora());
-      const pend = r && r !== true ? r.pendientes + r.revisar : resumenCola.total;
-      if (pend > 0) { avisar(`No se puede cerrar la caja: hay ${pend} venta(s) hecha(s) sin conexión que aún no llegan al servidor.`, 'mal'); setModal({ tipo: 'cola' }); return; }
-    }
-    setModal({ tipo: 'cerrar' });
-  };
-
   // ── Atajos de teclado ────────────────────────────────────────────────────
   // Se registra en cada render para leer siempre el estado de ahora (igual que el lector de código de barras).
   useEffect(() => {
@@ -636,7 +626,6 @@ export default function Pos() {
           )}
           <button className="btn chico" onClick={() => setModal({ tipo: 'abiertas' })} disabled={sinRed} title={sinRed ? 'Requiere conexión' : 'F7'}>Abiertas{otrasAbiertas > 0 && <span className="chip aviso">{otrasAbiertas}</span>}</button>
           <button className="btn chico fantasma" onClick={() => setModal({ tipo: 'ayuda' })} title="Atajos del teclado (F1)" aria-label="Ayuda de atajos"><kbd>F1</kbd> Ayuda</button>
-          {turno && <button className="btn chico peligro" onClick={intentarCerrarCaja}>Cerrar caja</button>}
         </div>
 
         {sinRed && <div className="aviso-caja mal" role="status">Sin conexión: se vende solo en efectivo, con comprobante provisional; la factura sale sola al volver el internet.</div>}
