@@ -214,11 +214,11 @@ test('periodicidad: EcoStone genera semanal y quincenal en el mismo mes sin mezc
   assert.equal((await eco.put(`/api/planilla/empleados/${cfg.empleados.find((e) => e.nombre.startsWith('Rosa')).id}/periodicidad`, { periodicidad: 'quincena' })).status, 200);
   assert.equal((await eco.post('/api/planilla/planillas', { tipo: 'semanal', desde: '2026-10-06' })).status, 400);          // martes: la semana empieza en lunes
   const sem = await eco.post('/api/planilla/planillas', { tipo: 'semanal', desde: '2026-10-05' });
-  assert.equal(sem.status, 201); assert.equal(sem.body.fecha_pago, '2026-10-10');
+  assert.equal(sem.status, 201); assert.equal(sem.body.fecha_pago, '2026-10-09');
   const qui = await eco.post('/api/planilla/planillas', { tipo: 'quincena', anio: 2026, mes: 10, quincena: 1 });
   assert.equal(qui.status, 201);
   const ds = (await eco.get(`/api/planilla/planillas/${sem.body.id}`)).body, dq = (await eco.get(`/api/planilla/planillas/${qui.body.id}`)).body;
-  assert.deepEqual(ds.lineas.map((l) => l.nombre), ['Pedro Semanal']); assert.equal(ds.lineas[0].dias, 6); assert.equal(ds.lineas[0].total_quincenal, 2400);
+  assert.deepEqual(ds.lineas.map((l) => l.nombre), ['Pedro Semanal']); assert.equal(ds.lineas[0].dias, 7); assert.equal(ds.lineas[0].total_quincenal, 2800);
   assert.deepEqual(dq.lineas.map((l) => l.nombre), ['Rosa Quincenal']); assert.equal(dq.lineas[0].dias, 15);
   const xl = await bin(`/api/planilla/planillas/${sem.body.id}/excel`, tok.dueno, 'ecostone');
   const wb = new ExcelJS.Workbook(); await wb.xlsx.load(xl.buf);

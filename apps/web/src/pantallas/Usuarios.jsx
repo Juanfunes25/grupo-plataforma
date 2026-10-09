@@ -5,7 +5,7 @@ import { useSesion } from '../sesion.jsx';
 import { Campo, Estado, Modal, useAccion, useAviso, useConfirmar, useDatos } from '../ui/kit.jsx';
 import { colorDe } from '../ui/sucursales.js';
 
-const DIRECCION = ['dueno', 'admin', 'contador', 'solo_lectura'];            // entran con correo y contraseña
+const DIRECCION = ['dueno', 'admin'];            // solo estos exigen correo; los demás entran con usuario y contraseña
 const PRINCIPALES = ['admin', 'gerente', 'cajero', 'ventas'];                  // Administrador · Manager · Cajero · Ventas (como en Italo Facturación)
 const clave10 = () => { const c = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; return Array.from(crypto.getRandomValues(new Uint32Array(10)), (n) => c[n % c.length]).join(''); };
 
@@ -74,26 +74,28 @@ function FichaUsuario({ u, roles, sucursales, soyDueno, yo, onCerrar, onGuardado
   const ajustes = extra.length + quit.length;
   const guardar = async () => {
     const r = f.nuevo
-      ? await ejecutar(() => post('/admin/usuarios', { nombre: f.nombre, email: f.email || undefined, password: f.password || undefined, rol: f.rol, pin: f.pin || undefined, sucursal_ids: f.sucursal_ids, permisos_extra: extra, permisos_quitados: quit }), 'Usuario creado')
+      ? await ejecutar(() => post('/admin/usuarios', { nombre: f.nombre, email: f.email || undefined, usuario: f.usuario || undefined, password: f.password || undefined, rol: f.rol, pin: f.pin || undefined, sucursal_ids: f.sucursal_ids, permisos_extra: extra, permisos_quitados: quit }), 'Usuario creado')
       : await ejecutar(() => put(`/admin/usuarios/${f.id}`, { nombre: f.nombre, rol: f.rol, sucursal_ids: f.sucursal_ids, permisos_extra: extra, permisos_quitados: quit, activo: f.activo }), 'Guardado');
     if (r) onGuardado();
   };
-  const faltaAcceso = f.nuevo && !f.email && !f.pin;
+  const faltaAcceso = f.nuevo && !f.email && !f.usuario && !f.pin;
   return (
     <Modal titulo={f.nuevo ? 'Nuevo usuario' : f.nombre} onCerrar={onCerrar} tam="ancho" pie={<button className="btn primario" disabled={ocupado || f.nombre.trim().length < 2 || faltaAcceso} onClick={guardar}>Guardar</button>}>
       <div className="rejilla cols-2">
         <Campo etiqueta="Nombre completo"><input value={f.nombre} onChange={set('nombre')} autoFocus /></Campo>
         <Campo etiqueta="Rol en esta empresa"><SelectorRol valor={f.rol} onChange={set('rol')} roles={roles.roles} asignables={asignables} /></Campo>
       </div>
-      {rol && <small>{direccion ? 'Este rol entra con correo y contraseña.' : 'Puede entrar con PIN de 4 a 6 dígitos en la caja (y con correo si se lo das).'}</small>}
+      {rol && <small>{direccion ? 'Este rol entra con correo y contraseña.' : 'Entra con nombre de usuario y contraseña, o con PIN de 4 a 6 dígitos en la caja.'}</small>}
       {f.nuevo && (
         <div className="rejilla cols-2">
-          <Campo etiqueta={direccion ? 'Correo (obligatorio para este rol)' : 'Correo (opcional si usa PIN)'} ayuda="Si el correo ya existe en el grupo, se le da acceso a esta empresa con la misma cuenta."><input type="email" value={f.email} onChange={set('email')} /></Campo>
-          {(direccion || f.email) && <Campo etiqueta="Contraseña inicial (mín. 8)"><input type="text" value={f.password} onChange={set('password')} autoComplete="off" /></Campo>}
+          {direccion
+            ? <Campo etiqueta="Correo (obligatorio para este rol)" ayuda="Si el correo ya existe en el grupo, se le da acceso a esta empresa con la misma cuenta."><input type="email" value={f.email} onChange={set('email')} /></Campo>
+            : <Campo etiqueta="Usuario" ayuda="3 a 30 letras minúsculas, números, punto o guion. Ej.: maria.gerente"><input value={f.usuario} onChange={(e) => setF({ ...f, usuario: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') })} autoCapitalize="none" autoComplete="off" /></Campo>}
+          {(direccion || f.email || f.usuario) && <Campo etiqueta="Contraseña inicial (mín. 8)"><input type="text" value={f.password} onChange={set('password')} autoComplete="off" /></Campo>}
           {rol?.con_pin && <Campo etiqueta="PIN (4 a 6 dígitos)" ayuda="Único dentro de la empresa"><input inputMode="numeric" value={f.pin} onChange={(e) => setF({ ...f, pin: e.target.value.replace(/\D/g, '') })} maxLength={6} /></Campo>}
         </div>
       )}
-      {faltaAcceso && <div className="aviso-caja">Indica un correo o un PIN para que pueda entrar.</div>}
+      {faltaAcceso && <div className="aviso-caja">Indica un usuario o un PIN para que pueda entrar.</div>}
       {!f.nuevo && rol?.con_pin && (
         <div className="fila"><input inputMode="numeric" placeholder={f.tiene_pin ? 'Cambiar PIN…' : 'Asignar PIN…'} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} maxLength={6} style={{ maxWidth: 200 }} />
           <button className="btn" disabled={pin.length < 4 || ocupado} onClick={async () => { if (await ejecutar(() => post(`/admin/usuarios/${f.id}/pin`, { pin }), 'PIN guardado')) { setPin(''); setF({ ...f, tiene_pin: true }); } }}>Guardar PIN</button>
@@ -146,11 +148,11 @@ export function ContenidoUsuarios() {
   const [rolF, setRolF] = useState('');
   const [verInactivos, setVerInactivos] = useState(true);
   const nombreRol = (id) => roles.datos?.roles.find((r) => r.id === id)?.nombre ?? id;
-  const nuevo = () => setEdit({ nuevo: true, nombre: '', email: '', password: '', rol: 'cajero', pin: '', sucursal_ids: [], permisos_extra: [], permisos_quitados: [], activo: true });
+  const nuevo = () => setEdit({ nuevo: true, nombre: '', email: '', usuario: '', password: '', rol: 'cajero', pin: '', sucursal_ids: [], permisos_extra: [], permisos_quitados: [], activo: true });
 
   const lista = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return (d.datos ?? []).filter((u) => (verInactivos || u.activo) && (!rolF || u.rol === rolF) && (!t || u.nombre.toLowerCase().includes(t) || (u.email ?? '').toLowerCase().includes(t)));
+    return (d.datos ?? []).filter((u) => (verInactivos || u.activo) && (!rolF || u.rol === rolF) && (!t || u.nombre.toLowerCase().includes(t) || (u.email ?? '').toLowerCase().includes(t) || (u.usuario ?? '').includes(t)));
   }, [d.datos, q, rolF, verInactivos]);
 
   const confirmar = useConfirmar();
@@ -164,7 +166,7 @@ export function ContenidoUsuarios() {
       <div className="fila">
         <button className="btn primario" onClick={nuevo}>+ Nuevo usuario</button>
         {contexto.modulos.some((m) => m.id === 'rep_pesaje') && <button className="btn" onClick={() => setTienda(true)}>Crear acceso de tienda</button>}
-        <input placeholder="Buscar por nombre o correo…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280 }} />
+        <input placeholder="Buscar por nombre, usuario o correo…" value={q} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280 }} />
         <select value={rolF} onChange={(e) => setRolF(e.target.value)} style={{ maxWidth: 200 }}><option value="">Todos los roles</option>{roles.datos?.roles.map((r) => <option key={r.id} value={r.id}>{r.nombre}</option>)}</select>
         <label className="fila" style={{ flexDirection: 'row' }}><input type="checkbox" checked={verInactivos} onChange={(e) => setVerInactivos(e.target.checked)} /> Ver inactivos</label>
       </div>
@@ -175,7 +177,7 @@ export function ContenidoUsuarios() {
             {lista.map((u) => (
               <tr key={u.id} style={{ opacity: u.activo ? 1 : 0.5 }}>
                 <td><b>{u.nombre}</b> {u.es_dueno_grupo && <span className="chip aviso">admin general</span>} {u.id === usuario.id && <span className="chip">tú</span>}</td>
-                <td><small>{u.email ?? ''}</small> {u.tiene_pin && <span className="chip">PIN</span>}</td>
+                <td><small>{u.usuario || u.email || ''}</small> {u.tiene_pin && <span className="chip">PIN</span>}</td>
                 <td>{nombreRol(u.rol)}</td>
                 <td><small>{u.sucursal_ids.length ? u.sucursal_ids.map((id) => { const s = sucursales.find((x) => x.id === id); return s && <span key={id} style={{ marginRight: 8 }}><i style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: colorDe(s), marginRight: 4 }} />{s.nombre}</span>; }) : 'Todas'}</small></td>
                 <td><small>{u.otras_empresas.join(', ')}</small></td>
@@ -184,7 +186,7 @@ export function ContenidoUsuarios() {
                 <td><div className="fila" style={{ flexWrap: 'nowrap' }}>
                   <button className="btn chico" onClick={() => setEdit({ ...u })}>Editar</button>
                   {u.id !== usuario.id && <button className="btn chico" onClick={() => alternarActivo(u)}>{u.activo ? 'Desactivar' : 'Activar'}</button>}
-                  {u.email && <button className="btn chico" onClick={() => setClave(u)}>Clave</button>}
+                  {(u.email || u.usuario) && <button className="btn chico" onClick={() => setClave(u)}>Clave</button>}
                 </div></td>
               </tr>
             ))}

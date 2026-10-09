@@ -68,12 +68,12 @@ export default function Acceso() {
         <div className="acceso-marca">
           <div className="acceso-logo"><Logo codigo={emp.logo || emp.codigo} color={emp.color} /></div>
           <h1>{emp.nombre}</h1>
-          <p>{modo === 'pin' ? 'Escribe tu PIN para entrar' : 'Entra con tu correo y contraseña'}</p>
+          <p>{modo === 'pin' ? 'Escribe tu PIN para entrar' : 'Entra con tu usuario y contraseña'}</p>
         </div>
         {!esGrupo && (
           <div className="segmento" role="tablist" aria-label="Forma de entrar">
             <button role="tab" aria-selected={modo === 'pin'} onClick={() => cambiarModo('pin')}>Entrar con PIN</button>
-            <button role="tab" aria-selected={modo === 'correo'} onClick={() => cambiarModo('correo')}>Correo</button>
+            <button role="tab" aria-selected={modo === 'correo'} onClick={() => cambiarModo('correo')}>Usuario</button>
           </div>
         )}
         <div className="tarjeta" style={{ display: 'grid', gap: 16 }}>
@@ -93,8 +93,8 @@ export default function Acceso() {
               {pin.length > 0 && pin.length < 4 && <small className="centro">El PIN tiene al menos 4 dígitos.</small>}
             </>
           ) : (
-            <form onSubmit={(e) => { e.preventDefault(); entrar('/auth/login', { empresa: codigo, email: correo, password: clave }); }} style={{ display: 'grid', gap: 14 }}>
-              <Campo etiqueta="Correo"><input type="email" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck="false" value={correo} onChange={(e) => { setCorreo(e.target.value); setError(''); }} required autoFocus aria-invalid={Boolean(error)} /></Campo>
+            <form onSubmit={(e) => { e.preventDefault(); entrar('/auth/login', { empresa: codigo, usuario: correo, password: clave }); }} style={{ display: 'grid', gap: 14 }}>
+              <Campo etiqueta="Usuario o correo"><input type="text" autoComplete="username" autoCapitalize="none" spellCheck="false" value={correo} onChange={(e) => { setCorreo(e.target.value); setError(''); }} required autoFocus aria-invalid={Boolean(error)} /></Campo>
               <Campo etiqueta="Contraseña">
                 <div className="campo-clave">
                   <input type={verClave ? 'text' : 'password'} autoComplete="current-password" value={clave} onChange={(e) => { setClave(e.target.value); setError(''); }} required aria-invalid={Boolean(error)} />

@@ -10,7 +10,7 @@ import { auditar } from '../../lib/auditoria.js';
 import { conflicto, fechaISO, malaPeticion, noEncontrado, prohibido, uuid, validar } from '../../lib/http.js';
 import { estadoPunto } from '../pos/fiscal.js';
 
-const ROLES_DIRECCION = ['dueno', 'admin', 'contador', 'solo_lectura'];   // exigen correo + contraseña
+const ROLES_DIRECCION = ['dueno', 'admin'];   // solo estos exigen correo + contraseña; los demás entran con usuario y contraseña (o PIN)
 const ROLES_ALTOS = ['dueno', 'admin'];                                   // solo un dueño los asigna
 const rolEnum = z.enum(Object.keys(ROLES));
 // Misma paleta que Italo Facturación: cada sucursal de una empresa lleva un color propio y no se repite.
@@ -33,7 +33,7 @@ export function rutasAdmin({ db, config, ctxMgr }) {
   // ── Usuarios de la empresa activa ────────────────────────────────────────
   r.get('/usuarios', requierePermiso('admin:usuarios'), async (req, res) => {
     const { rows } = await db.query(
-      `select u.id, u.nombre, u.email, u.es_dueno_grupo, u.activo as usuario_activo, u.ultimo_acceso,
+      `select u.id, u.nombre, u.email, u.usuario, u.es_dueno_grupo, u.activo as usuario_activo, u.ultimo_acceso,
               a.rol, a.sucursal_ids, a.permisos_extra, a.permisos_quitados, a.activo, (a.pin_hash is not null) as tiene_pin,
               coalesce((select array_agg(e2.codigo order by e2.orden) from core.accesos a2
                          join core.empresas e2 on e2.id = a2.empresa_id
@@ -47,6 +47,7 @@ export function rutasAdmin({ db, config, ctxMgr }) {
   const esquemaNuevo = z.object({
     nombre: z.string().trim().min(2).max(120),
     email: z.string().trim().toLowerCase().email().optional().or(z.literal('').transform(() => undefined)),
+    usuario: z.string().trim().toLowerCase().regex(/^[a-z0-9._-]{3,30}$/, 'El usuario lleva 3 a 30 letras, números, punto o guion').optional().or(z.literal('').transform(() => undefined)),
     password: z.string().min(8, 'La contraseña lleva mínimo 8 caracteres').max(200).optional(),
     rol: rolEnum,
     sucursal_ids: z.array(uuid).default([]),
@@ -85,18 +86,22 @@ export function rutasAdmin({ db, config, ctxMgr }) {
     validarPermisosExtra(req.ctx, b.permisos_extra);
     if (ROLES_DIRECCION.includes(b.rol) && (!b.email)) throw malaPeticion('Ese rol entra con correo y contraseña: falta el correo');
     if (b.pin && !ROLES_CON_PIN.includes(b.rol)) throw malaPeticion('Ese rol no puede entrar con PIN');
-    if (!b.email && !b.pin) throw malaPeticion('Indica un correo o un PIN para que pueda entrar');
+    if (!b.email && !b.usuario && !b.pin) throw malaPeticion('Indica un usuario (o correo) o un PIN para que pueda entrar');
+    if (b.usuario && !b.password && !b.email) throw malaPeticion('Con usuario hace falta una contraseña inicial');
     if (b.password) { const m = problemaClave(b.password, { email: b.email, nombre: b.nombre }); if (m) throw malaPeticion(m); }
     if (b.pin) { const m = problemaPin(b.pin, await ctxMgr.politica.obtener()); if (m) throw malaPeticion(m); }
     const emp = req.ctx.empresa;
     const id = await db.tx(async (q) => {
       await validarSucursales(q, emp.id, b.sucursal_ids);
       let u = b.email ? (await q.query('select * from core.usuarios where email = $1', [b.email])).rows[0] : null;
+      if (!u && b.usuario) {
+        if ((await q.query('select 1 from core.usuarios where usuario = $1', [b.usuario])).rowCount) throw conflicto('Ese nombre de usuario ya existe; elige otro');
+      }
       if (!u) {
         if (ROLES_DIRECCION.includes(b.rol) && !b.password) throw malaPeticion('Falta la contraseña inicial');
         u = (await q.query(
-          `insert into core.usuarios (nombre, email, password_hash) values ($1,$2,$3) returning *`,
-          [b.nombre, b.email ?? null, b.password ? hashSecreto(b.password) : null])).rows[0];
+          `insert into core.usuarios (nombre, email, usuario, password_hash) values ($1,$2,$3,$4) returning *`,
+          [b.nombre, b.email ?? null, b.usuario ?? null, b.password ? hashSecreto(b.password) : null])).rows[0];
       }
       // Si el correo ya existe (la persona trabaja en otra empresa) NO se toca su contraseña: entra con la que ya tiene.
       // Cambiarla desde aquí permitiría a cualquier administrador tomar la cuenta de otro usuario (incluido el dueño del grupo).

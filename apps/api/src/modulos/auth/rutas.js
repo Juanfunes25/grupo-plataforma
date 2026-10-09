@@ -52,23 +52,25 @@ export function rutasAuth({ db, config, ctxMgr }) {
     const token = await firmarSesion(config, {
       usuarioId: u.id, tokenVersion: u.token_version, via, empresaCodigo: fija ? empresa.codigo : undefined, sesionId });
     await db.query('update core.usuarios set ultimo_acceso = now() where id = $1', [u.id]);
-    return { token, usuario: { id: u.id, nombre: u.nombre, email: u.email, es_dueno_grupo: u.es_dueno_grupo }, empresa: empresa.codigo };
+    return { token, usuario: { id: u.id, nombre: u.nombre, email: u.email, usuario: u.usuario, es_dueno_grupo: u.es_dueno_grupo }, empresa: empresa.codigo };
   }
 
   // ── Correo + contraseña (dueños, administradores, gerentes) ───────────────
   r.post('/login', async (req, res) => {
-    const { empresa: cod, email, password } = validar(z.object({
-      empresa: z.string().min(1), email: z.string().trim().toLowerCase().email('correo inválido'), password: z.string().min(1).max(200),
-    }), req.body);
+    const { empresa: cod, email: ident0, usuario: usr0, password } = validar(z.object({
+      empresa: z.string().min(1), email: z.string().trim().toLowerCase().min(1).max(200).optional(), usuario: z.string().trim().toLowerCase().min(1).max(200).optional(),
+      password: z.string().min(1).max(200),
+    }).refine((b) => b.email || b.usuario, { message: 'Escribe tu usuario o correo' }), req.body);
+    const email = ident0 ?? usr0;   // puede ser el correo o el nombre de usuario
     const emp = await empresaPorCodigo(cod);
     const clave = `${ipDe(req)}|${email}`;
     if (limLogin.bloqueado(clave)) throw new ErrorHttp(429, 'Demasiados intentos. Espera unos minutos.');
 
-    const { rows } = await db.query('select * from core.usuarios where email = $1 and activo', [email]);
+    const { rows } = await db.query('select * from core.usuarios where (email = $1 or usuario = $1) and activo', [email]);
     const u = rows[0];
     let ok = false;
     if (u) {
-      if (config.supabaseUrl && u.auth_user_id) ok = Boolean(await loginSupabase(config, email, password));
+      if (config.supabaseUrl && u.auth_user_id && u.email) ok = Boolean(await loginSupabase(config, u.email, password));
       else ok = verificarSecreto(password, u.password_hash);
     } else {
       verificarSecreto(password, 'scrypt$00$00'); // gasta tiempo similar: no revela si el correo existe
@@ -148,7 +150,7 @@ export function rutasAuth({ db, config, ctxMgr }) {
     let empresas = await ctxMgr.empresasDe(u);
     if (req.auth.empresaFija) empresas = empresas.filter((e) => e.codigo === req.auth.empresaFija);
     const salida = {
-      usuario: { id: u.id, nombre: u.nombre, email: u.email, es_dueno_grupo: u.es_dueno_grupo, mfa_activo: Boolean(u.mfa_activo) },
+      usuario: { id: u.id, nombre: u.nombre, email: u.email, usuario: u.usuario, es_dueno_grupo: u.es_dueno_grupo, mfa_activo: Boolean(u.mfa_activo) },
       via: req.auth.via,
       empresas: empresas.map((e) => ({ codigo: e.codigo, nombre: e.nombre, color: e.color, logo: e.logo, lema: e.lema, rol: e.rol })),
     };
