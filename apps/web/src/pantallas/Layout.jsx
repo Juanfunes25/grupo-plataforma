@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, NavLink, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { GRUPOS_NAV, accesosApp } from '@grupo/shared';
+import { Link, NavLink, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { FUNCIONES_PLANTA, leerPlanta } from '../lib/planta.js';
+import { GRUPOS_NAV, ROLES, accesosApp } from '@grupo/shared';
 import { useSesion } from '../sesion.jsx';
 import Icono from '../ui/Icono.jsx';
 import Logo from '../ui/Logo.jsx';
@@ -140,11 +141,30 @@ export default function Layout({ children, esGrupo = false }) {
 
   const usuarioChip = (
     <div className="usuario-chip">
-      <span>{s.usuario?.nombre?.split(' ')[0]} · <small>{s.usuario?.es_dueno_grupo ? 'administrador general' : ctx.rol}</small></span>
+      <span>{s.usuario?.nombre?.split(' ')[0]} · <small>{s.usuario?.es_dueno_grupo ? 'administrador general' : (ROLES[ctx.rol]?.nombre ?? ctx.rol)}</small></span>
       {s.via !== 'pin' && <button className="btn chico fantasma" onClick={() => setCambiando(true)} aria-label="Cambiar contraseña" title="Cambiar contraseña"><Icono n="candado" tam={16} /></button>}
       <button className="btn chico fantasma" onClick={salir} aria-label="Cerrar sesión" title="Cerrar sesión"><Icono n="salir" tam={16} /></button>
     </div>
   );
+
+  // Puesto de planta (producción y despacho): una sola pantalla, sin menús. Para cambiar de función se sale y se vuelve a entrar.
+  const planta = !esGrupo ? leerPlanta(ctx.empresa.codigo) : null;
+  if (planta) {
+    const f = FUNCIONES_PLANTA[planta.funcion];
+    if (!location.pathname.startsWith(`/${ctx.empresa.codigo}/${f.ruta}`)) return <Navigate to={`/${ctx.empresa.codigo}/${f.ruta}`} replace />;
+    return (
+      <div className="planta-shell">
+        <header className="barra no-print" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px' }}>
+          <span className="marca-logo"><Logo codigo={ctx.empresa.logo || ctx.empresa.codigo} color={color} /></span>
+          <b className="titulo" style={{ fontSize: '1.3rem', letterSpacing: '.08em' }}>{f.titulo}</b>
+          <span className="sep" style={{ flex: 1 }} />
+          {usuarioChip}
+        </header>
+        <div id="contenido" tabIndex={-1}><LimiteError reinicio={location.pathname}><div className="vista" key={location.pathname}>{children}</div></LimiteError></div>
+        <Vigilancia base={base} />
+      </div>
+    );
+  }
 
   // Dirección del Grupo: barra superior en pantalla ancha; en celular, barra inferior (Dirección · Empresas · Más).
   if (esGrupo) {

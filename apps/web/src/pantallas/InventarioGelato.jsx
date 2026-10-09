@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSesion } from '../sesion.jsx';
+import { leerPlanta } from '../lib/planta.js';
 import { Tabs, useAviso } from '../ui/kit.jsx';
 import { rget, contarPendientes, sincronizarCola } from '../rinv/api.js';
 import '../rinv/rinv.css';
@@ -19,14 +20,15 @@ const CLAVE_TAB = 'rinv.tab';
  * Tocar un insumo abre su ficha como pantalla propia (no un acordeón): la lista siempre queda intacta.
  */
 export default function InventarioGelato() {
-  const { puede, sucursales } = useSesion();
+  const { puede, sucursales, empresa: codEmp } = useSesion();
   const avisar = useAviso();
-  const opciones = [
+  const soloMover = !!leerPlanta(codEmp)?.funcion?.startsWith('inventario');   // puesto de planta: solo sacar y cargar inventario
+  const opciones = soloMover ? [['sacar', '📤 Sacar'], ['cargar', '📥 Cargar']] : [
     ['insumos', '🧂 Insumos'], ['sacar', '📤 Sacar'], ['cargar', '📥 Cargar'], ['reordenar', '⚠️ Reordenar'], ['sucursales', '🏬 Sucursales'],
     ['movimientos', '🕘 Movimientos'], ...(puede('rep:costeo') ? [['valor', '💰 Valor']] : []), ['rfid', '🧊 RFID'],
   ];
 
-  const [tab, setTab] = useState(() => { try { const g = localStorage.getItem(CLAVE_TAB); return opciones.some(([k]) => k === g) ? g : 'insumos'; } catch { return 'insumos'; } });
+  const [tab, setTab] = useState(() => { try { const g = localStorage.getItem(CLAVE_TAB); return opciones.some(([k]) => k === g) ? g : opciones[0][0]; } catch { return opciones[0][0]; } });
   const [detalle, setDetalle] = useState(null);
   const [escaneando, setEscaneando] = useState(false);
   const [noReconocido, setNoReconocido] = useState('');

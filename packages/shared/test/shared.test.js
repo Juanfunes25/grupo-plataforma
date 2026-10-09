@@ -124,3 +124,11 @@ test('gelato: un pesaje después de medianoche lleva la fecha del día nuevo (ho
   assert.equal(fechaHN(new Date('2026-10-09T05:59:00Z')), '2026-10-08');   // 11:59 p. m.
   assert.equal(fechaHN(new Date('2026-10-09T06:01:00Z')), '2026-10-09');   // 12:01 a. m. = día nuevo
 });
+
+test('ventas (EcoStone y DISERCO) no ve el inventario unificado; los demás roles de inventario sí', () => {
+  for (const e of ['fabrica', 'distribuidora']) {
+    assert.ok(!modulosVisibles([e], permisosDe('ventas')).some((m) => m.id === 'inv_unificado'), `ventas en ${e}`);
+    assert.ok(modulosVisibles([e], permisosDe('dueno')).some((m) => m.id === 'inv_unificado'), `dueño en ${e}`);
+  }
+  assert.ok(modulosVisibles(['fabrica'], permisosDe('produccion')).some((m) => m.id === 'inv_unificado'));
+});

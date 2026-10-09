@@ -15,6 +15,7 @@ export const PERMISOS = {
   'kds:ver':          'Ver y mover la pantalla de cocina',
   // Inventario
   'inv:ver':          'Ver inventario',
+  'inv:unificado':    'Ver el inventario unificado de la empresa (menú)',
   'inv:mover':        'Registrar compras, mermas y conteos',
   'inv:recetas':      'Editar recetas',
   'inv:aprobar':      'Aprobar las diferencias de un conteo de inventario y ajustar',
@@ -68,7 +69,7 @@ export const ROLES = {
   gerente: {
     nombre: 'Manager',
     permisos: ['gerente:ver', 'pos:vender', 'pos:caja', 'pos:anular', 'pos:descuento', 'pos:reimprimir', 'pos:catalogo', 'pos:reportes',
-      'kds:ver', 'inv:ver', 'inv:mover', 'inv:recetas', 'inv:aprobar', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos', 'compras:ver', 'compras:editar', 'compras:recibir', 'fab:ver', 'fab:editar', 'fab:registrar', 'dis:salidas', 'rep:pesar', 'rep:despachar', 'rep:producir', 'rep:ver', 'rep:costeo', 'rep:inventario', 'doc:ver',
+      'kds:ver', 'inv:ver', 'inv:unificado', 'inv:mover', 'inv:recetas', 'inv:aprobar', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos', 'compras:ver', 'compras:editar', 'compras:recibir', 'fab:ver', 'fab:editar', 'fab:registrar', 'dis:salidas', 'rep:pesar', 'rep:despachar', 'rep:producir', 'rep:ver', 'rep:costeo', 'rep:inventario', 'doc:ver',
       'clientes:ver', 'clientes:editar', 'cotizaciones:ver', 'cobranza:ver', 'cobranza:gestionar'],
   },
   cajero: {
@@ -81,19 +82,19 @@ export const ROLES = {
   },
   produccion: {
     nombre: 'Producción / cocina',
-    permisos: ['kds:ver', 'inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:registrar', 'fab:ver', 'rep:producir', 'rep:ver'],
+    permisos: ['kds:ver', 'inv:ver', 'inv:unificado', 'inv:mover', 'rrhh:asistencia', 'fab:registrar', 'fab:ver', 'rep:producir', 'rep:ver'],
   },
   prod_despacho: {
     nombre: 'Producción y despacho',
-    permisos: ['kds:ver', 'inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:registrar', 'fab:ver', 'rep:producir', 'rep:ver', 'rep:despachar', 'rep:inventario'],   // la misma persona produce y despacha
+    permisos: ['kds:ver', 'inv:ver', 'inv:unificado', 'inv:mover', 'rrhh:asistencia', 'fab:registrar', 'fab:ver', 'rep:producir', 'rep:ver', 'rep:despachar', 'rep:inventario'],   // la misma persona produce y despacha
   },
   bodega: {
     nombre: 'Bodega',
-    permisos: ['inv:ver', 'inv:mover', 'rrhh:asistencia', 'fab:ver', 'dis:salidas', 'rep:despachar', 'rep:inventario', 'rep:pesar'],
+    permisos: ['inv:ver', 'inv:unificado', 'inv:mover', 'rrhh:asistencia', 'fab:ver', 'dis:salidas', 'rep:despachar', 'rep:inventario', 'rep:pesar'],
   },
   gestor: {
     nombre: 'Gestor de proyectos',
-    permisos: ['dis:salidas', 'inv:ver', 'rrhh:asistencia'],   // salidas; necesita ver existencias para elegir qué sacar
+    permisos: ['dis:salidas', 'inv:ver', 'inv:unificado', 'rrhh:asistencia'],   // salidas; necesita ver existencias para elegir qué sacar
   },
   ventas: {
     nombre: 'Ventas',
@@ -101,11 +102,11 @@ export const ROLES = {
   },
   contador: {
     nombre: 'Contador',
-    permisos: ['gerente:ver', 'pos:reportes', 'fin:ver', 'fin:gastos', 'fin:presupuesto', 'compras:ver', 'inv:ver', 'clientes:ver', 'auditoria:ver', 'grupo:ver', 'doc:ver', 'cobranza:ver'],
+    permisos: ['gerente:ver', 'pos:reportes', 'fin:ver', 'fin:gastos', 'fin:presupuesto', 'compras:ver', 'inv:ver', 'inv:unificado', 'clientes:ver', 'auditoria:ver', 'grupo:ver', 'doc:ver', 'cobranza:ver'],
   },
   solo_lectura: {
     nombre: 'Solo lectura',
-    permisos: ['pos:reportes', 'inv:ver', 'rrhh:ver', 'fin:ver', 'compras:ver', 'clientes:ver'],
+    permisos: ['pos:reportes', 'inv:ver', 'inv:unificado', 'rrhh:ver', 'fin:ver', 'compras:ver', 'clientes:ver'],
   },
 };
 

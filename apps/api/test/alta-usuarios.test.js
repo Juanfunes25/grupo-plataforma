@@ -34,6 +34,7 @@ test('entrada con PIN: lista de tiendas y personas, exige quién eres, y la tien
   await altaUsuariosDesdeEnv(t.db, t.config, { raw, log: () => {} });
   const op = (await t.cli().get('/api/auth/pin/opciones?empresa=italo')).body;
   assert.ok(op.sucursales.length >= 2 && op.usuarios.some((u) => u.nombre === 'Mackey Uno'));
+  assert.ok(op.usuarios.every((u) => typeof u.rol === 'string'), 'cada persona trae su rol (para separar planta de tiendas)');
   assert.ok(!JSON.stringify(op).includes('pin_hash') && !JSON.stringify(op).includes('6161'), 'solo nombres, nunca claves');
   const mackey = await t.pinUsuario('italo', '6161');
   const sucMackey = await t.sucursalId('italo', 'mackey'), sucProceres = await t.sucursalId('italo', 'proceres');

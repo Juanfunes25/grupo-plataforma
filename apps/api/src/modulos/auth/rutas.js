@@ -123,7 +123,7 @@ export function rutasAuth({ db, config, ctxMgr }) {
     if (emp.esGrupo) return res.json({ sucursales: [], usuarios: [] });
     const [suc, usu] = await Promise.all([
       db.query('select id, nombre, color from core.sucursales where empresa_id = $1 and activo order by orden, nombre', [emp.id]),
-      db.query(`select u.id, u.nombre, a.sucursal_ids from core.accesos a join core.usuarios u on u.id = a.usuario_id
+      db.query(`select u.id, u.nombre, a.rol, a.sucursal_ids from core.accesos a join core.usuarios u on u.id = a.usuario_id
                  where a.empresa_id = $1 and a.activo and u.activo and a.pin_hash is not null and a.rol = any($2::text[]) order by u.nombre`, [emp.id, ROLES_CON_PIN]),
     ]);
     res.json({ sucursales: suc.rows, usuarios: usu.rows });

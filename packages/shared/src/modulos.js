@@ -46,7 +46,7 @@ export const MODULOS = {
   inventario:   { nav: 'Negocio',   nombre: 'Inventario',         descripcion: 'Insumos, recetas, compras y mermas',      permiso: 'inv:ver',        ruta: 'inventario',   icono: 'inventario' },
   rrhh:         { nav: 'Negocio',   nombre: 'Personal',           descripcion: 'Empleados, asistencia y vacaciones',      permiso: 'rrhh:ver',       ruta: 'personal',     icono: 'usuarios' },
   planilla:     { nav: 'Negocio',   nombre: 'Planilla',           descripcion: 'Sueldos, IHSS, RAP, ISR, décimos y boletas de pago', permiso: 'rrhh:sensible', ruta: 'planilla',   icono: 'dinero' },
-  inv_unificado:{ nav: 'Negocio',   nombre: 'Inventario unificado', descripcion: 'Existencias, alertas, conteos, traslados y kardex', permiso: 'inv:ver', ruta: 'inventario-unificado', icono: 'inventario' },
+  inv_unificado:{ nav: 'Negocio',   nombre: 'Inventario unificado', descripcion: 'Existencias, alertas, conteos, traslados y kardex', permiso: 'inv:unificado', ruta: 'inventario-unificado', icono: 'inventario' },
   finanzas:     { nav: 'Negocio',   nombre: 'Finanzas',           descripcion: 'Resultados, flujo de caja, por cobrar y pagar, presupuesto', permiso: 'fin:ver',        ruta: 'finanzas',     icono: 'dinero' },
   compras:      { nav: 'Negocio',   nombre: 'Compras',            descripcion: 'Proveedores, órdenes de compra, precios y reorden', permiso: 'compras:ver', ruta: 'compras',      icono: 'inventario' },
   // Control

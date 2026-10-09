@@ -1,3 +1,4 @@
+import { quitarPlanta } from './lib/planta.js';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { almacen, fijarEmpresa, get, post } from './api.js';
 
@@ -23,6 +24,7 @@ export function ProveedorSesion({ children }) {
     // La sesión también se cierra en el servidor (si falla la red, igual se cierra aquí).
     const t = almacen.leer()?.token;
     if (t) fetch('/api/auth/salir', { method: 'POST', headers: { authorization: `Bearer ${t}`, 'content-type': 'application/json' }, body: '{}', keepalive: true }).catch(() => {});
+    quitarPlanta();
     almacen.guardar(null); fijarEmpresa(null);
     setGuardada(null); setYo(null); setEmpresa(null); setSucursalId(null);
   }, []);
