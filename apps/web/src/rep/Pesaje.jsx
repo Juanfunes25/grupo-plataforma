@@ -281,9 +281,7 @@ export default function Pesaje() {
           <button className="btn" onClick={irAFaltantes}>Ver los que faltan</button>
         </div>
       ) : huboPedidoHoy ? (
-        <div className="rep-hero ok"><b>Pedido de insumos enviado</b><div className="rep-sub">Todavía no has pesado el gelato de hoy.</div></div>
-      ) : totalSabores > 0 ? (
-        <div className="rep-hero"><b>Todavía no has pesado hoy</b><div className="rep-sub">Son {totalSabores} sabores: pesa cada pana, escribe los gramos y toca «Enviar reporte». Lo que escribas se guarda aunque se vaya la señal.</div></div>
+        <div className="rep-hero ok"><b>Pedido de insumos enviado</b></div>
       ) : null}
 
       <Tabs tabs={tabs} valor={tab} onCambio={setTab} />
