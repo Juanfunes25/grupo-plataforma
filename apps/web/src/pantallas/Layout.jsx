@@ -210,8 +210,8 @@ export default function Layout({ children, esGrupo = false }) {
         <div className="titulo-movil"><b className="t-modulo">{activo?.nombre ?? ctx.empresa.nombre}</b><small className="t-empresa">{s.sucursales.length === 1 && sucActual ? (sucActual.nombre.toLowerCase().includes(ctx.empresa.nombre.toLowerCase()) ? sucActual.nombre : `${ctx.empresa.nombre} · ${sucActual.nombre}`) : ctx.empresa.nombre}</small></div>
         {s.sucursales.length > 1 && <select value={s.sucursalId ?? ''} onChange={(e) => s.elegirSucursal(e.target.value)} aria-label="Sucursal activa">{s.sucursales.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}</select>}
         <button className="btn fantasma icono" onClick={() => setPaleta(true)} aria-label="Buscar módulo"><Icono n="lupa" tam={22} /></button>
-        {!conNavInf && <button className="btn fantasma icono solo-angosto" onClick={() => setMas(true)} aria-label="Más opciones y módulos"><Icono n="menu" tam={22} /></button>}
       </header>
+      {!conNavInf && <button className="btn icono solo-angosto menu-abajo no-print" onClick={() => setMas(true)} aria-label="Más opciones y módulos"><Icono n="menu" tam={22} /></button>}
       <aside id="menu-lateral" className="sidebar no-print" aria-label="Menú principal">
         <div className="sidebar-cab">
           <Link to={base} className="sidebar-marca" aria-label={`Inicio de ${ctx.empresa.nombre}`}>

@@ -198,3 +198,9 @@ html[data-quiosco="si"] { cursor: default; }
   .barra-movil { padding-top: max(env(safe-area-inset-top, 0px), 34px); min-height: calc(54px + max(env(safe-area-inset-top, 0px), 34px)); }
   .grupo-shell .barra, .planta-shell .barra { padding-top: max(env(safe-area-inset-top, 0px), 34px); }
 }
+
+/* Teléfono: el botón de menú (3 rayas) ya no va arriba, donde la barra de estado del iPhone lo tapa; flota abajo a la izquierda. */
+.menu-abajo { display: none; }
+@media (max-width: 1023px) {
+  .menu-abajo { display: grid; place-items: center; position: fixed; z-index: 45; left: max(12px, env(safe-area-inset-left)); bottom: calc(14px + env(safe-area-inset-bottom)); width: 48px; height: 48px; min-width: 48px; min-height: 48px; padding: 0; border-radius: 50%; background: var(--panel-3, var(--panel)); color: var(--texto); border: 1px solid var(--borde-fuerte, var(--borde)); box-shadow: var(--sombra); opacity: .92; }
+}
