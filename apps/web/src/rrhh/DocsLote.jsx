@@ -5,6 +5,7 @@ import { get } from '../api.js';
 import { useSesion } from '../sesion.jsx';
 import { Modal, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
 import { problemaConArchivo, subirNuevo } from '../documentos/cliente.js';
+import { fotoAArchivoPdf } from '../documentos/fotoPdf.js';
 import { adivinarTipo, emparejarArchivo, fechaDeArchivo, leerCsv, metaDeIndice, numeroDeArchivo, tituloDeArchivo } from './emparejar.js';
 
 export default function DocsLote({ modo = 'empresa', empresa: empresaProp, onCerrar, onListo }) {
@@ -29,7 +30,8 @@ export default function DocsLote({ modo = 'empresa', empresa: empresaProp, onCer
       const m = meta.get(archivo.name.toLowerCase()) ?? {};
       const emp = esEmp ? emparejarArchivo(archivo.name, empleados) : '';
       const tipo = adivinarTipo(archivo.name, !!emp);
-      return { archivo, empleado_id: emp, tipo: tipos.some((t) => t.codigo === tipo) ? tipo : '', titulo: tituloDeArchivo(archivo.name), fecha_emision: m.fecha_emision || fechaDeArchivo(archivo.name),
+      return { archivo, empleado_id: emp, tipo: tipos.some((t) => t.codigo === tipo) ? tipo : (esEmp && archivo.type?.startsWith('image/') && tipos.some((t) => t.codigo === 'identidad_empleado') ? 'identidad_empleado' : ''), titulo: tituloDeArchivo(archivo.name), fecha_emision: m.fecha_emision || fechaDeArchivo(archivo.name),
+        grados: 0, vista: archivo.type?.startsWith('image/') ? URL.createObjectURL(archivo) : '',
         fecha_vencimiento: m.fecha_vencimiento || '', numero: numeroDeArchivo(archivo.name), descripcion: m.descripcion || '', entidad_emisora: '' };
     }));
   };
@@ -39,7 +41,9 @@ export default function DocsLote({ modo = 'empresa', empresa: empresaProp, onCer
   const subir = () => ejecutar(async () => {
     let n = 0;
     for (const f of listos) {
-      await subirNuevo(f.archivo, { tipo: f.tipo, titulo: f.titulo || undefined, fecha_emision: f.fecha_emision || undefined, numero: f.numero || undefined, fecha_vencimiento: f.fecha_vencimiento || undefined, descripcion: f.descripcion || undefined, ...(esEmp ? { empleado_id: f.empleado_id } : {}) }, empresa);
+      // Las fotos se guardan como PDF (de una página, ya giradas si hizo falta).
+      const archivo = f.vista ? await fotoAArchivoPdf(f.archivo, f.grados, f.titulo || 'Documento') : f.archivo;
+      await subirNuevo(archivo, { tipo: f.tipo, titulo: f.titulo || undefined, fecha_emision: f.fecha_emision || undefined, numero: f.numero || undefined, fecha_vencimiento: f.fecha_vencimiento || undefined, descripcion: f.descripcion || undefined, ...(esEmp ? { empleado_id: f.empleado_id } : {}) }, empresa);
       n++;
     }
     avisar(`${n} documento${n === 1 ? '' : 's'} guardado${n === 1 ? '' : 's'}`);
@@ -54,7 +58,11 @@ export default function DocsLote({ modo = 'empresa', empresa: empresaProp, onCer
         const prob = problemaConArchivo(f.archivo);
         return (
           <div className="tarjeta" key={i} style={{ display: 'grid', gap: 6 }}>
-            <b style={{ wordBreak: 'break-all' }}>{f.archivo.name}{prob && <small className="mal"> · {prob}</small>}</b>
+            <div className="fila espacio" style={{ alignItems: 'center', flexWrap: 'nowrap', gap: 10 }}>
+              <b style={{ wordBreak: 'break-all' }}>{f.archivo.name}{prob && <small className="mal"> · {prob}</small>}{f.vista && <small className="tenue"> · se guarda como PDF</small>}</b>
+              {f.vista && <button className="btn chico" onClick={() => cambiar(i, { grados: (f.grados + 90) % 360 })} title="Girar la foto">↻ Girar</button>}
+            </div>
+            {f.vista && <img src={f.vista} alt="Vista previa" style={{ maxHeight: 150, maxWidth: '100%', objectFit: 'contain', transform: `rotate(${f.grados}deg)`, margin: f.grados % 180 ? '34px auto' : '0 auto', borderRadius: 6 }} />}
             <div className="rejilla cols-2">
               <select value={f.tipo} onChange={(e) => cambiar(i, { tipo: e.target.value })}><option value="">Tipo de documento…</option>{tipos.map((t) => <option key={t.codigo} value={t.codigo}>{t.nombre}</option>)}</select>
               {esEmp && (
