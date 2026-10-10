@@ -146,3 +146,8 @@ tr.fac-anulada td { opacity: .5; text-decoration: line-through; }
 .pos-botones-cobro .boton-cobro svg { width: 18px; height: 18px; }
 .pos-botones-cobro .boton-cobro kbd { margin-top: 0; }
 .pos-btn-mas { min-height: 28px; padding: 2px 10px; font-size: .78rem; }
+
+/* Pregunta obligatoria al abrir una factura: comer aquí / para llevar */
+.pos-servicio { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 8px 0; }
+.pos-servicio .btn { min-height: 96px; font-size: 1.25rem; white-space: normal; }
+@media (max-width: 440px) { .pos-servicio { grid-template-columns: 1fr; } .pos-servicio .btn { min-height: 72px; } }

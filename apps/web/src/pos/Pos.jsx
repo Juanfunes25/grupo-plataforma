@@ -28,7 +28,7 @@ import './pos-mostrador.css';
 
 let contador = 0;
 const nuevaLinea = (producto, extra = {}) => ({ key: ++contador, producto, cantidad: 1, opciones: [], notas: null, descuento_porcentaje: 0, ...extra });
-const vacio = () => ({ id: null, ticket: null, nombre_orden: '', tipo_orden: 'aqui', cliente: null, tercera_edad: { nombre: '', identidad: '' }, nota: '', lineas: [] });
+const vacio = () => ({ id: null, ticket: null, nombre_orden: '', tipo_orden: null, cliente: null, tercera_edad: { nombre: '', identidad: '' }, nota: '', lineas: [] });
 const cacheKey = (e, s) => `grupo.catalogo.${e}.${s}`;
 const normalizar = (t) => String(t ?? '').trim().toLowerCase();
 const redondear = (n) => Math.round(n * 100) / 100;
@@ -225,12 +225,17 @@ export default function Pos() {
   const sinPunto = Boolean(cat && sucursal && !fiscal);
   const bloqueoFiscal = sinPunto || Boolean(fiscal?.agotado || fiscal?.vencido);
   const hayLineas = orden.lineas.length > 0;
-  const cobroBloqueado = !hayLineas || bloqueoFiscal || necesitaRtn || faltaCarne || cobrando || ocupado;
+  const cobroBloqueado = !hayLineas || !orden.tipo_orden || bloqueoFiscal || necesitaRtn || faltaCarne || cobrando || ocupado;
   const hayPiedra = orden.lineas.some((l) => l.producto.es_piedra);
+
+  // Al abrir una factura nueva se pregunta si es para comer aquí o para llevar (métrica: tienda vs. autoservicio). No se puede omitir.
+  useEffect(() => {
+    if (!orden.id && !orden.tipo_orden && !recibo && !modal && cat) setModal({ tipo: 'servicio' });
+  }, [orden.id, orden.tipo_orden, recibo, modal, cat]);
 
   // ── Guardado automático de la orden como "abierta" (la recupera Órdenes abiertas aunque se cierre la pantalla) ──
   const cuerpoOrden = (o, sucId) => ({
-    sucursal_id: sucId, tipo_orden: o.tipo_orden, nombre_orden: o.nombre_orden, notas: o.nota, cliente_id: o.cliente?.id ?? null,
+    sucursal_id: sucId, tipo_orden: o.tipo_orden ?? 'aqui', nombre_orden: o.nombre_orden, notas: o.nota, cliente_id: o.cliente?.id ?? null,
     items: o.lineas.map((l) => ({ producto_id: l.producto.id, cantidad: l.cantidad, opciones: l.opciones.map((x) => x.id), notas: l.notas, descuento_porcentaje: l.descuento_porcentaje })),
     ...(o.lineas.some((l) => l.descuento_porcentaje === 25) && o.tercera_edad.nombre.trim().length >= 3 && identidadValida(o.tercera_edad.identidad)
       ? { tercera_edad: { nombre: o.tercera_edad.nombre.trim(), identidad: o.tercera_edad.identidad.trim() } } : {}),
@@ -691,7 +696,7 @@ export default function Pos() {
 
         <div className="pos-wz-total-art">Total de artículos: <b>{cantidadTotal}</b></div>
         <div className="pos-wz-info">
-          <div className="pos-wz-fila"><label>Orden</label><div className="pos-wz-val">{orden.id ? `#${orden.ticket}` : 'Nueva'}<button className="btn chico" style={{ marginLeft: 'auto' }} onClick={() => setOrden((o) => ({ ...o, tipo_orden: o.tipo_orden === 'aqui' ? 'llevar' : 'aqui' }))}>{orden.tipo_orden === 'aqui' ? 'Aquí' : 'Para llevar'}</button></div></div>
+          <div className="pos-wz-fila"><label>Orden</label><div className="pos-wz-val">{orden.id ? `#${orden.ticket}` : 'Nueva'}<button className="btn chico" style={{ marginLeft: 'auto' }} onClick={() => setOrden((o) => ({ ...o, tipo_orden: o.tipo_orden === 'aqui' ? 'llevar' : 'aqui' }))}>{orden.tipo_orden === 'aqui' ? 'Comer aquí' : orden.tipo_orden === 'llevar' ? 'Para llevar' : 'Elegir'}</button></div></div>
           <div className="pos-wz-fila"><label>Cliente</label>
             <div className={`pos-wz-val clic${necesitaRtn ? ' falta' : ''}`} onClick={() => setModal({ tipo: 'cliente' })} role="button" tabIndex={0}>
               <span className="pos-wz-nombre">{orden.cliente?.nombre ?? 'Consumidor Final'}{orden.cliente?.exento_impuestos && <span className="chip aviso" style={{ marginLeft: 8 }}>Exento</span>}</span>
@@ -819,6 +824,15 @@ export default function Pos() {
       {modal?.tipo === 'cobro' && <CobroModal total={totales.total} formas={cat.formas_pago} cliente={orden.cliente} ocupado={cobrando} error={errCobro} requiereRtn={necesitaRtn} avisoRtn={sinRtn && !rtnBloquea} umbralRtn={umbral} onCerrar={() => setModal(null)} onCobrar={confirmarPago} />}
       {modal?.tipo === 'ayuda' && <AyudaAtajos onCerrar={() => setModal(null)} />}
       {modal?.tipo === 'cola' && <ColaModal puedeDescartar={puede('pos:anular')} sucursalId={sucursal.id} onCerrar={() => setModal(null)} />}
+      {modal?.tipo === 'servicio' && (
+        <Modal titulo="¿Cómo se consume?" onCerrar={() => {}} tam="angosto">
+          <div className="pos-servicio">
+            <button className="btn primario grande" autoFocus onClick={() => { setOrden((o) => ({ ...o, tipo_orden: 'aqui' })); setModal(null); setTimeout(() => buscadorRef.current?.focus(), 50); }}>Comer aquí</button>
+            <button className="btn primario grande" onClick={() => { setOrden((o) => ({ ...o, tipo_orden: 'llevar' })); setModal(null); setTimeout(() => buscadorRef.current?.focus(), 50); }}>Para llevar</button>
+          </div>
+        </Modal>
+      )}
+
       {modal?.tipo === 'descartar' && (
         <MotivoModal titulo="Descartar la orden" texto="¿Por qué se descarta esta orden? Los productos se pierden y queda registrado." opciones={MOTIVOS_DESCARTE} etiquetaBoton="Descartar orden" peligro
           onCerrar={() => setModal(null)} onListo={descartarConMotivo} />
