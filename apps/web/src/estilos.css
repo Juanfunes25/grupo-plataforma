@@ -544,3 +544,6 @@ td .btn.chico { min-height: 34px; }
 @media (min-width: 1100px) { .oculto .pos-cuerpo .pos-grid { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); } .oculto .pos-cuerpo { grid-template-columns: 170px minmax(0, 1fr); } }
 @media (max-width: 900px) { .sidebar-ocultar { display: none; } }
 @media (pointer: coarse) { .sidebar-compactar { width: 44px; } }
+
+/* Los campos de fecha (sobre todo en iPhone) nunca se salen de su caja ni se montan sobre el botón de al lado. */
+input[type="date"], input[type="time"], input[type="datetime-local"] { min-width: 0; max-width: 100%; box-sizing: border-box; }

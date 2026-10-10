@@ -274,8 +274,8 @@ export default function Despacho() {
         <div><h1>Despacho</h1><div className="rep-sub">{textoDia(fecha)}</div></div>
         <button className="btn" onClick={recargar} disabled={actualizando} title="Actualizar ahora">{actualizando ? 'Actualizando…' : `⟳ ${datoDesde ? haceCuanto(datoDesde) : ''}`}</button>
       </div>
-      <div className="tarjeta fila">
-        <label style={{ flex: 1, minWidth: 170 }}>Noche del reporte<input type="date" value={fecha} max={hoyIso()} onChange={(e) => e.target.value && setFecha(e.target.value)} /></label>
+      <div className="tarjeta fila" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <label style={{ flex: '1 1 190px', minWidth: 0 }}>Noche del reporte<input type="date" style={{ width: '100%', minWidth: 0, boxSizing: 'border-box' }} value={fecha} max={hoyIso()} onChange={(e) => e.target.value && setFecha(e.target.value)} /></label>
         {fecha === hoyIso() ? <button className="btn" onClick={() => setFecha(diaAnterior(fecha))}>Ver anoche</button>
           : fecha === diaAnterior(hoyIso()) ? <button className="btn" onClick={() => setFecha(hoyIso())}>Ver la de hoy</button>
             : <button className="btn" onClick={() => setFecha(nocheInicial())}>Ir a la más reciente</button>}
