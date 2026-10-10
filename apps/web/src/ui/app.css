@@ -187,3 +187,14 @@ html[data-quiosco="si"] { cursor: default; }
   .nav-item .nav-ico, .velo { transition: none !important; }
 }
 @media print { .nav-inferior, .aviso-version, .quiosco-boton { display: none !important; } }
+
+/* Teléfono: el encabezado nunca queda debajo de la barra de estado del equipo (hora, señal, batería). Si el equipo no informa su margen
+   seguro, se deja un mínimo; si lo informa, manda el del equipo. Así el botón del menú siempre se puede tocar. */
+@media (max-width: 1023px) {
+  .barra-movil { padding-top: max(env(safe-area-inset-top, 0px), 22px); min-height: calc(54px + max(env(safe-area-inset-top, 0px), 22px)); position: sticky; top: 0; z-index: 30; }
+  .barra-movil .btn.icono { min-width: 44px; min-height: 44px; position: relative; z-index: 2; }
+}
+@media (max-width: 1023px) and (display-mode: standalone) {
+  .barra-movil { padding-top: max(env(safe-area-inset-top, 0px), 34px); min-height: calc(54px + max(env(safe-area-inset-top, 0px), 34px)); }
+  .grupo-shell .barra, .planta-shell .barra { padding-top: max(env(safe-area-inset-top, 0px), 34px); }
+}
