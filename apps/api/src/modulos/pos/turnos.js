@@ -99,7 +99,7 @@ export function rutasTurnos({ db }) {
   });
 
   // Historial de turnos (para dirección/gerencia)
-  r.get('/', requierePermiso('pos:reportes'), async (req, res) => {
+  r.get('/', requierePermiso('pos:reportes', 'pos:cierres'), async (req, res) => {
     const f = validar(z.object({ sucursal_id: uuid.optional(), limite: z.coerce.number().int().min(1).max(200).default(60) }), req.query);
     const { rows } = await db.query(
       `select t.*, s.nombre as sucursal, u.nombre as cajero from pos.turnos t join core.sucursales s on s.id = t.sucursal_id join core.usuarios u on u.id = t.cajero_id

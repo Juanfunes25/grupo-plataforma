@@ -124,17 +124,17 @@ test('RRHH: marcación propia alterna entrada/salida y el cálculo de horas empa
 });
 
 test('Finanzas: gasto, resultados con costo de recetas, y anulación', async () => {
-  const cats = (await gerente.get('/api/fin/categorias')).body;
+  const cats = (await dueno.get('/api/fin/categorias')).body;
   const alquiler = cats.find((c) => c.grupo === 'alquiler');
-  const g = await gerente.post('/api/fin/gastos', { categoria_id: alquiler.id, descripcion: 'Alquiler de octubre', monto: 1150, isv: 150 });
+  const g = await dueno.post('/api/fin/gastos', { categoria_id: alquiler.id, descripcion: 'Alquiler de octubre', monto: 1150, isv: 150 });
   assert.equal(g.status, 201);
   assert.equal((await caja.post('/api/fin/gastos', { categoria_id: alquiler.id, descripcion: 'x', monto: 5 })).status, 403);
-  const res = (await gerente.get('/api/fin/resultados')).body;
+  const res = (await dueno.get('/api/fin/resultados')).body;
   assert.equal(res.gastos_operativos, 1000);            // monto sin ISV
   assert.ok(res.ventas_netas > 0 && res.costo_ventas > 0);
   assert.equal(res.utilidad_operativa, Math.round((res.ventas_netas - res.costo_ventas - 1000) * 100) / 100);
-  assert.equal((await gerente.post(`/api/fin/gastos/${g.body.id}/anular`, { motivo: 'duplicado' })).status, 200);
-  assert.equal((await gerente.get('/api/fin/resultados')).body.gastos_operativos, 0);
+  assert.equal((await dueno.post(`/api/fin/gastos/${g.body.id}/anular`, { motivo: 'duplicado' })).status, 200);
+  assert.equal((await dueno.get('/api/fin/resultados')).body.gastos_operativos, 0);
 });
 
 test('Grupo: el dueño consolida varias empresas y se elimina lo intercompañía', async () => {

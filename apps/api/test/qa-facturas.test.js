@@ -41,7 +41,7 @@ test('la factura guarda nombre, RTN y dirección del cliente al emitirse: editar
   const lista = (await gerente.get('/api/pos/ventas?estado=facturadas')).body.find((x) => x.id === v.id);
   assert.equal(lista.cliente, 'Cliente Original SA'); assert.equal(lista.cliente_rtn, '08011990123456');
   assert.equal((await gerente.get('/api/pos/ventas?q=08011990123456')).body.some((x) => x.id === v.id), true);
-  const libro = (await gerente.get('/api/pos/reportes/libro')).body.find((x) => x.numero_factura === v.numero_factura);
+  const libro = (await adminO.get('/api/pos/reportes/libro')).body.find((x) => x.numero_factura === v.numero_factura);
   assert.equal(libro.cliente, 'Cliente Original SA'); assert.equal(libro.rtn, '08011990123456');
   const pdf = await fetch(`${t.base}/api/pos/ventas/${v.id}/pdf`, { headers: { authorization: `Bearer ${await t.login('origen', 'g@origen.hn', 'ClaveSegura123')}`, 'x-empresa': 'origen' } });
   assert.equal(pdf.status, 200);

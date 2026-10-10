@@ -12,7 +12,7 @@ const hoy = fechaHN();
 before(async () => {
   t = await iniciar();
   eid = await t.empresaId('italo');
-  await t.usuario({ nombre: 'Gerente', email: 'ger@italo.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'italo', rol: 'gerente' }, { empresa: 'origen', rol: 'gerente' }] });
+  await t.usuario({ nombre: 'Gerente', email: 'ger@italo.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'italo', rol: 'admin' }, { empresa: 'origen', rol: 'gerente' }] });
   await t.usuario({ nombre: 'Productor', accesos: [{ empresa: 'italo', rol: 'produccion', pin: '5151' }] });
   await t.usuario({ nombre: 'Bodeguero', accesos: [{ empresa: 'italo', rol: 'bodega', pin: '6161' }] });
   ger = t.cli(await t.login('italo', 'ger@italo.hn', 'ClaveSegura123'), 'italo');

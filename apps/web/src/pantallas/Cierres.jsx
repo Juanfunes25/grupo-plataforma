@@ -13,7 +13,7 @@ const VACIO = { pos: {}, efectivo_contado: '', fondo_caja: '', salidas: '', ingr
 export default function Cierres() {
   const { puede, sucursal, sucursales } = useSesion();
   const [tab, setTab] = useState(puede('pos:caja') ? 'cierre' : 'historial');
-  const tabs = [...(puede('pos:caja') ? [['cierre', 'Cerrar caja']] : []), ...(puede('pos:reportes') ? [['historial', 'Historial de cierres'], ['turnos', 'Turnos']] : [])];
+  const tabs = [...(puede('pos:caja') ? [['cierre', 'Cerrar caja']] : []), ...(puede('pos:reportes') || puede('pos:cierres') ? [['historial', 'Historial de cierres'], ['turnos', 'Turnos']] : [])];
   const [imprimir, nodoTicket] = useTicket();
   const [ejecutar] = useAccion();
   const reimprimir = async (id) => { const l = await ejecutar(() => pedirTicketCierre(id)); if (l && l !== true) imprimir(l); };

@@ -417,7 +417,7 @@ export function rutasVentas({ db, config, ctxMgr }) {
       sucursal_id: uuid.optional(), q: z.string().trim().max(60).optional(),
       limite: z.coerce.number().int().min(1).max(500).default(100),
     }), req.query);
-    const ver = req.ctx.permisos.has('pos:reportes');
+    const ver = req.ctx.permisos.has('pos:reportes') || req.ctx.permisos.has('pos:anular');
     // Quien no ve reportes (la cajera) solo consulta los últimos 3 días (hoy y los 2 anteriores), para no abrumar con información.
     if (!ver) { const piso = sumarDias(fechaHN(), -2); if (!f.desde || f.desde < piso) f.desde = piso; if (f.hasta && f.hasta < piso) f.hasta = piso; }
     const suc = (await sucursalesPermitidas(db, req.ctx)).map((s) => s.id);

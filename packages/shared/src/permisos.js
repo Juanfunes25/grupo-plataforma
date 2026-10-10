@@ -12,6 +12,8 @@ export const PERMISOS = {
   'pos:catalogo':     'Editar productos, precios y modificadores',
   'pos:fiscal':       'Administrar CAI y puntos de emisión',
   'pos:reportes':     'Ver reportes de ventas',
+  'pos:cierres':      'Ver el historial de cierres de caja',
+  'costeo:ver':       'Ver y editar recetas y costeo (solo dueño y administradores)',
   'kds:ver':          'Ver y mover la pantalla de cocina',
   // Inventario
   'inv:ver':          'Ver inventario',
@@ -68,8 +70,7 @@ export const ROLES = {
   admin:   { nombre: 'Administrador', permisos: TODOS.filter((p) => p !== 'grupo:ver' && p !== 'sistema:ver') },   // administra SU empresa; el consolidado es de dirección
   gerente: {
     nombre: 'Manager',
-    permisos: ['gerente:ver', 'pos:vender', 'pos:caja', 'pos:anular', 'pos:descuento', 'pos:reimprimir', 'pos:catalogo', 'pos:reportes',
-      'kds:ver', 'inv:ver', 'inv:unificado', 'inv:mover', 'inv:recetas', 'inv:aprobar', 'rrhh:ver', 'rrhh:asistencia', 'fin:ver', 'fin:gastos', 'compras:ver', 'compras:editar', 'compras:recibir', 'fab:ver', 'fab:editar', 'fab:registrar', 'dis:salidas', 'rep:pesar', 'rep:despachar', 'rep:producir', 'rep:ver', 'rep:costeo', 'rep:inventario', 'doc:ver',
+    permisos: ['gerente:ver', 'pos:vender', 'pos:caja', 'pos:anular', 'pos:descuento', 'pos:reimprimir', 'pos:catalogo', 'pos:cierres', 'kds:ver', 'inv:ver', 'inv:mover', 'inv:recetas', 'inv:aprobar', 'rrhh:ver', 'rrhh:asistencia', 'compras:ver', 'compras:editar', 'compras:recibir', 'fab:ver', 'fab:editar', 'fab:registrar', 'dis:salidas', 'rep:pesar', 'rep:despachar', 'rep:producir', 'rep:ver', 'rep:costeo', 'rep:inventario', 'doc:ver',
       'clientes:ver', 'clientes:editar', 'cotizaciones:ver', 'cobranza:ver', 'cobranza:gestionar'],
   },
   cajero: {
@@ -98,15 +99,15 @@ export const ROLES = {
   },
   ventas: {
     nombre: 'Ventas',
-    permisos: ['pos:vender', 'pos:descuento', 'pos:reimprimir', 'pos:reportes', 'clientes:ver', 'clientes:editar', 'inv:ver', 'cotizaciones:ver'],
+    permisos: ['pos:vender', 'pos:descuento', 'pos:reimprimir', 'pos:reportes', 'pos:cierres', 'clientes:ver', 'clientes:editar', 'inv:ver', 'cotizaciones:ver'],
   },
   contador: {
     nombre: 'Contador',
-    permisos: ['gerente:ver', 'pos:reportes', 'fin:ver', 'fin:gastos', 'fin:presupuesto', 'compras:ver', 'inv:ver', 'inv:unificado', 'clientes:ver', 'auditoria:ver', 'grupo:ver', 'doc:ver', 'cobranza:ver'],
+    permisos: ['gerente:ver', 'pos:reportes', 'pos:cierres', 'fin:ver', 'fin:gastos', 'fin:presupuesto', 'compras:ver', 'inv:ver', 'inv:unificado', 'clientes:ver', 'auditoria:ver', 'grupo:ver', 'doc:ver', 'cobranza:ver'],
   },
   solo_lectura: {
     nombre: 'Solo lectura',
-    permisos: ['pos:reportes', 'inv:ver', 'inv:unificado', 'rrhh:ver', 'fin:ver', 'compras:ver', 'clientes:ver'],
+    permisos: ['pos:reportes', 'pos:cierres', 'inv:ver', 'inv:unificado', 'rrhh:ver', 'fin:ver', 'compras:ver', 'clientes:ver'],
   },
 };
 

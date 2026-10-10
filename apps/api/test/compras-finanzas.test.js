@@ -7,17 +7,19 @@ import { aLempiras, diasEntre, estadoTrasRecepcion, saldosPorRecepcion, sugerirC
 import { armarFlujo, bucketCobrar, bucketPagar, estadoLinea, limitesMes, netearSaldos, resumirCobrar } from '../src/modulos/fin/estados.js';
 import { consolidar } from '../src/modulos/fin/consolidado.js';
 
-let t, duenoO, duenoE, gerO, cajera, eidO, eidE, sucO, provO, provE;
+let t, mgrO, duenoO, duenoE, gerO, cajera, eidO, eidE, sucO, provO, provE;
 const hoy = fechaHN();
 
 before(async () => {
   t = await iniciar();
   await sembrar(t.db, t.config.semillas, 'origen');
   await t.usuario({ nombre: 'Dueño', email: 'dueno@grupo.hn', password: 'ClaveSegura123', dueno: true });
-  await t.usuario({ nombre: 'Gerente', email: 'ger@origen.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'origen', rol: 'gerente' }] });
+  await t.usuario({ nombre: 'Gerente', email: 'ger@origen.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'origen', rol: 'admin' }] });
   await t.usuario({ nombre: 'Cajera', accesos: [{ empresa: 'origen', rol: 'cajero', pin: '1234' }] });
   const tok = await t.login('origen', 'dueno@grupo.hn', 'ClaveSegura123');
   duenoO = t.cli(tok, 'origen'); duenoE = t.cli(tok, 'ecostone');
+  await t.usuario({ nombre: 'Manager', email: 'mgr@origen.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'origen', rol: 'gerente' }] });
+  mgrO = t.cli(await t.login('origen', 'mgr@origen.hn', 'ClaveSegura123'), 'origen');
   gerO = t.cli(await t.login('origen', 'ger@origen.hn', 'ClaveSegura123'), 'origen');
   cajera = t.cli(await t.loginPin('origen', '1234'), 'origen');
   eidO = await t.empresaId('origen'); eidE = await t.empresaId('ecostone');
@@ -312,7 +314,7 @@ test('presupuesto mensual: solo con permiso, compara contra lo real y se copia a
   const cats = (await duenoO.get('/api/fin/categorias')).body;
   const alq = cats.find((c) => c.grupo === 'alquiler');
   const mes = hoy.slice(0, 7);
-  assert.equal((await gerO.put('/api/fin/presupuesto', { mes, lineas: [{ clave: 'ventas', monto: 50000 }] })).status, 403);
+  assert.equal((await mgrO.put('/api/fin/presupuesto', { mes, lineas: [{ clave: 'ventas', monto: 50000 }] })).status, 403);
   let r = await duenoO.put('/api/fin/presupuesto', { mes, lineas: [{ clave: 'ventas', monto: 50000 }, { clave: alq.id, monto: 1000 }] });
   assert.equal(r.status, 200, JSON.stringify(r.body));
   const l = r.body.gastos.find((x) => x.clave === alq.id);
@@ -342,7 +344,7 @@ test('entre empresas: la empresa que recibe concilia, se pagan los saldos y Dire
   assert.equal(c.total.utilidad_consolidada, c.total.resultados.utilidad_operativa);
   assert.equal(c.interco.saldos[0].saldo, 300);
   assert.ok(c.total.cobrar.total >= 900 + 7000); assert.ok(c.total.pagar.total > 0);
-  assert.equal((await gerO.get('/api/grupo/finanzas/consolidado')).status, 403);
+  assert.equal((await mgrO.get('/api/grupo/finanzas/consolidado')).status, 403);
 });
 
 test('Excel: cada reporte baja como libro .xlsx válido', async () => {

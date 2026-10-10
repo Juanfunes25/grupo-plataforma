@@ -8,7 +8,7 @@ let t, ger, prod, bod, otra, eid, pA, pB;
 before(async () => {
   t = await iniciar();
   eid = await t.empresaId('ecostone');
-  await t.usuario({ nombre: 'Gerente Eco', email: 'ger@eco.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'ecostone', rol: 'gerente' }, { empresa: 'italo', rol: 'gerente' }] });
+  await t.usuario({ nombre: 'Gerente Eco', email: 'ger@eco.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'ecostone', rol: 'admin' }, { empresa: 'italo', rol: 'gerente' }] });
   await t.usuario({ nombre: 'Productor', accesos: [{ empresa: 'ecostone', rol: 'produccion', pin: '5151' }] });
   await t.usuario({ nombre: 'Bodeguero', accesos: [{ empresa: 'ecostone', rol: 'bodega', pin: '6161' }] });
   ger = t.cli(await t.login('ecostone', 'ger@eco.hn', 'ClaveSegura123'), 'ecostone');

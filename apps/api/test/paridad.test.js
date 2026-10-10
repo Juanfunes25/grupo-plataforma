@@ -36,7 +36,7 @@ test('nota de crédito: parcial, total y tope; solo con permiso; queda en la fac
   const n2 = await gerente.post(`/api/pos/ventas/${v.id}/nota-credito`, { motivo: 'Resto' });      // por defecto: lo que falta acreditar
   assert.equal(n2.body.monto, 75);
   assert.equal((await gerente.post(`/api/pos/ventas/${v.id}/nota-credito`, { motivo: 'Otra más' })).status, 409);
-  const det = (await gerente.get(`/api/pos/ventas/${v.id}`)).body;
+  const det = (await dueno.get(`/api/pos/ventas/${v.id}`)).body;
   assert.equal(det.notas_credito.length, 2);
   const aud = (await dueno.get('/api/admin/auditoria?limite=50')).body.map((a) => a.accion);
   assert.ok(aud.includes('nota_credito_emitida'));
@@ -57,7 +57,7 @@ test('tercera edad: exige identidad; se puede apagar por empresa', async () => {
 test('caja chica: los movimientos de todos los turnos se listan con usuario y concepto', async () => {
   await caja.post('/api/pos/turno/movimiento', { tipo: 'salida', monto: 35, concepto: 'Hielo' });
   await caja.post('/api/pos/turno/movimiento', { tipo: 'ingreso', monto: 200, concepto: 'Cambio del banco' });
-  const l = (await gerente.get('/api/pos/antifraude/movimientos-caja')).body;
+  const l = (await dueno.get('/api/pos/antifraude/movimientos-caja')).body;
   assert.equal(l.length, 2);
   assert.deepEqual(l.map((m) => m.tipo).sort(), ['ingreso', 'salida']);
   assert.equal(l[0].usuario, 'Cajera Ana');
@@ -78,7 +78,7 @@ test('antifraude: detecta anulaciones altas, descuadre, reimpresiones y saltos d
   const cierre = await caja.post('/api/pos/turno/cerrar', { efectivo_contado: 0 });
   assert.equal(cierre.status, 200);
 
-  const r = (await gerente.get('/api/pos/antifraude')).body;
+  const r = (await dueno.get('/api/pos/antifraude')).body;
   const tipos = r.alertas.map((a) => a.tipo);
   for (const x of ['anulaciones_altas', 'reimpresiones', 'hueco_correlativo', 'descuadre_caja']) assert.ok(tipos.includes(x), `falta ${x}: ${tipos}`);
   assert.equal(r.alertas[0].severidad, 'alta');                       // lo grave va primero
@@ -89,7 +89,7 @@ test('reglas del antifraude: se ajustan por empresa y cambian lo que se alerta',
   assert.equal((await gerente.put('/api/pos/antifraude/reglas', { reimpresiones_max: 100 })).status, 403);   // solo admin:empresa
   const nuevas = await dueno.put('/api/pos/antifraude/reglas', { reimpresiones_max: 100, descuadre_max: 100000 });
   assert.equal(nuevas.body.reimpresiones_max, 100);
-  const tipos = (await gerente.get('/api/pos/antifraude')).body.alertas.map((a) => a.tipo);
+  const tipos = (await dueno.get('/api/pos/antifraude')).body.alertas.map((a) => a.tipo);
   assert.ok(!tipos.includes('reimpresiones'));
   assert.ok(!tipos.includes('descuadre_caja'));
   assert.ok(tipos.includes('anulaciones_altas'));

@@ -17,7 +17,7 @@ const txt = (n = 200) => z.string().trim().max(n).optional().nullable().transfor
 export function rutasCosteo({ db }) {
   const r = Router();
   const emp = (req) => req.ctx.empresa.id;
-  r.use(requierePermiso('rep:costeo'));
+  r.use(requierePermiso('costeo:ver'));
   const fechaQ = (req) => (FECHA_ISO.test(req.query.fecha || '') ? req.query.fecha : hoyHN());
 
   const SQL_INSUMOS = `select i.id, i.nombre, i.tipo, i.part_number, i.unidad, i.activo, i.categoria, i.descripcion,

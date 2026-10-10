@@ -51,7 +51,7 @@ test('hora de corte en Honduras (UTC-6) y armado de días', () => {
 
 // ── Tablero ─────────────────────────────────────────────────────────────────
 test('tablero de la empresa: hoy, ayer, semana pasada, sucursales, formas de pago y tendencia de 7 días', async () => {
-  const r = await gerente.get('/api/tablero');
+  const r = await dueno.get('/api/tablero');
   assert.equal(r.status, 200, JSON.stringify(r.body));
   assert.equal(r.body.fecha, fechaHN());
   assert.equal(r.body.hoy.facturas, 1);

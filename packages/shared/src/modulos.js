@@ -8,7 +8,7 @@ export const MODULOS = {
   // Operación
   pos:          { nav: 'Operación', nombre: 'Facturación',        descripcion: 'Cobrar y facturar',                       permiso: 'pos:vender',     ruta: 'pos',          icono: 'pos' },
   facturas:     { nav: 'Operación', nombre: 'Facturas',           descripcion: 'Listado, reimpresión y notas de crédito', permiso: 'pos:vender',     ruta: 'facturas',     icono: 'reportes' },
-  cierres:      { nav: 'Operación', nombre: 'Cierre de caja',     descripcion: 'Cuadre del día por sucursal',             permiso: 'pos:reportes',     ruta: 'cierres',      icono: 'dinero' },
+  cierres:      { nav: 'Operación', nombre: 'Cierre de caja',     descripcion: 'Cuadre del día por sucursal',             permiso: 'pos:cierres',     ruta: 'cierres',      icono: 'dinero' },
   cotizaciones: { nav: 'Operación', nombre: 'Cotizaciones',       descripcion: 'Cotizaciones y eventos',                  permiso: 'cotizaciones:ver', ruta: 'cotizaciones', icono: 'catalogo' },
   kds:          { nav: 'Operación', nombre: 'Cocina',             descripcion: 'Pantalla de pedidos en preparación',      permiso: 'kds:ver',        ruta: 'cocina',       icono: 'cocina' },
   // Operación de gelato (Italo) — empresa con módulo 'reposicion' (viene de italo-reposicion)
@@ -17,14 +17,14 @@ export const MODULOS = {
   rep_despacho:   { nav: 'Gelato', nombre: 'Despacho',                descripcion: 'Qué armar y enviar a cada sucursal, pedidos de insumos', permiso: 'rep:despachar', ruta: 'despacho',          icono: 'pos' },
   rep_produccion: { nav: 'Gelato', nombre: 'Producción de gelato',   descripcion: 'Tandas, lotes, consumo de insumos y trazabilidad',           permiso: 'rep:producir',  ruta: 'gelato-produccion', icono: 'cocina' },
   rep_consumo:    { nav: 'Gelato', nombre: 'Consumo y reposición',   descripcion: 'Cuánto gelato se consume, se envía y se vende por sucursal', permiso: 'rep:ver',       ruta: 'consumo',           icono: 'reportes' },
-  rep_costeo:     { nav: 'Gelato', nombre: 'Recetas y costeo',       descripcion: 'Recetas de gelato, insumos y costo por receta',              permiso: 'rep:costeo',    ruta: 'gelato-costeo',     icono: 'catalogo' },
+  rep_costeo:     { nav: 'Gelato', nombre: 'Recetas y costeo',       descripcion: 'Recetas de gelato, insumos y costo por receta',              permiso: 'costeo:ver',    ruta: 'gelato-costeo',     icono: 'catalogo' },
   rep_inventario: { nav: 'Gelato', nombre: 'Inventario y RFID',      descripcion: 'Insumos por sucursal, lotes, vencimientos y lector RFID',    permiso: 'rep:inventario', ruta: 'gelato-inventario', icono: 'inventario' },
   rep_mantenimiento:{ nav: 'Gelato', nombre: 'Mantenimiento',        descripcion: 'Equipos, mantenimientos y checklist',                        permiso: 'rep:pesar',       ruta: 'mantenimiento',     icono: 'escudo' },
   // Fabricación (EcoStone) — empresa con módulo 'fabrica'
   piedra:         { nav: 'Fabricación', nombre: 'Catálogo de piedra',   descripcion: 'Modelo + color, unidad de venta y listas de precio', permiso: 'pos:catalogo',  ruta: 'piedra',            icono: 'catalogo' },
   prod_registrar: { nav: 'Fabricación', nombre: 'Registrar producción', descripcion: 'Registro de producción desde el celular',          permiso: 'fab:registrar', ruta: 'registrar-produccion', icono: 'cocina' },
   prod_ordenes:   { nav: 'Fabricación', nombre: 'Órdenes y agenda',     descripcion: 'Órdenes de producción, colada, secado y calidad',  permiso: 'fab:ver',       ruta: 'produccion',        icono: 'reloj' },
-  prod_recetas:   { nav: 'Fabricación', nombre: 'Recetas y costos',     descripcion: 'Insumos por m², merma y costo por m²',             permiso: 'fab:editar',    ruta: 'recetas',           icono: 'catalogo' },
+  prod_recetas:   { nav: 'Fabricación', nombre: 'Recetas y costos',     descripcion: 'Insumos por m², merma y costo por m²',             permiso: 'costeo:ver',    ruta: 'recetas',           icono: 'catalogo' },
   prod_insumos:   { nav: 'Fabricación', nombre: 'Insumos',              descripcion: 'Kardex, costo promedio, compras y mínimos',        permiso: 'inv:ver',       ruta: 'insumos',           icono: 'inventario' },
   prod_inventario:{ nav: 'Fabricación', nombre: 'Inventario de piedra', descripcion: 'Producto terminado por lote y calidad',            permiso: 'inv:ver',       ruta: 'inventario-piedra', icono: 'inventario' },
   prod_trazabilidad:{ nav: 'Fabricación', nombre: 'Trazabilidad de lotes', descripcion: 'Etiquetas, QR y ficha del lote',               permiso: 'fab:ver',       ruta: 'trazabilidad',      icono: 'escudo' },

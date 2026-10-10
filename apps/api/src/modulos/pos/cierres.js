@@ -73,7 +73,7 @@ const SELECT_CIERRE = `select c.*, s.nombre as sucursal, s.color as sucursal_col
 export function rutasCierres({ db }) {
   const r = Router();
   const esCiego = (ctx, cfg) => ctx.rol === 'cajero' && cfg.cierre_ciego;
-  const ver = requierePermiso('pos:caja', 'pos:reportes');
+  const ver = requierePermiso('pos:caja', 'pos:reportes', 'pos:cierres');
 
   async function cierreVisible(q, ctx, id) {
     const c = (await q.query(`${SELECT_CIERRE} where c.id = $1 and c.empresa_id = $2`, [id, ctx.empresa.id])).rows[0];
@@ -193,7 +193,7 @@ export function rutasCierres({ db }) {
   });
 
   // Historial (dirección/gerencia)
-  r.get('/', requierePermiso('pos:reportes'), async (req, res) => {
+  r.get('/', requierePermiso('pos:reportes', 'pos:cierres'), async (req, res) => {
     const f = validar(z.object({ sucursal_id: uuid.optional(), desde: fechaISO.optional(), hasta: fechaISO.optional(), limite: z.coerce.number().int().min(1).max(500).default(200) }), req.query);
     const hoy = fechaHN();
     const { rows } = await db.query(

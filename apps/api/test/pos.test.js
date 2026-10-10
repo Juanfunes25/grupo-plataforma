@@ -255,7 +255,7 @@ test('cierre de turno: cuadre por forma de pago; el cajero no ve el esperado ant
 });
 
 test('reporte de ventas y margen', async () => {
-  const r = await gerente.get('/api/pos/reportes/resumen');
+  const r = await dueno.get('/api/pos/reportes/resumen');
   assert.equal(r.status, 200);
   assert.ok(r.body.facturas >= 5);
   assert.ok(r.body.total > 0 && r.body.ticket_promedio > 0);
@@ -264,7 +264,7 @@ test('reporte de ventas y margen', async () => {
   assert.ok(r.body.margen_pct > 0 && r.body.margen_pct < 100);
   assert.equal(r.body.por_hora.length > 0, true);
   assert.equal((await caja.get('/api/pos/reportes/resumen')).status, 403);   // el cajero no ve reportes
-  const libro = await gerente.get('/api/pos/reportes/libro');
+  const libro = await dueno.get('/api/pos/reportes/libro');
   assert.ok(libro.body.some((f) => f.estado === 'anulada'));
 });
 

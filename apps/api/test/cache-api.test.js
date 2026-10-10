@@ -18,7 +18,7 @@ before(async () => {
   t = await iniciar();
   await sembrar(t.db, t.config.semillas, 'origen');
   await t.usuario({ nombre: 'Dueño', email: 'dueno@grupo.hn', password: 'ClaveSegura123', dueno: true });
-  await t.usuario({ nombre: 'Gerente', email: 'ger@origen.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'origen', rol: 'gerente' }] });
+  await t.usuario({ nombre: 'Gerente', email: 'ger@origen.hn', password: 'ClaveSegura123', accesos: [{ empresa: 'origen', rol: 'admin' }] });
   await t.usuario({ nombre: 'Cajera', accesos: [{ empresa: 'origen', rol: 'cajero', pin: '1234' }] });
   await t.usuario({ nombre: 'Bodega', accesos: [{ empresa: 'origen', rol: 'bodega', pin: '5678' }] });
   const app = crearApp({ db: t.db, config: { ...t.config, cacheApi: true }, log: () => {} });

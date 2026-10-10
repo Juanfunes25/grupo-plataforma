@@ -158,7 +158,7 @@ export function rutasFab({ db, config }) {
   });
 
   // ═════════════════════════ Recetas ═════════════════════════
-  r.get('/recetas', requierePermiso('fab:editar'), async (req, res) => {
+  r.get('/recetas', requierePermiso('costeo:ver'), async (req, res) => {
     const recetas = (await db.query(
       `select r.*, p.nombre as producto, p.modelo, p.color, p.precio, p.impuesto_tasa from fab.recetas r join pos.productos p on p.id = r.producto_id where r.empresa_id = $1 order by r.created_at desc`, [empresa(req)])).rows;
     const items = recetas.length ? (await db.query(
@@ -187,7 +187,7 @@ export function rutasFab({ db, config }) {
     merma_esperada_pct: z.coerce.number().min(0).max(100).default(5), mano_obra_m2: dec.default(0), indirectos_m2: dec.default(0), notas: textoOpc(300),
     items: z.array(z.object({ insumo_id: uuid.or(z.literal('')), cantidad_m2: z.coerce.number().min(0) })).default([]),
   });
-  r.post('/recetas', requierePermiso('fab:editar'), async (req, res) => {
+  r.post('/recetas', requierePermiso('costeo:ver'), async (req, res) => {
     const b = validar(esqReceta, req.body);
     const out = await db.tx(async (q) => {
       const prod = (await q.query('select 1 from pos.productos where id = $1 and empresa_id = $2 and es_piedra', [b.producto_id, empresa(req)])).rowCount;
@@ -203,7 +203,7 @@ export function rutasFab({ db, config }) {
     });
     res.status(201).json(out);
   });
-  r.put('/recetas/:id', requierePermiso('fab:editar'), async (req, res) => {
+  r.put('/recetas/:id', requierePermiso('costeo:ver'), async (req, res) => {
     const b = validar(esqReceta.partial().extend({ activa: z.boolean().optional() }), req.body);
     const out = await db.tx(async (q) => {
       const antes = (await q.query('select * from fab.recetas where id = $1 and empresa_id = $2 for update', [validar(uuid, req.params.id), empresa(req)])).rows[0];
