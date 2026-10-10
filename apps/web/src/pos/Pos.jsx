@@ -99,6 +99,7 @@ export default function Pos() {
   const [puedeDeshacer, setPuedeDeshacer] = useState(false);
 
   const empresa = contexto.empresa.codigo;
+  const pideServicio = empresa === 'italo';   // solo Italo pregunta «comer aquí / para llevar» antes de facturar
   const sinRed = !enLinea || offline;
 
   // Referencias: el autoguardado corre en un temporizador, así que lee SIEMPRE lo último desde aquí (no del estado de su cierre).
@@ -225,13 +226,14 @@ export default function Pos() {
   const sinPunto = Boolean(cat && sucursal && !fiscal);
   const bloqueoFiscal = sinPunto || Boolean(fiscal?.agotado || fiscal?.vencido);
   const hayLineas = orden.lineas.length > 0;
-  const cobroBloqueado = !hayLineas || !orden.tipo_orden || bloqueoFiscal || necesitaRtn || faltaCarne || cobrando || ocupado;
+  const cobroBloqueado = !hayLineas || (pideServicio && !orden.tipo_orden) || bloqueoFiscal || necesitaRtn || faltaCarne || cobrando || ocupado;
   const hayPiedra = orden.lineas.some((l) => l.producto.es_piedra);
 
   // Al abrir una factura nueva se pregunta si es para comer aquí o para llevar (métrica: tienda vs. autoservicio). No se puede omitir.
   useEffect(() => {
-    if (!orden.id && !orden.tipo_orden && !recibo && !modal && cat) setModal({ tipo: 'servicio' });
-  }, [orden.id, orden.tipo_orden, recibo, modal, cat]);
+    if (!orden.tipo_orden && !pideServicio) setOrden((o) => ({ ...o, tipo_orden: 'aqui' }));
+    else if (pideServicio && !orden.id && !orden.tipo_orden && !recibo && !modal && cat) setModal({ tipo: 'servicio' });
+  }, [orden.id, orden.tipo_orden, recibo, modal, cat, pideServicio]);
 
   // ── Guardado automático de la orden como "abierta" (la recupera Órdenes abiertas aunque se cierre la pantalla) ──
   const cuerpoOrden = (o, sucId) => ({
@@ -696,7 +698,7 @@ export default function Pos() {
 
         <div className="pos-wz-total-art">Total de artículos: <b>{cantidadTotal}</b></div>
         <div className="pos-wz-info">
-          <div className="pos-wz-fila"><label>Orden</label><div className="pos-wz-val">{orden.id ? `#${orden.ticket}` : 'Nueva'}<button className="btn chico" style={{ marginLeft: 'auto' }} onClick={() => setOrden((o) => ({ ...o, tipo_orden: o.tipo_orden === 'aqui' ? 'llevar' : 'aqui' }))}>{orden.tipo_orden === 'aqui' ? 'Comer aquí' : orden.tipo_orden === 'llevar' ? 'Para llevar' : 'Elegir'}</button></div></div>
+          <div className="pos-wz-fila"><label>Orden</label><div className="pos-wz-val">{orden.id ? `#${orden.ticket}` : 'Nueva'}<button className="btn chico" style={{ marginLeft: 'auto' }} onClick={() => setOrden((o) => ({ ...o, tipo_orden: (o.tipo_orden ?? 'aqui') === 'aqui' ? 'llevar' : 'aqui' }))}>{orden.tipo_orden === 'aqui' ? 'Comer aquí' : orden.tipo_orden === 'llevar' ? 'Para llevar' : 'Elegir'}</button></div></div>
           <div className="pos-wz-fila"><label>Cliente</label>
             <div className={`pos-wz-val clic${necesitaRtn ? ' falta' : ''}`} onClick={() => setModal({ tipo: 'cliente' })} role="button" tabIndex={0}>
               <span className="pos-wz-nombre">{orden.cliente?.nombre ?? 'Consumidor Final'}{orden.cliente?.exento_impuestos && <span className="chip aviso" style={{ marginLeft: 8 }}>Exento</span>}</span>
