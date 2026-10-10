@@ -27,9 +27,9 @@ export default function Personal() {
   const [recarga, setRecarga] = useState(0);
   return (
     <div className="pagina">
-      <div className="encabezado-pagina"><h1>Personal</h1>{puede('rrhh:asistencia') && <Marcar />}</div>
+      <div className="encabezado-pagina"><h1>Personal</h1><div className="fila">{editar && <button className="btn" onClick={() => setLote(true)}>Subir documentos en lote</button>}{puede('rrhh:asistencia') && <Marcar />}</div></div>
       <Tabs tabs={tabs} valor={tab} onCambio={setTab} />
-      {tab === 'equipo' && <PanelRrhh recargaExterna={recarga} acciones={editar && <><button className="btn" onClick={() => setLote(true)}>Subir documentos en lote</button><button className="btn primario" onClick={() => setNuevo(true)}>+ Empleado</button></>} />}
+      {tab === 'equipo' && <PanelRrhh recargaExterna={recarga} acciones={editar && <button className="btn primario" onClick={() => setNuevo(true)}>+ Empleado</button>} />}
       {tab === 'turno' && <Turno />}
       {tab === 'horarios' && <Horarios />}
       {tab === 'asistencia' && <Asistencia />}

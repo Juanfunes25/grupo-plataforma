@@ -7,13 +7,15 @@ import { Modal, useAccion, useAviso, useDatos } from '../ui/kit.jsx';
 import { problemaConArchivo, subirNuevo } from '../documentos/cliente.js';
 import { adivinarTipo, emparejarArchivo, fechaDeArchivo, leerCsv, metaDeIndice, numeroDeArchivo, tituloDeArchivo } from './emparejar.js';
 
-export default function DocsLote({ modo = 'empresa', onCerrar, onListo }) {
-  const { empresa } = useSesion();
+export default function DocsLote({ modo = 'empresa', empresa: empresaProp, onCerrar, onListo }) {
+  const { empresa: empresaSesion } = useSesion();
+  const empresa = empresaProp ?? empresaSesion;   // en la Dirección del grupo se elige la empresa a la que van los documentos
+  const op = empresaProp ? { empresa: empresaProp } : undefined;
   const avisar = useAviso();
   const [ejecutar, ocupado] = useAccion();
   const esEmp = modo === 'empleado';
-  const personal = useDatos(() => (esEmp ? get('/rrhh/personal') : Promise.resolve([])), []);
-  const tiposD = useDatos(() => get('/documentos/tipos'), []);
+  const personal = useDatos(() => (esEmp ? get('/rrhh/personal', op) : Promise.resolve([])), [empresa]);
+  const tiposD = useDatos(() => get('/documentos/tipos', op), [empresa]);
   const empleados = personal.datos ?? [];   // también los dados de baja: sus contratos y terminaciones se guardan en su perfil
   const tipos = (tiposD.datos?.tipos ?? []).filter((t) => t.activo && !!t.de_empleado === esEmp);
   const [filas, setFilas] = useState([]);

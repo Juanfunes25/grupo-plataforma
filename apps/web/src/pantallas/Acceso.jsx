@@ -117,9 +117,9 @@ export default function Acceso() {
             <Suspense fallback={<Esqueleto alto={220} />}><SegundoPaso r={segundo} onCancelar={() => { setSegundo(null); setClave(''); }}
               onSesion={(resp) => { s.completar(resp); nav(codigo === 'grupo' ? '/grupo' : `/${codigo}`, { replace: true }); }} /></Suspense>
           ) : modo === 'pin' && paso === 'pesaje' ? (
-            <div style={{ display: 'grid', gap: 10 }}>
-              {sucursales.map((x) => <button key={x.id} className="btn grande bloque" style={x.color ? { borderLeft: `6px solid ${x.color}` } : undefined} disabled={ocupado} onClick={() => entrarPesaje(x)}>{x.nombre}</button>)}
-              <button className="btn fantasma" onClick={() => setVerPesaje(false)}><Icono n="atras" tam={16} /> Volver</button>
+            <div style={{ display: 'grid', gap: 18, gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', columnGap: '16%' }}>
+              {sucursales.map((x) => <button key={x.id} className="btn grande bloque" style={{ minHeight: 84, fontSize: '1rem', padding: '6px 8px', whiteSpace: 'normal', lineHeight: 1.15, ...(x.color ? { borderLeft: `6px solid ${x.color}` } : {}) }} disabled={ocupado} onClick={() => entrarPesaje(x)}>{x.nombre}</button>)}
+              <button className="btn fantasma" style={{ gridColumn: '1 / -1' }} onClick={() => setVerPesaje(false)}><Icono n="atras" tam={16} /> Volver</button>
             </div>
           ) : modo === 'pin' && paso === 'tienda' ? (
             <div style={{ display: 'grid', gap: 10 }}>

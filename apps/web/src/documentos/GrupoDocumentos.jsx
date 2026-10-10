@@ -3,18 +3,32 @@ import { get, qs } from '../api.js';
 import { Estado, Kpi, useDatos } from '../ui/kit.jsx';
 import { ESTADO_INFO, fechaCorta, textoVence } from './cliente.js';
 import Ficha from './Ficha.jsx';
+import DocsLote from '../rrhh/DocsLote.jsx';
+import { useSesion } from '../sesion.jsx';
 
 /** Dirección → Documentos: vencimientos próximos y vencidos de todo el grupo, y faltantes por empresa. */
 export default function GrupoDocumentos() {
   const [dias, setDias] = useState(90);
   const [empresa, setEmpresa] = useState('');
   const [abierto, setAbierto] = useState(null);      // { id, empresa }
+  const { puede } = useSesion();
+  const [lote, setLote] = useState(null);             // { modo, empresa } mientras se suben varios documentos
   const d = useDatos(() => get(`/grupo/documentos${qs({ dias })}`), [dias]);
   return (
     <Estado d={d}>{(r) => {
       const prox = r.proximos.filter((x) => !empresa || x.empresa === empresa);
       return (
         <>
+          {puede('doc:editar') && (
+            <div className="tarjeta fila espacio" style={{ flexWrap: 'wrap', gap: 8 }}>
+              <b>Subir documentos</b>
+              <div className="fila" style={{ flexWrap: 'wrap', gap: 8 }}>
+                {r.empresas.map((e) => <button key={e.codigo} className="btn" style={{ borderLeft: `5px solid ${e.color}` }} onClick={() => setLote({ modo: 'empresa', empresa: e.codigo })}>Varios de {e.nombre}</button>)}
+              </div>
+              <div className="fila" style={{ flexWrap: 'wrap', gap: 8 }}>
+                {r.empresas.map((e) => <button key={e.codigo} className="btn fantasma" onClick={() => setLote({ modo: 'empleado', empresa: e.codigo })}>Personal de {e.nombre}</button>)}
+              </div>
+            </div>)}
           <div className="rejilla cols-4">
             <Kpi etiqueta="Vencidos en el grupo" valor={r.total.vencidos} acento={r.total.vencidos > 0} />
             <Kpi etiqueta="Vencen en 30 días" valor={r.total.d30} />
@@ -48,6 +62,7 @@ export default function GrupoDocumentos() {
                 </tr>))}</tbody>
             </table></div></div>)}
           {abierto && <Ficha id={abierto.id} empresa={abierto.empresa} soloLectura onCerrar={() => setAbierto(null)} />}
+          {lote && <DocsLote modo={lote.modo} empresa={lote.empresa} onCerrar={() => setLote(null)} onListo={d.recargar} />}
         </>
       );
     }}</Estado>
