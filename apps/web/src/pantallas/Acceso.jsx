@@ -127,7 +127,7 @@ export default function Acceso() {
               {(sucursales.length > 1 || !hayPlanta) && sucursales.map((x) => <button key={x.id} className="btn grande bloque" style={x.color ? { borderLeft: `6px solid ${x.color}` } : undefined} onClick={() => setSucSel(x)}>{x.nombre}</button>)}
               {hayPlanta && <button className="btn grande bloque" onClick={elegirPuesto}>{puesto.boton}</button>}
               {hayPesaje && <button className="btn grande bloque" onClick={() => setVerPesaje(true)}>Pesaje de la noche</button>}
-              {sucursales.length <= 1 && hayPlanta && <button className="btn grande bloque" onClick={() => setOtros(true)}>Otros usuarios</button>}
+              {sucursales.length <= 1 && hayPlanta && <button className="btn grande bloque" onClick={() => setOtros(true)}>Facturación</button>}
             </div>
           ) : modo === 'pin' && paso === 'funcion' ? (
             <div style={{ display: 'grid', gap: 10 }}>
