@@ -547,3 +547,12 @@ td .btn.chico { min-height: 34px; }
 
 /* Los campos de fecha (sobre todo en iPhone) nunca se salen de su caja ni se montan sobre el botón de al lado. */
 input[type="date"], input[type="time"], input[type="datetime-local"] { min-width: 0; max-width: 100%; box-sizing: border-box; }
+
+/* Directorio de personal en el teléfono: solo el nombre (con su inicial); al tocarlo se abre la ficha con todo lo demás. */
+@media (max-width: 640px) {
+  table.dir-solo-nombre[data-tarjetas] tbody { gap: 6px; padding: 8px; }
+  table.dir-solo-nombre[data-tarjetas] tr { padding: 4px 10px; cursor: pointer; }
+  table.dir-solo-nombre[data-tarjetas] td { display: none; }
+  table.dir-solo-nombre[data-tarjetas] td:first-child { display: flex; justify-content: flex-start; text-align: left; border-bottom: 0; min-height: 48px; }
+  table.dir-solo-nombre[data-tarjetas] td:first-child::before { display: none; }
+}

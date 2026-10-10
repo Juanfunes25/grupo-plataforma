@@ -87,7 +87,7 @@ export function Directorio({ ruta, grupo, abrir, acciones, clave = 0 }) {
       <Estado d={d}>{(r) => (
         <>
           <small>{r.total} {r.total === 1 ? 'persona' : 'personas'}</small>
-          <div className="tarjeta pad0"><div className="tabla-wrap"><table>
+          <div className="tarjeta pad0"><div className="tabla-wrap"><table className="dir-solo-nombre">
             <thead><tr><th>Nombre</th>{grupo && <th>Empresa</th>}<th>Cargo</th><th>Sucursal</th><th>Teléfono</th><th>Ingreso</th><th>Contrato</th><th>Estado</th></tr></thead>
             <tbody>{r.empleados.map((e) => (
               <tr key={e.id} className="clic" onClick={() => abrir(e)} style={{ opacity: e.estado === 'baja' ? 0.55 : 1 }}>
